@@ -46,6 +46,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
     implementation("com.fasterxml.jackson.core:jackson-databind:${project.property("jacksonVersion")}")
 
+
     val grizzlyVersion: String by project
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
@@ -55,6 +56,8 @@ dependencies {
     val junitVersion: String by project
     val okhttp3Version: String by project
     val radarSchemasVersion: String by project
+    implementation("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
