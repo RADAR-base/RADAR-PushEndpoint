@@ -6,6 +6,7 @@ import java.util.stream.Stream
 import javax.ws.rs.NotAuthorizedException
 
 class ServiceUserRepository : UserRepository {
+
     @Throws(IOException::class)
     override fun get(key: String): User {
         TODO()
@@ -28,13 +29,5 @@ class ServiceUserRepository : UserRepository {
 
     @Throws(IOException::class)
     override fun reportDeregistration(user: User) {
-    }
-
-    override fun hasPendingUpdates(): Boolean {
-        TODO()
-    }
-
-    @Throws(IOException::class)
-    override fun applyPendingUpdates() {
     }
 }

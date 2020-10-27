@@ -18,7 +18,7 @@ import javax.ws.rs.core.Response
 @Singleton
 @Path("garmin")
 @Authenticated
-class GarminPushEndpoint(@Context val healthApiService: GarminHealthApiService) {
+class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiService) {
 
     @POST
     @Path("dailies")

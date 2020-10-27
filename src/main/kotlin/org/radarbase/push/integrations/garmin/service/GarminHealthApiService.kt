@@ -1,7 +1,6 @@
 package org.radarbase.push.integrations.garmin.service
 
 import com.fasterxml.jackson.databind.JsonNode
-import org.jvnet.hk2.annotations.Service
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
@@ -11,20 +10,18 @@ import org.radarbase.push.integrations.garmin.converter.DailiesGarminAvroConvert
 import org.radarbase.push.integrations.garmin.user.UserRepository
 import org.slf4j.LoggerFactory
 import java.io.IOException
-import javax.inject.Singleton
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
 
-@Singleton
-@Service
 class GarminHealthApiService(
-    @Context val userRepository: UserRepository,
+    @Context private val userRepository: UserRepository,
     @Context private val producerPool: ProducerPool,
-    @Context private val config: Config,
-    garminConfig: GarminConfig = config.pushIntegrationConfig.garminConfig
+    @Context private val config: Config
 ) {
+    private val garminConfig: GarminConfig = config.pushIntegrationConfig.garminConfig
+
     private val dailiesConverter =
         DailiesGarminAvroConverter(garminConfig.dailiesTopicName)
 

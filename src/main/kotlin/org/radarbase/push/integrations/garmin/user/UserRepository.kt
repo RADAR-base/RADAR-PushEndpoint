@@ -72,22 +72,4 @@ interface UserRepository {
      */
     @Throws(IOException::class)
     fun reportDeregistration(user: User)
-
-    /**
-     * The functions allows the repository to supply when there are pending updates.
-     * This gives more control to the user repository in updating and caching users.
-     *
-     * @return `true` if there are new updates available, `false` otherwise.
-     */
-    fun hasPendingUpdates(): Boolean
-
-    /**
-     * Apply any pending updates to users. This could include, for instance, refreshing a cache
-     * of users with latest information.
-     * This is called when [.hasPendingUpdates] is `true`.
-     *
-     * @throws IOException if there was an error when applying updates.
-     */
-    @Throws(IOException::class)
-    fun applyPendingUpdates()
 }

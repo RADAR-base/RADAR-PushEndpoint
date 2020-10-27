@@ -8,9 +8,9 @@ import org.radarbase.push.integrations.garmin.service.GarminHealthApiService
 import org.radarbase.push.integrations.garmin.user.ServiceUserRepository
 import org.radarbase.push.integrations.garmin.user.UserRepository
 import javax.inject.Singleton
-import javax.ws.rs.core.Context
 
-class GarminPushIntegrationResourceEnhancer(@Context config: Config) : JerseyResourceEnhancer {
+class GarminPushIntegrationResourceEnhancer(private val config: Config) :
+    JerseyResourceEnhancer {
 
     override fun ResourceConfig.enhance() {
         packages(
@@ -21,10 +21,12 @@ class GarminPushIntegrationResourceEnhancer(@Context config: Config) : JerseyRes
 
     override fun AbstractBinder.enhance() {
 
-        bindAsContract(GarminHealthApiService::class.java)
+        bind(config.pushIntegrationConfig.userRepository)
+            .to(UserRepository::class.java)
             .`in`(Singleton::class.java)
 
-        bind(UserRepository::class.java)
-            .to(ServiceUserRepository::class.java)
+        bind(GarminHealthApiService::class.java)
+            .to(GarminHealthApiService::class.java)
+            .`in`(Singleton::class.java)
     }
 }
