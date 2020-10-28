@@ -1,8 +1,8 @@
-package org.radarbase.push.integrations.garmin.resource
+package org.radarbase.push.integration.garmin.resource
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.radarbase.jersey.auth.Authenticated
-import org.radarbase.push.integrations.garmin.service.GarminHealthApiService
+import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import javax.inject.Singleton

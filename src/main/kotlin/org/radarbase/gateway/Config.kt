@@ -5,7 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGI
 import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.config.EnhancerFactory
-import org.radarbase.push.integrations.common.user.UserRepository
+import org.radarbase.push.integration.common.user.UserRepository
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -37,22 +37,17 @@ data class Config(
 }
 
 data class PushIntegrationConfig(
-    val userRepositoryClass: String =
-        "org.radarbase.push.integrations.garmin.user.ServiceUserRepository",
     val enabledPushIntegrations: List<String> = listOf("garmin"),
-    val garminConfig: GarminConfig = GarminConfig()
+    val garmin: GarminConfig = GarminConfig()
 ) {
-    val userRepository: Class<*> = Class.forName(userRepositoryClass)
-
     fun validate() {
-        check(UserRepository::class.java.isAssignableFrom(userRepository)) {
-            "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.push.integrations.common.user.UserRepository`"
-        }
+        garmin.validate()
     }
 }
 
 data class GarminConfig(
+    val userRepositoryClass: String =
+        "org.radarbase.push.integration.garmin.user.ServiceUserRepository",
     val dailiesTopicName: String = "push_integration_garmin_daily",
     val activitiesTopicName: String = "push_integration_garmin_activity",
     val activityDetailsTopicName: String = "push_integration_garmin_activity_detail",
@@ -65,7 +60,16 @@ data class GarminConfig(
     val moveIQTopicName: String = "push_integration_garmin_move_iq",
     val pulseOXTopicName: String = "push_integration_garmin_pulse_ox",
     val respirationTopicName: String = "push_integration_garmin_respiration"
-)
+) {
+    val userRepository: Class<*> = Class.forName(userRepositoryClass)
+
+    fun validate() {
+        check(UserRepository::class.java.isAssignableFrom(userRepository)) {
+            "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
+                    " `org.radarbase.push.integrations.common.user.UserRepository`"
+        }
+    }
+}
 
 data class GatewayServerConfig(
     /** Base URL to serve data with. This will determine the base path and the port. */

@@ -1,4 +1,4 @@
-package org.radarbase.push.integrations.garmin.auth
+package org.radarbase.push.integration.garmin.auth
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -6,15 +6,17 @@ import org.radarbase.jersey.auth.Auth
 import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.auth.disabled.DisabledAuth
 import org.radarbase.jersey.exception.HttpUnauthorizedException
-import org.radarbase.push.integrations.common.user.UserRepository
+import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
+import org.radarbase.push.integration.common.user.UserRepository
 import org.slf4j.LoggerFactory
+import javax.inject.Named
 import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Context
 
 
 class GarminAuthValidator(
     @Context private val objectMapper: ObjectMapper,
-    @Context private val userRepository: UserRepository
+    @Named(GARMIN_QUALIFIER) private val userRepository: UserRepository
 ) :
     AuthValidator {
     override fun verify(token: String, request: ContainerRequestContext): Auth? {
@@ -40,7 +42,7 @@ class GarminAuthValidator(
                 request.setProperty("user", user)
             } else {
                 throw HttpUnauthorizedException(
-                    "invalid_user", "The user ${user.id} token does not" +
+                    "invalid_user", "The token for user ${user.id} does not" +
                             " match with the records on the system"
                 )
             }
@@ -56,7 +58,7 @@ class GarminAuthValidator(
             val tree = objectMapper.readTree(request.entityStream)
             request.setProperty("tree", tree)
             val userAccessToken = tree[tree.fieldNames().next()][0][USER_ACCESS_TOKEN_KEY]
-                ?: throw HttpUnauthorizedException("invalid_user", "No user access token provided")
+                ?: throw HttpUnauthorizedException("invalid_token", "No user access token provided")
             userAccessToken.asText().also {
                 request.setProperty(USER_ACCESS_TOKEN_KEY, it)
             }

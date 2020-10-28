@@ -1,7 +1,7 @@
-package org.radarbase.push.integrations.garmin.user
+package org.radarbase.push.integration.garmin.user
 
-import org.radarbase.push.integrations.common.user.User
-import org.radarbase.push.integrations.common.user.UserRepository
+import org.radarbase.push.integration.common.user.User
+import org.radarbase.push.integration.common.user.UserRepository
 import java.io.IOException
 import java.time.Instant
 import java.util.stream.Stream
@@ -51,5 +51,9 @@ class ServiceUserRepository : UserRepository {
 
     @Throws(IOException::class)
     override fun reportDeregistration(user: User) {
+    }
+
+    override fun findByExternalId(externalId: String): User {
+        return super.findByExternalId(externalId)
     }
 }

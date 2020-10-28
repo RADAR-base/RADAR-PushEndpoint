@@ -1,4 +1,4 @@
-package org.radarbase.push.integrations.common.user
+package org.radarbase.push.integration.common.user
 
 import org.radarcns.kafka.ObservationKey
 import java.time.Instant

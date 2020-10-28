@@ -1,25 +1,27 @@
-package org.radarbase.push.integrations.garmin.service
+package org.radarbase.push.integration.garmin.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
-import org.radarbase.push.integrations.garmin.converter.ActivitiesGarminAvroConverter
-import org.radarbase.push.integrations.garmin.converter.DailiesGarminAvroConverter
-import org.radarbase.push.integrations.common.user.UserRepository
+import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
+import org.radarbase.push.integration.common.user.UserRepository
+import org.radarbase.push.integration.garmin.converter.ActivitiesGarminAvroConverter
+import org.radarbase.push.integration.garmin.converter.DailiesGarminAvroConverter
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import javax.inject.Named
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
 
 class GarminHealthApiService(
-    @Context private val userRepository: UserRepository,
+    @Named(GARMIN_QUALIFIER) private val userRepository: UserRepository,
     @Context private val producerPool: ProducerPool,
     @Context private val config: Config
 ) {
-    private val garminConfig: GarminConfig = config.pushIntegrationConfig.garminConfig
+    private val garminConfig: GarminConfig = config.pushIntegrationConfig.garmin
 
     private val dailiesConverter =
         DailiesGarminAvroConverter(garminConfig.dailiesTopicName)

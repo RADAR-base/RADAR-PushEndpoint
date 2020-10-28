@@ -7,15 +7,19 @@ import org.radarbase.jersey.auth.MPConfig
 import org.radarbase.jersey.config.ConfigLoader
 import org.radarbase.jersey.config.EnhancerFactory
 import org.radarbase.jersey.config.JerseyResourceEnhancer
-import org.radarbase.push.integrations.GarminPushIntegrationResourceEnhancer
+import org.radarbase.push.integration.GarminPushIntegrationResourceEnhancer
+import org.radarbase.push.integration.common.inject.PushIntegrationResourceEnhancer
 
 class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFactory {
 
     val authConfig = AuthConfig(
         managementPortal = MPConfig(
-            url = config.auth.managementPortalUrl),
+            url = config.auth.managementPortalUrl
+        ),
         jwtResourceName = config.auth.resourceName,
-        jwtIssuer = config.auth.issuer)
+        jwtIssuer = config.auth.issuer
+    )
+
     override fun createEnhancers(): List<JerseyResourceEnhancer> {
 
         val enhancersList = mutableListOf(
@@ -23,8 +27,10 @@ class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFacto
             ConfigLoader.Enhancers.radar(authConfig),
             ConfigLoader.Enhancers.health,
             ConfigLoader.Enhancers.httpException,
-            ConfigLoader.Enhancers.generalException
+            ConfigLoader.Enhancers.generalException,
+            PushIntegrationResourceEnhancer()
         )
+        // Push Service specific enhancers
         enhancersList.addAll(
             when {
                 config.pushIntegrationConfig.enabledPushIntegrations.contains("garmin") ->

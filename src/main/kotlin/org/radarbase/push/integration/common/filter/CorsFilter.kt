@@ -1,4 +1,4 @@
-package org.radarbase.push.integrations.common.filter
+package org.radarbase.push.integration.common.filter
 
 import java.io.IOException
 import javax.ws.rs.container.ContainerRequestContext

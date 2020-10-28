@@ -1,9 +1,9 @@
-package org.radarbase.push.integrations.garmin.converter
+package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarbase.push.integrations.common.converter.AvroConverter
-import org.radarbase.push.integrations.common.user.User
+import org.radarbase.push.integration.common.converter.AvroConverter
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext

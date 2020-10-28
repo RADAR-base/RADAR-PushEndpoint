@@ -1,13 +1,14 @@
-package org.radarbase.push.integrations
+package org.radarbase.push.integration
 
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.server.ResourceConfig
 import org.radarbase.gateway.Config
 import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.config.JerseyResourceEnhancer
-import org.radarbase.push.integrations.garmin.auth.GarminAuthValidator
-import org.radarbase.push.integrations.garmin.service.GarminHealthApiService
-import org.radarbase.push.integrations.common.user.UserRepository
+import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
+import org.radarbase.push.integration.common.user.UserRepository
+import org.radarbase.push.integration.garmin.auth.GarminAuthValidator
+import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import javax.inject.Singleton
 
 class GarminPushIntegrationResourceEnhancer(private val config: Config) :
@@ -15,15 +16,16 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
 
     override fun ResourceConfig.enhance() {
         packages(
-            "org.radarbase.push.integrations.garmin.resource",
-            "org.radarbase.push.integrations.common.filter"
+            "org.radarbase.push.integration.garmin.resource",
+            "org.radarbase.push.integration.common.filter"
         )
     }
 
     override fun AbstractBinder.enhance() {
 
-        bind(config.pushIntegrationConfig.userRepository)
+        bind(config.pushIntegrationConfig.garmin.userRepository)
             .to(UserRepository::class.java)
+            .named(GARMIN_QUALIFIER)
             .`in`(Singleton::class.java)
 
         bind(GarminHealthApiService::class.java)
@@ -32,6 +34,7 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
 
         bind(GarminAuthValidator::class.java)
             .to(AuthValidator::class.java)
+            .named(GARMIN_QUALIFIER)
             .`in`(Singleton::class.java)
     }
 }

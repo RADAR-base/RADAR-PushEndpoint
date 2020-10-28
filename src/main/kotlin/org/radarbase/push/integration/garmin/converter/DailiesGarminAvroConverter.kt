@@ -1,4 +1,4 @@
-package org.radarbase.push.integrations.garmin.converter
+package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord

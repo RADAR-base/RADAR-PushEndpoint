@@ -1,6 +1,6 @@
-package org.radarbase.push.integrations.garmin.user
+package org.radarbase.push.integration.garmin.user
 
-import org.radarbase.push.integrations.common.user.User
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import java.time.Instant
 
