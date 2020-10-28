@@ -33,7 +33,7 @@ class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFacto
         // Push Service specific enhancers
         enhancersList.addAll(
             when {
-                config.pushIntegrationConfig.enabledPushIntegrations.contains("garmin") ->
+                config.pushIntegration.enabledServices.contains("garmin") ->
                     listOf(
                         GarminPushIntegrationResourceEnhancer(config),
                     )

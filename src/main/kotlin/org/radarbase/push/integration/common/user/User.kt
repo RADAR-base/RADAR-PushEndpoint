@@ -13,20 +13,5 @@ interface User {
     val endDate: Instant
     val version: String?
     val isAuthorized: Boolean
-    val versionedId: String
-        get() {
-            val version = version
-            return if (version == null) {
-                id
-            } else {
-                "$id#$version"
-            }
-        }
     val observationKey: ObservationKey
-/*    val isComplete: Boolean?
-        get() = endDate != null
-                && startDate != null
-                && projectId != null
-                && userId != null
-                && isAuthorized*/
 }

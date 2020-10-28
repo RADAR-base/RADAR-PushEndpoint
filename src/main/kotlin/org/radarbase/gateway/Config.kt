@@ -20,7 +20,7 @@ data class Config(
     /** Server configurations. */
     val server: GatewayServerConfig = GatewayServerConfig(),
     /** Push integration configs **/
-    val pushIntegrationConfig: PushIntegrationConfig = PushIntegrationConfig()
+    val pushIntegration: PushIntegrationConfig = PushIntegrationConfig()
 ) {
     /** Fill in some default values for the configuration. */
     fun withDefaults(): Config = copy(kafka = kafka.withDefaults())
@@ -32,12 +32,12 @@ data class Config(
     fun validate() {
         kafka.validate()
         auth.validate()
-        pushIntegrationConfig.validate()
+        pushIntegration.validate()
     }
 }
 
 data class PushIntegrationConfig(
-    val enabledPushIntegrations: List<String> = listOf("garmin"),
+    val enabledServices: List<String> = listOf("garmin"),
     val garmin: GarminConfig = GarminConfig()
 ) {
     fun validate() {

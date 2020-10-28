@@ -23,7 +23,7 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
 
     override fun AbstractBinder.enhance() {
 
-        bind(config.pushIntegrationConfig.garmin.userRepository)
+        bind(config.pushIntegration.garmin.userRepository)
             .to(UserRepository::class.java)
             .named(GARMIN_QUALIFIER)
             .`in`(Singleton::class.java)

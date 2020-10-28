@@ -37,6 +37,12 @@ class GarminAuthValidator(
                 )
             }
 
+            if (!user.isAuthorized) {
+                throw HttpUnauthorizedException(
+                    "invalid_user", "The user does not seem to be authorized"
+                )
+            }
+
             // Compare access tokens for authenticity of the request
             if (userRepository.getAccessToken(user) == token) {
                 request.setProperty("user", user)

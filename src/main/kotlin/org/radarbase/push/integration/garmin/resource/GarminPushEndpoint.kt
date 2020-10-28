@@ -32,9 +32,6 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @Path("activities")
     fun addActivities(@Context requestContext: ContainerRequestContext): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-        logger.info("Got Activities Data: {}", tree.toPrettyString())
-        logger.info("The user is: {}", requestContext.getProperty("user"))
-        logger.info("The user access token is: {}", requestContext.getProperty("userAccessToken"))
         return healthApiService.processActivities(tree, requestContext)
     }
 

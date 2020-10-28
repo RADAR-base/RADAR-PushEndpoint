@@ -21,7 +21,7 @@ class GarminHealthApiService(
     @Context private val producerPool: ProducerPool,
     @Context private val config: Config
 ) {
-    private val garminConfig: GarminConfig = config.pushIntegrationConfig.garmin
+    private val garminConfig: GarminConfig = config.pushIntegration.garmin
 
     private val dailiesConverter =
         DailiesGarminAvroConverter(garminConfig.dailiesTopicName)
