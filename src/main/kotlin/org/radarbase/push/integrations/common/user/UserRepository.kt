@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package org.radarbase.push.integrations.garmin.user
+package org.radarbase.push.integrations.common.user
 
 import org.radarbase.push.integrations.common.user.User
 import java.io.IOException
@@ -53,7 +53,7 @@ interface UserRepository {
     fun getAccessToken(user: User): String
 
     /**
-     * Get the current access token Secret of given user.
+     * Get the current refresh token of given user.
      *
      * @throws IOException            if the new access token secret cannot be retrieved from the repository.
      * @throws NotAuthorizedException if the token is no longer valid. Manual action
@@ -61,7 +61,7 @@ interface UserRepository {
      * @throws NoSuchElementException if the user does not exists in this repository.
      */
     @Throws(IOException::class, NotAuthorizedException::class)
-    fun getUserAccessTokenSecret(user: User): String
+    fun getRefreshToken(user: User): String
 
     /**
      * This is to report any deregistrations of the users.
@@ -72,4 +72,20 @@ interface UserRepository {
      */
     @Throws(IOException::class)
     fun reportDeregistration(user: User)
+
+
+    /**
+     * Finds [User] using [User.externalUserId]
+     *
+     * @throws IOException            if there was an error when finding the user.
+     * @throws NoSuchElementException if the user does not exists in this repository.
+     */
+    @Throws(NoSuchElementException::class, IOException::class)
+    fun findByExternalId(externalId: String): User {
+        return stream()
+            .filter { user -> user.externalUserId == externalId }
+            .findFirst()
+            .orElseGet { throw NoSuchElementException("User not found in the User repository") }
+    }
+
 }

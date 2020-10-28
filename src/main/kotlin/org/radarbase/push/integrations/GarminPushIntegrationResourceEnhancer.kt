@@ -3,10 +3,11 @@ package org.radarbase.push.integrations
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.server.ResourceConfig
 import org.radarbase.gateway.Config
+import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.config.JerseyResourceEnhancer
+import org.radarbase.push.integrations.garmin.auth.GarminAuthValidator
 import org.radarbase.push.integrations.garmin.service.GarminHealthApiService
-import org.radarbase.push.integrations.garmin.user.ServiceUserRepository
-import org.radarbase.push.integrations.garmin.user.UserRepository
+import org.radarbase.push.integrations.common.user.UserRepository
 import javax.inject.Singleton
 
 class GarminPushIntegrationResourceEnhancer(private val config: Config) :
@@ -27,6 +28,10 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
 
         bind(GarminHealthApiService::class.java)
             .to(GarminHealthApiService::class.java)
+            .`in`(Singleton::class.java)
+
+        bind(GarminAuthValidator::class.java)
+            .to(AuthValidator::class.java)
             .`in`(Singleton::class.java)
     }
 }

@@ -5,7 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGI
 import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.config.EnhancerFactory
-import org.radarbase.push.integrations.garmin.user.UserRepository
+import org.radarbase.push.integrations.common.user.UserRepository
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -47,24 +47,24 @@ data class PushIntegrationConfig(
     fun validate() {
         check(UserRepository::class.java.isAssignableFrom(userRepository)) {
             "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.push.integrations.garmin.user.UserRepository`"
+                    " `org.radarbase.push.integrations.common.user.UserRepository`"
         }
     }
 }
 
 data class GarminConfig(
-    val dailiesTopicName: String = "push_integration_garmin_dailies",
-    val activitiesTopicName: String = "push_integration_garmin_activities",
-    val activityDetailsTopicName: String = "",
-    val manualActivitiesTopicName: String = "",
-    val epochSummariesTopicName: String = "",
-    val sleepsTopicName: String = "",
-    val bodyCompositionsTopicName: String = "",
-    val stressTopicName: String = "",
-    val userMetricsTopicName: String = "",
-    val moveIQTopicName: String = "",
-    val pulseOXTopicName: String = "",
-    val respirationTopicName: String = ""
+    val dailiesTopicName: String = "push_integration_garmin_daily",
+    val activitiesTopicName: String = "push_integration_garmin_activity",
+    val activityDetailsTopicName: String = "push_integration_garmin_activity_detail",
+    val manualActivitiesTopicName: String = "push_integration_garmin_manual_activity",
+    val epochSummariesTopicName: String = "push_integration_garmin_epoch_summary",
+    val sleepsTopicName: String = "push_integration_garmin_sleep",
+    val bodyCompositionsTopicName: String = "push_integration_garmin_body_composition",
+    val stressTopicName: String = "push_integration_garmin_stress",
+    val userMetricsTopicName: String = "push_integration_garmin_user_metrics",
+    val moveIQTopicName: String = "push_integration_garmin_move_iq",
+    val pulseOXTopicName: String = "push_integration_garmin_pulse_ox",
+    val respirationTopicName: String = "push_integration_garmin_respiration"
 )
 
 data class GatewayServerConfig(

@@ -2,7 +2,7 @@ package org.radarbase.gateway.kafka
 
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.serializers.KafkaAvroSerializer
-import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.IndexedRecord
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -13,9 +13,9 @@ import java.io.Closeable
 import java.util.concurrent.ExecutionException
 
 class KafkaAvroProducer(
-        config: Config,
-        schemaRegistryClient: SchemaRegistryClient
-): Closeable {
+    config: Config,
+    schemaRegistryClient: SchemaRegistryClient
+) : Closeable {
     private val producer: Producer<Any, Any>
 
     init {
@@ -32,16 +32,16 @@ class KafkaAvroProducer(
     }
 
     @Throws(KafkaException::class)
-    fun produce(topic: String, records: List<Pair<GenericRecord, GenericRecord>>) {
+    fun produce(topic: String, records: List<Pair<IndexedRecord, IndexedRecord>>) {
         records
-                .map { (key, value) -> producer.send(ProducerRecord(topic, key, value)) }
-                .forEach {
-                    try {
-                        it.get() // asserts that the send completed and was successful
-                    } catch (ex: ExecutionException) {
-                        throw ex.cause!!
-                    }
+            .map { (key, value) -> producer.send(ProducerRecord(topic, key, value)) }
+            .forEach {
+                try {
+                    it.get() // asserts that the send completed and was successful
+                } catch (ex: ExecutionException) {
+                    throw ex.cause!!
                 }
+            }
     }
 
     override fun close() {

@@ -30,18 +30,21 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
 
     @POST
     @Path("activities")
-    fun addActivities(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addActivities(@Context requestContext: ContainerRequestContext): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Got Activities Data: {}", tree.toPrettyString())
+        logger.info("The user is: {}", requestContext.getProperty("user"))
+        logger.info("The user access token is: {}", requestContext.getProperty("userAccessToken"))
         return healthApiService.processActivities(tree, requestContext)
     }
 
     @POST
     @Path("activityDetails")
     fun addActivityDetails(
-        tree: JsonNode,
         @Context requestContext: ContainerRequestContext
     ): Response {
         // todo remove
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Got Activity Details Data: {}", tree.toPrettyString())
         return healthApiService.processActivityDetails(tree, requestContext)
     }
@@ -49,9 +52,9 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @POST
     @Path("manualActivities")
     fun addManualActivities(
-        tree: JsonNode,
         @Context requestContext: ContainerRequestContext
     ): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
 /*        if (pushBody.getManuallyUpdatedActivities() == null
             || pushBody.getManuallyUpdatedActivities().stream().anyMatch { act -> !act.getManual() }
         ) {
@@ -68,9 +71,9 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @POST
     @Path("epochSummaries")
     fun addEpochSummaries(
-        tree: JsonNode,
         @Context requestContext: ContainerRequestContext
     ): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         // todo remove
         logger.info("Got Epoch Data: {}", tree.toPrettyString())
         return healthApiService.processEpochs(tree, requestContext)
@@ -78,7 +81,8 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
 
     @POST
     @Path("sleeps")
-    fun addSleeps(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addSleeps(@Context requestContext: ContainerRequestContext): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         // todo remove
         logger.info("Got Sleep Data: {}", tree.toPrettyString())
         return healthApiService.processSleeps(tree, requestContext)
@@ -87,9 +91,9 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @POST
     @Path("bodyCompositions")
     fun addBodyCompositions(
-        tree: JsonNode,
         @Context requestContext: ContainerRequestContext
     ): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         // todo remove
         logger.info("Got Body Comp Data: {}", tree.toPrettyString())
         return healthApiService.processBodyCompositions(tree, requestContext)
@@ -97,32 +101,36 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
 
     @POST
     @Path("stress")
-    fun addStress(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addStress(@Context requestContext: ContainerRequestContext): Response {
         // todo remove
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Got Stress Data: {}", tree.toPrettyString())
         return healthApiService.processStress(tree, requestContext)
     }
 
     @POST
     @Path("userMetrics")
-    fun addUserMetrics(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addUserMetrics(@Context requestContext: ContainerRequestContext): Response {
         // todo remove
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Got User Metrics Data: {}", tree.toPrettyString())
         return healthApiService.processUserMetrics(tree, requestContext)
     }
 
     @POST
     @Path("moveIQ")
-    fun addMoveIQ(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addMoveIQ(@Context requestContext: ContainerRequestContext): Response {
         // todo remove
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Got Move IQ Data: {}", tree.toPrettyString())
         return healthApiService.processMoveIQ(tree, requestContext)
     }
 
     @POST
     @Path("pulseOX")
-    fun addPluseOX(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addPluseOX(@Context requestContext: ContainerRequestContext): Response {
         // todo remove
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Got Pulse OX Data: {}", tree.toPrettyString())
         return healthApiService.processPulseOx(tree, requestContext)
     }
@@ -130,9 +138,9 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @POST
     @Path("respiration")
     fun addRespiration(
-        tree: JsonNode,
         @Context requestContext: ContainerRequestContext
     ): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         // todo remove
         logger.info("Got Respiration Data: {}", tree.toPrettyString())
         return healthApiService.processRespiration(tree, requestContext)
@@ -140,14 +148,13 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
 
     @POST
     @Path("deregister")
-    fun deregisterUser(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun deregisterUser(@Context requestContext: ContainerRequestContext): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         logger.info("Deregistering user: {}", tree.get("userId"))
         return healthApiService.handleDeregistration(
-            tree.get("userId").asText(),
-            tree.get("userAccessToken").asText()
+            tree.get("userId")?.asText()
         )
     }
-
 
     companion object {
         private val logger: Logger = LoggerFactory.getLogger(GarminPushEndpoint::class.java)

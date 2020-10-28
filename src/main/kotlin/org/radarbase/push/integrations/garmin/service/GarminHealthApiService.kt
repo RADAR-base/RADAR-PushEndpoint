@@ -4,10 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
-import org.radarbase.push.integrations.common.user.User
 import org.radarbase.push.integrations.garmin.converter.ActivitiesGarminAvroConverter
 import org.radarbase.push.integrations.garmin.converter.DailiesGarminAvroConverter
-import org.radarbase.push.integrations.garmin.user.UserRepository
+import org.radarbase.push.integrations.common.user.UserRepository
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import javax.ws.rs.BadRequestException
@@ -30,14 +29,14 @@ class GarminHealthApiService(
 
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = dailiesConverter.convert(tree, request)
+        val records = dailiesConverter.validateAndConvert(tree, request)
         producerPool.produce(dailiesConverter.topic, records)
         return Response.status(Response.Status.OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processActivities(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = activitiesConverter.convert(tree, request)
+        val records = activitiesConverter.validateAndConvert(tree, request)
         producerPool.produce(activitiesConverter.topic, records)
         return Response.status(Response.Status.OK).build()
     }
@@ -83,28 +82,13 @@ class GarminHealthApiService(
     }
 
     @Throws(IOException::class, NoSuchElementException::class, BadRequestException::class)
-    fun handleDeregistration(userId: String?, userAccessToken: String?): Response {
+    fun handleDeregistration(userId: String?): Response {
         if (userId.isNullOrBlank()) {
             throw BadRequestException("Invalid userId for degregistration")
         }
         userRepository.reportDeregistration(userRepository.findByExternalId(userId))
         return Response.status(Response.Status.OK).build()
     }
-
-    /**
-     * Finds [User] using [User.externalUserId]
-     *
-     * @throws IOException            if there was an error when finding the user.
-     * @throws NoSuchElementException if the user does not exists in this repository.
-     */
-    @Throws(NoSuchElementException::class, IOException::class)
-    fun UserRepository.findByExternalId(externalId: String): User {
-        return stream()
-            .filter { user: User -> user.externalUserId == externalId }
-            .findFirst()
-            .orElseGet { throw NoSuchElementException("User not found in the User repository") }
-    }
-
 
     companion object {
         private val logger = LoggerFactory.getLogger(GarminHealthApiService::class.java)

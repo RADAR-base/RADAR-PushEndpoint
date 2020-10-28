@@ -1,7 +1,7 @@
 package org.radarbase.push.integrations.garmin.service
 
 import org.radarbase.gateway.Config
-import org.radarbase.push.integrations.garmin.user.UserRepository
+import org.radarbase.push.integrations.common.user.UserRepository
 import javax.ws.rs.core.Context
 
 /**

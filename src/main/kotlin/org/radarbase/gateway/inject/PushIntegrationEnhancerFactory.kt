@@ -29,8 +29,6 @@ class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFacto
             when {
                 config.pushIntegrationConfig.enabledPushIntegrations.contains("garmin") ->
                     listOf(
-                        // TODO replace with GarminUserAuthorization
-                        ConfigLoader.Enhancers.disabledAuthorization,
                         GarminPushIntegrationResourceEnhancer(config),
                     )
                 // Add more configs as the integrations are added
