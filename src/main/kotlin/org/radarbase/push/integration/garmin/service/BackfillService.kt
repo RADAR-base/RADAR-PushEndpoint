@@ -14,5 +14,6 @@ class BackfillService(
     @Context config: Config,
     @Named(GARMIN_QUALIFIER) userRepository: UserRepository
 ) {
-
+    // TODO: discuss about this since we need some way to store the offset for historic requests
+    //  made for each user
 }
