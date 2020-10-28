@@ -15,6 +15,7 @@ import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
+import javax.ws.rs.core.Response.Status.OK
 
 class GarminHealthApiService(
     @Named(GARMIN_QUALIFIER) private val userRepository: UserRepository,
@@ -33,14 +34,14 @@ class GarminHealthApiService(
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = dailiesConverter.validateAndConvert(tree, request)
         producerPool.produce(dailiesConverter.topic, records)
-        return Response.status(Response.Status.OK).build()
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processActivities(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = activitiesConverter.validateAndConvert(tree, request)
         producerPool.produce(activitiesConverter.topic, records)
-        return Response.status(Response.Status.OK).build()
+        return Response.status(OK).build()
     }
 
     fun processActivityDetails(tree: JsonNode, requestContext: ContainerRequestContext): Response {
@@ -89,7 +90,7 @@ class GarminHealthApiService(
             throw BadRequestException("Invalid userId for degregistration")
         }
         userRepository.reportDeregistration(userRepository.findByExternalId(userId))
-        return Response.status(Response.Status.OK).build()
+        return Response.status(OK).build()
     }
 
     companion object {

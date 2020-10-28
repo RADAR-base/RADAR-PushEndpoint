@@ -11,7 +11,7 @@ class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_act
     GarminAvroConverter(topic) {
 
     override fun validate(tree: JsonNode) {
-        val activities = tree["activities"]
+        val activities = tree[ROOT]
         if (activities == null || !activities.isArray) {
             throw BadRequestException("The activities data was invalid.")
         }
@@ -23,51 +23,55 @@ class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_act
     ): List<Pair<SpecificRecord, SpecificRecord>> {
 
         val observationKey = observationKey(request)
-        return tree["activities"]
+        return tree[ROOT]
             .map { node -> Pair(observationKey, getRecord(node)) }
     }
 
     private fun getRecord(node: JsonNode): GarminActivitySummary {
         return GarminActivitySummary.newBuilder().apply {
-            summaryId = node.get("summaryId")?.asText()
-            time = node.get("startTimeInSeconds").asDouble()
+            summaryId = node["summaryId"]?.asText()
+            time = node["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            startTimeOffsetInSeconds = node.get("startTimeOffsetInSeconds")?.asInt()
-            activityType = node.get("activityType")?.asText()
-            durationInSeconds = node.get("durationInSeconds")?.asInt()
+            startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
+            activityType = node["activityType"]?.asText()
+            durationInSeconds = node["durationInSeconds"]?.asInt()
             averageBikeCadenceInRoundsPerMinute =
-                node.get("averageBikeCadenceInRoundsPerMinute")?.asDouble()
+                node["averageBikeCadenceInRoundsPerMinute"]?.asDouble()
             averageHeartRateInBeatsPerMinute =
-                node.get("averageHeartRateInBeatsPerMinute")?.asInt()
+                node["averageHeartRateInBeatsPerMinute"]?.asInt()
             averageRunCadenceInStepsPerMinute =
-                node.get("averageRunCadenceInStepsPerMinute")?.asDouble()
+                node["averageRunCadenceInStepsPerMinute"]?.asDouble()
             averageSpeedInMetersPerSecond =
-                node.get("averageSpeedInMetersPerSecond")?.asDouble()
+                node["averageSpeedInMetersPerSecond"]?.asDouble()
             averageSwimCadenceInStrokesPerMinute =
-                node.get("averageSwimCadenceInStrokesPerMinute")?.asDouble()
+                node["averageSwimCadenceInStrokesPerMinute"]?.asDouble()
             averagePaceInMinutesPerKilometer =
-                node.get("averagePaceInMinutesPerKilometer")?.asDouble()
-            activeKilocalories = node.get("activeKilocalories")?.asInt()
-            deviceName = node.get("deviceName")?.asText()
-            distanceInMeters = node.get("distanceInMeters")?.asDouble()
+                node["averagePaceInMinutesPerKilometer"]?.asDouble()
+            activeKilocalories = node["activeKilocalories"]?.asInt()
+            deviceName = node["deviceName"]?.asText()
+            distanceInMeters = node["distanceInMeters"]?.asDouble()
             maxBikeCadenceInRoundsPerMinute =
-                node.get("maxBikeCadenceInRoundsPerMinute")?.asDouble()
+                node["maxBikeCadenceInRoundsPerMinute"]?.asDouble()
             maxHeartRateInBeatsPerMinute =
-                node.get("maxHeartRateInBeatsPerMinute")?.asInt()
+                node["maxHeartRateInBeatsPerMinute"]?.asInt()
             maxPaceInMinutesPerKilometer =
-                node.get("maxPaceInMinutesPerKilometer")?.asDouble()
+                node["maxPaceInMinutesPerKilometer"]?.asDouble()
             maxRunCadenceInStepsPerMinute =
-                node.get("maxRunCadenceInStepsPerMinute")?.asDouble()
-            maxSpeedInMetersPerSecond = node.get("maxSpeedInMetersPerSecond")?.asDouble()
-            numberOfActiveLengths = node.get("numberOfActiveLengths")?.asInt()
-            startingLatitudeInDegree = node.get("startingLatitudeInDegree")?.asDouble()
-            startingLongitudeInDegree = node.get("startingLongitudeInDegree")?.asDouble()
+                node["maxRunCadenceInStepsPerMinute"]?.asDouble()
+            maxSpeedInMetersPerSecond = node["maxSpeedInMetersPerSecond"]?.asDouble()
+            numberOfActiveLengths = node["numberOfActiveLengths"]?.asInt()
+            startingLatitudeInDegree = node["startingLatitudeInDegree"]?.asDouble()
+            startingLongitudeInDegree = node["startingLongitudeInDegree"]?.asDouble()
             steps = node.get("steps")?.asInt()
-            totalElevationGainInMeters = node.get("totalElevationGainInMeters")?.asDouble()
-            totalElevationLossInMeters = node.get("totalElevationLossInMeters")?.asDouble()
-            isParent = node.get("isParent")?.asBoolean()
-            parentSummaryId = node.get("parentSummaryId")?.asText()
-            manual = node.get("manual")?.asBoolean()
+            totalElevationGainInMeters = node["totalElevationGainInMeters"]?.asDouble()
+            totalElevationLossInMeters = node["totalElevationLossInMeters"]?.asDouble()
+            isParent = node["isParent"]?.asBoolean()
+            parentSummaryId = node["parentSummaryId"]?.asText()
+            manual = node["manual"]?.asBoolean()
         }.build()
+    }
+
+    companion object {
+        const val ROOT = "activities"
     }
 }

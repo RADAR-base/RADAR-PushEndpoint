@@ -22,7 +22,8 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
 
     @POST
     @Path("dailies")
-    fun addDalies(tree: JsonNode, @Context requestContext: ContainerRequestContext): Response {
+    fun addDalies(@Context requestContext: ContainerRequestContext): Response {
+        val tree = requestContext.getProperty("tree") as JsonNode
         // todo remove
         logger.info("Got Dailies Data: {}", tree.toPrettyString())
         return healthApiService.processDailies(tree, requestContext)
