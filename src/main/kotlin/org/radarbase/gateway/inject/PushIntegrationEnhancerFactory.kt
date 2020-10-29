@@ -30,20 +30,22 @@ class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFacto
             ConfigLoader.Enhancers.generalException,
             PushIntegrationResourceEnhancer()
         )
+
         // Push Service specific enhancers
-        enhancersList.addAll(
-            when {
-                config.pushIntegration.enabledServices.contains("garmin") ->
-                    listOf(
-                        GarminPushIntegrationResourceEnhancer(config),
+        config.pushIntegration.enabledServices.forEach { service ->
+            enhancersList.addAll(
+                when (service) {
+                    "garmin" -> listOf(GarminPushIntegrationResourceEnhancer(config))
+
+                    // Add more enhancers as the integrations are added
+                    else -> throw IllegalStateException(
+                        "The configured push integration for $service is not " +
+                                "available."
                     )
-                // Add more configs as the integrations are added
-                else -> throw IllegalStateException(
-                    "The configured push integration is not " +
-                            "available."
-                )
-            }
-        )
+                }
+            )
+        }
+
         return enhancersList.toImmutableList()
     }
 }

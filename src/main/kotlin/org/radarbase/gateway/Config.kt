@@ -41,7 +41,17 @@ data class PushIntegrationConfig(
     val garmin: GarminConfig = GarminConfig()
 ) {
     fun validate() {
-        garmin.validate()
+        enabledServices.forEach { service ->
+            when (service) {
+                "garmin" -> garmin.validate()
+
+                // Add more validation as services are added
+                else -> throw IllegalStateException(
+                    "The configured push integration for $service is not " +
+                            "available."
+                )
+            }
+        }
     }
 }
 

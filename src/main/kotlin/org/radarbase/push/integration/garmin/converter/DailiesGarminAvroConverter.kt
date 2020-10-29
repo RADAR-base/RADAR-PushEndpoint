@@ -8,7 +8,7 @@ import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
 
-class DailiesGarminAvroConverter(topic: String = "push_integration_garmin_dailies") :
+class DailiesGarminAvroConverter(topic: String = "push_integration_garmin_daily") :
     GarminAvroConverter(topic) {
 
     @Throws(IOException::class)
@@ -63,6 +63,7 @@ class DailiesGarminAvroConverter(topic: String = "push_integration_garmin_dailie
             netKilocaloriesGoal = node["netKilocaloriesGoal"]?.asInt()
             intensityDurationGoalInSeconds = node["intensityDurationGoalInSeconds"]?.asInt()
             floorsClimbedGoal = node["floorsClimbedGoal"]?.asInt()
+            source = node["source"]?.asText()
         }.build()
     }
 

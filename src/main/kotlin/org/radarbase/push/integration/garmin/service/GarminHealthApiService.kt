@@ -7,6 +7,7 @@ import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.garmin.converter.ActivitiesGarminAvroConverter
+import org.radarbase.push.integration.garmin.converter.ActivityDetailsGarminAvroConverter
 import org.radarbase.push.integration.garmin.converter.DailiesGarminAvroConverter
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -30,6 +31,9 @@ class GarminHealthApiService(
     private val activitiesConverter =
         ActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
 
+    private val activityDetailsConverter =
+        ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
+
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = dailiesConverter.validateAndConvert(tree, request)
@@ -44,12 +48,15 @@ class GarminHealthApiService(
         return Response.status(OK).build()
     }
 
-    fun processActivityDetails(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    @Throws(IOException::class, BadRequestException::class)
+    fun processActivityDetails(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = activityDetailsConverter.validateAndConvert(tree, request)
+        producerPool.produce(activitiesConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     fun processManualActivities(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+        return this.processActivities(tree, requestContext)
     }
 
     fun processEpochs(tree: JsonNode, requestContext: ContainerRequestContext): Response {

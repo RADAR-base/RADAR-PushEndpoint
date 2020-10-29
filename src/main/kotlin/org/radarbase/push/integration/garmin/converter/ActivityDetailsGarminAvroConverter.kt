@@ -2,18 +2,19 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminActivitySummary
+import org.radarcns.push.integration.garmin.GarminActivityDetails
+import org.radarcns.push.integration.garmin.GarminActivityDetailsSample
+import org.radarcns.push.integration.garmin.GarminActivityDetailsSummary
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
 
-class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_activity") :
+class ActivityDetailsGarminAvroConverter(topic: String = "push_integration_garmin_activity_detail") :
     GarminAvroConverter(topic) {
-
     override fun validate(tree: JsonNode) {
-        val activities = tree[ROOT]
-        if (activities == null || !activities.isArray) {
-            throw BadRequestException("The activities data was invalid.")
+        val activityDetails = tree[ROOT]
+        if (activityDetails == null || !activityDetails.isArray) {
+            throw BadRequestException("The Activity Details Data was invalid")
         }
     }
 
@@ -21,15 +22,21 @@ class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_act
         tree: JsonNode,
         request: ContainerRequestContext
     ): List<Pair<SpecificRecord, SpecificRecord>> {
-
         val observationKey = observationKey(request)
         return tree[ROOT]
             .map { node -> Pair(observationKey, getRecord(node)) }
     }
 
-    private fun getRecord(node: JsonNode): GarminActivitySummary {
-        return GarminActivitySummary.newBuilder().apply {
+    private fun getRecord(node: JsonNode): SpecificRecord {
+        return GarminActivityDetails.newBuilder().apply {
             summaryId = node["summaryId"]?.asText()
+            summary = createSummary(node["summary"])
+            samples = node["samples"]?.map { sample -> createSample(sample) } ?: listOf()
+        }.build()
+    }
+
+    private fun createSummary(node: JsonNode): GarminActivityDetailsSummary {
+        return GarminActivityDetailsSummary.newBuilder().apply {
             time = node["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
             startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
@@ -71,7 +78,27 @@ class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_act
         }.build()
     }
 
+    private fun createSample(node: JsonNode): GarminActivityDetailsSample {
+        return GarminActivityDetailsSample.newBuilder().apply {
+            startTimeInSeconds = node["startTimeInSeconds"].asDouble()
+            airTemperatureCelcius = node["airTemperatureCelcius"]?.asDouble()
+            heartrate = node["heartrate"]?.asInt()
+            speedMetersPerSecond = node["speedMetersPerSecond"]?.asDouble()
+            stepsPerMinute = node["stepsPerMinute"]?.asDouble()
+            totalDistanceInMeters = node["totalDistanceInMeters"]?.asDouble()
+            timerDurationInSeconds = node["timerDurationInSeconds"]?.asInt()
+            clockDurationInSeconds = node["clockDurationInSeconds"]?.asInt()
+            movingDurationInSeconds = node["movingDurationInSeconds"]?.asInt()
+            powerInWatts = node["powerInWatts"]?.asDouble()
+            bikeCadenceInRPM = node["bikeCadenceInRPM"]?.asInt()
+            swimCadenceInStrokesPerMinute = node["swimCadenceInStrokesPerMinute"]?.asInt()
+            latitudeInDegree = node["latitudeInDegree"]?.asDouble()
+            longitudeInDegree = node["longitudeInDegree"]?.asDouble()
+            elevationInMeters = node["elevationInMeters"]?.asDouble()
+        }.build()
+    }
+
     companion object {
-        const val ROOT = "activities"
+        const val ROOT = "activityDetails"
     }
 }
