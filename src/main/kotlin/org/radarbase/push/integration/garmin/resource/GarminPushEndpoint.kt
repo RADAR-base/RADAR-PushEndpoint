@@ -74,8 +74,6 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
         @Context requestContext: ContainerRequestContext
     ): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-        // todo remove
-        logger.info("Got Body Comp Data: {}", tree.toPrettyString())
         return healthApiService.processBodyCompositions(tree, requestContext)
     }
 

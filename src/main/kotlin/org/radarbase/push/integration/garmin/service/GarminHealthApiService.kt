@@ -39,6 +39,8 @@ class GarminHealthApiService(
     private val bodyCompsConverter =
         BodyCompGarminAvroConverter(garminConfig.bodyCompositionsTopicName)
 
+    private val stressConverter = StressDetailsGarminAvroConverter(garminConfig.stressTopicName)
+
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = dailiesConverter.validateAndConvert(tree, request)
@@ -87,8 +89,10 @@ class GarminHealthApiService(
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processStress(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    fun processStress(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = stressConverter.validateAndConvert(tree, request)
+        producerPool.produce(stressConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
