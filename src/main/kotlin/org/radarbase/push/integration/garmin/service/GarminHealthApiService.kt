@@ -9,6 +9,7 @@ import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.garmin.converter.ActivitiesGarminAvroConverter
 import org.radarbase.push.integration.garmin.converter.ActivityDetailsGarminAvroConverter
 import org.radarbase.push.integration.garmin.converter.DailiesGarminAvroConverter
+import org.radarbase.push.integration.garmin.converter.EpochsGarminAvroConverter
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import javax.inject.Named
@@ -34,6 +35,8 @@ class GarminHealthApiService(
     private val activityDetailsConverter =
         ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
 
+    private val epochsConverter = EpochsGarminAvroConverter(garminConfig.epochSummariesTopicName)
+
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = dailiesConverter.validateAndConvert(tree, request)
@@ -51,42 +54,53 @@ class GarminHealthApiService(
     @Throws(IOException::class, BadRequestException::class)
     fun processActivityDetails(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = activityDetailsConverter.validateAndConvert(tree, request)
-        producerPool.produce(activitiesConverter.topic, records)
+        producerPool.produce(activityDetailsConverter.topic, records)
         return Response.status(OK).build()
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processManualActivities(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         return this.processActivities(tree, requestContext)
     }
 
-    fun processEpochs(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    @Throws(IOException::class, BadRequestException::class)
+    fun processEpochs(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = epochsConverter.validateAndConvert(tree, request)
+        producerPool.produce(epochsConverter.topic, records)
+        return Response.status(OK).build()
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processSleeps(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO()
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processBodyCompositions(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO("Not yet implemented")
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processStress(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO("Not yet implemented")
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processUserMetrics(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO("Not yet implemented")
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processMoveIQ(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO("Not yet implemented")
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processPulseOx(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO("Not yet implemented")
     }
 
+    @Throws(IOException::class, BadRequestException::class)
     fun processRespiration(tree: JsonNode, requestContext: ContainerRequestContext): Response {
         TODO("Not yet implemented")
     }

@@ -24,8 +24,6 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @Path("dailies")
     fun addDalies(@Context requestContext: ContainerRequestContext): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-        // todo remove
-        logger.info("Got Dailies Data: {}", tree.toPrettyString())
         return healthApiService.processDailies(tree, requestContext)
     }
 
@@ -41,9 +39,7 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     fun addActivityDetails(
         @Context requestContext: ContainerRequestContext
     ): Response {
-        // todo remove
         val tree = requestContext.getProperty("tree") as JsonNode
-        logger.info("Got Activity Details Data: {}", tree.toPrettyString())
         return healthApiService.processActivityDetails(tree, requestContext)
     }
 
@@ -53,27 +49,15 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
         @Context requestContext: ContainerRequestContext
     ): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-/*        if (pushBody.getManuallyUpdatedActivities() == null
-            || pushBody.getManuallyUpdatedActivities().stream().anyMatch { act -> !act.getManual() }
-        ) {
-            logger.warn("Manual Activity data was invalid. Returning 400")
-            return Response.status(Response.Status.BAD_REQUEST).build()
-        }*/
-        // todo remove
-        logger.info(
-            "Got Manual Activity Data: {}", tree.toPrettyString()
-        )
         return healthApiService.processManualActivities(tree, requestContext)
     }
 
     @POST
-    @Path("epochSummaries")
+    @Path("epochs")
     fun addEpochSummaries(
         @Context requestContext: ContainerRequestContext
     ): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-        // todo remove
-        logger.info("Got Epoch Data: {}", tree.toPrettyString())
         return healthApiService.processEpochs(tree, requestContext)
     }
 
