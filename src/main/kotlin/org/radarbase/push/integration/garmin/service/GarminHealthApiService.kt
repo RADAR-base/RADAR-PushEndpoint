@@ -41,6 +41,11 @@ class GarminHealthApiService(
 
     private val stressConverter = StressDetailsGarminAvroConverter(garminConfig.stressTopicName)
 
+    private val userMetricsConverter =
+        UserMetricsGarminAvroConverter(garminConfig.userMetricsTopicName)
+
+    private val moveIQConverter = MoveIQGarminAvroConverter(garminConfig.moveIQTopicName)
+
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = dailiesConverter.validateAndConvert(tree, request)
@@ -96,13 +101,17 @@ class GarminHealthApiService(
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processUserMetrics(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    fun processUserMetrics(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = userMetricsConverter.validateAndConvert(tree, request)
+        producerPool.produce(userMetricsConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processMoveIQ(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    fun processMoveIQ(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = moveIQConverter.validateAndConvert(tree, request)
+        producerPool.produce(moveIQConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
