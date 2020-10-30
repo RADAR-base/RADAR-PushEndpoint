@@ -6,10 +6,7 @@ import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.UserRepository
-import org.radarbase.push.integration.garmin.converter.ActivitiesGarminAvroConverter
-import org.radarbase.push.integration.garmin.converter.ActivityDetailsGarminAvroConverter
-import org.radarbase.push.integration.garmin.converter.DailiesGarminAvroConverter
-import org.radarbase.push.integration.garmin.converter.EpochsGarminAvroConverter
+import org.radarbase.push.integration.garmin.converter.*
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import javax.inject.Named
@@ -36,6 +33,8 @@ class GarminHealthApiService(
         ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
 
     private val epochsConverter = EpochsGarminAvroConverter(garminConfig.epochSummariesTopicName)
+
+    private val sleepsConverter = SleepsGarminAvroConverter(garminConfig.sleepsTopicName)
 
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
@@ -71,8 +70,10 @@ class GarminHealthApiService(
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processSleeps(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO()
+    fun processSleeps(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = sleepsConverter.validateAndConvert(tree, request)
+        producerPool.produce(sleepsConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)

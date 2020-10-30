@@ -62,7 +62,7 @@ data class GarminConfig(
     val activitiesTopicName: String = "push_integration_garmin_activity",
     val activityDetailsTopicName: String = "push_integration_garmin_activity_detail",
     val manualActivitiesTopicName: String = "push_integration_garmin_manual_activity",
-    val epochSummariesTopicName: String = "push_integration_garmin_epoch_summary",
+    val epochSummariesTopicName: String = "push_integration_garmin_epoch",
     val sleepsTopicName: String = "push_integration_garmin_sleep",
     val bodyCompositionsTopicName: String = "push_integration_garmin_body_composition",
     val stressTopicName: String = "push_integration_garmin_stress",

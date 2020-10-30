@@ -29,6 +29,10 @@ abstract class GarminAvroConverter(override val topic: String) : AvroConverter {
     }
 
     protected fun getMap(node: JsonNode?): Map<String, Double>? {
-        return objectMapper.convertValue(node, object : TypeReference<Map<String, Double>>() {})
+        return if (node == null) {
+            null
+        } else {
+            objectMapper.convertValue(node, object : TypeReference<Map<String, Double>>() {})
+        }
     }
 }
