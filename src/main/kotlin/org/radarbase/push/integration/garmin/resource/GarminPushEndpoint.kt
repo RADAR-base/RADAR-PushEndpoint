@@ -65,8 +65,6 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @Path("sleeps")
     fun addSleeps(@Context requestContext: ContainerRequestContext): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-        // todo remove
-        logger.info("Got Sleep Data: {}", tree.toPrettyString())
         return healthApiService.processSleeps(tree, requestContext)
     }
 
