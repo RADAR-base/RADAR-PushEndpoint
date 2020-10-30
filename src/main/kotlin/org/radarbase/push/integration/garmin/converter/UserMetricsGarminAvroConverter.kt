@@ -2,7 +2,6 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminEpochSummary
 import org.radarcns.push.integration.garmin.GarminUserMetrics
 import java.time.Instant
 import javax.ws.rs.BadRequestException

@@ -89,27 +89,21 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @POST
     @Path("userMetrics")
     fun addUserMetrics(@Context requestContext: ContainerRequestContext): Response {
-        // todo remove
         val tree = requestContext.getProperty("tree") as JsonNode
-        logger.info("Got User Metrics Data: {}", tree.toPrettyString())
         return healthApiService.processUserMetrics(tree, requestContext)
     }
 
     @POST
     @Path("moveIQ")
     fun addMoveIQ(@Context requestContext: ContainerRequestContext): Response {
-        // todo remove
         val tree = requestContext.getProperty("tree") as JsonNode
-        logger.info("Got Move IQ Data: {}", tree.toPrettyString())
         return healthApiService.processMoveIQ(tree, requestContext)
     }
 
     @POST
-    @Path("pulseOX")
+    @Path("pulseOx")
     fun addPluseOX(@Context requestContext: ContainerRequestContext): Response {
-        // todo remove
         val tree = requestContext.getProperty("tree") as JsonNode
-        logger.info("Got Pulse OX Data: {}", tree.toPrettyString())
         return healthApiService.processPulseOx(tree, requestContext)
     }
 
@@ -119,8 +113,6 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
         @Context requestContext: ContainerRequestContext
     ): Response {
         val tree = requestContext.getProperty("tree") as JsonNode
-        // todo remove
-        logger.info("Got Respiration Data: {}", tree.toPrettyString())
         return healthApiService.processRespiration(tree, requestContext)
     }
 

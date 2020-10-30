@@ -7,7 +7,6 @@ import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.garmin.converter.*
-import org.slf4j.LoggerFactory
 import java.io.IOException
 import javax.inject.Named
 import javax.ws.rs.BadRequestException
@@ -45,6 +44,11 @@ class GarminHealthApiService(
         UserMetricsGarminAvroConverter(garminConfig.userMetricsTopicName)
 
     private val moveIQConverter = MoveIQGarminAvroConverter(garminConfig.moveIQTopicName)
+
+    private val pulseOxConverter = PulseOxGarminAvroConverter(garminConfig.pulseOXTopicName)
+
+    private val respirationConverter =
+        RespirationGarminAvroConverter(garminConfig.respirationTopicName)
 
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
@@ -115,13 +119,17 @@ class GarminHealthApiService(
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processPulseOx(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    fun processPulseOx(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = pulseOxConverter.validateAndConvert(tree, request)
+        producerPool.produce(pulseOxConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processRespiration(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        TODO("Not yet implemented")
+    fun processRespiration(tree: JsonNode, request: ContainerRequestContext): Response {
+        val records = respirationConverter.validateAndConvert(tree, request)
+        producerPool.produce(respirationConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, NoSuchElementException::class, BadRequestException::class)
@@ -131,9 +139,5 @@ class GarminHealthApiService(
         }
         userRepository.reportDeregistration(userRepository.findByExternalId(userId))
         return Response.status(OK).build()
-    }
-
-    companion object {
-        private val logger = LoggerFactory.getLogger(GarminHealthApiService::class.java)
     }
 }
