@@ -69,7 +69,12 @@ data class GarminConfig(
     val userMetricsTopicName: String = "push_integration_garmin_user_metrics",
     val moveIQTopicName: String = "push_integration_garmin_move_iq",
     val pulseOXTopicName: String = "push_integration_garmin_pulse_ox",
-    val respirationTopicName: String = "push_integration_garmin_respiration"
+    val respirationTopicName: String = "push_integration_garmin_respiration",
+    val activityDetailsSampleTopicName: String = "push_integration_garmin_activity_detail_sample",
+    val bodyBatterySampleTopicName: String = "push_integration_garmin_body_battery_sample",
+    val heartRateSampleConverter: String = "push_integration_garmin_heart_rate_sample",
+    val sleepLevelTopicName: String = "push_integration_garmin_sleep_level",
+    val stressLevelTopicName: String = "push_integration_garmin_stress_level"
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
 

@@ -3,8 +3,6 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.push.integration.garmin.GarminActivityDetails
-import org.radarcns.push.integration.garmin.GarminActivityDetailsSample
-import org.radarcns.push.integration.garmin.GarminActivityDetailsSummary
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -28,77 +26,52 @@ class ActivityDetailsGarminAvroConverter(topic: String = "push_integration_garmi
     }
 
     private fun getRecord(node: JsonNode): SpecificRecord {
+        val summary = node[SUB_NODE]
         return GarminActivityDetails.newBuilder().apply {
             summaryId = node["summaryId"]?.asText()
-            summary = createSummary(node["summary"])
-            samples = node["samples"]?.map { sample -> createSample(sample) } ?: listOf()
-        }.build()
-    }
-
-    private fun createSummary(node: JsonNode): GarminActivityDetailsSummary {
-        return GarminActivityDetailsSummary.newBuilder().apply {
-            time = node["startTimeInSeconds"].asDouble()
+            time = summary["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
-            activityType = node["activityType"]?.asText()
-            durationInSeconds = node["durationInSeconds"]?.asInt()
+            startTimeOffsetInSeconds = summary["startTimeOffsetInSeconds"]?.asInt()
+            activityType = summary["activityType"]?.asText()
+            durationInSeconds = summary["durationInSeconds"]?.asInt()
             averageBikeCadenceInRoundsPerMinute =
-                node["averageBikeCadenceInRoundsPerMinute"]?.asDouble()
+                summary["averageBikeCadenceInRoundsPerMinute"]?.asDouble()
             averageHeartRateInBeatsPerMinute =
-                node["averageHeartRateInBeatsPerMinute"]?.asInt()
+                summary["averageHeartRateInBeatsPerMinute"]?.asInt()
             averageRunCadenceInStepsPerMinute =
-                node["averageRunCadenceInStepsPerMinute"]?.asDouble()
+                summary["averageRunCadenceInStepsPerMinute"]?.asDouble()
             averageSpeedInMetersPerSecond =
-                node["averageSpeedInMetersPerSecond"]?.asDouble()
+                summary["averageSpeedInMetersPerSecond"]?.asDouble()
             averageSwimCadenceInStrokesPerMinute =
-                node["averageSwimCadenceInStrokesPerMinute"]?.asDouble()
+                summary["averageSwimCadenceInStrokesPerMinute"]?.asDouble()
             averagePaceInMinutesPerKilometer =
-                node["averagePaceInMinutesPerKilometer"]?.asDouble()
-            activeKilocalories = node["activeKilocalories"]?.asInt()
-            deviceName = node["deviceName"]?.asText()
-            distanceInMeters = node["distanceInMeters"]?.asDouble()
+                summary["averagePaceInMinutesPerKilometer"]?.asDouble()
+            activeKilocalories = summary["activeKilocalories"]?.asInt()
+            deviceName = summary["deviceName"]?.asText()
+            distanceInMeters = summary["distanceInMeters"]?.asDouble()
             maxBikeCadenceInRoundsPerMinute =
-                node["maxBikeCadenceInRoundsPerMinute"]?.asDouble()
+                summary["maxBikeCadenceInRoundsPerMinute"]?.asDouble()
             maxHeartRateInBeatsPerMinute =
-                node["maxHeartRateInBeatsPerMinute"]?.asInt()
+                summary["maxHeartRateInBeatsPerMinute"]?.asInt()
             maxPaceInMinutesPerKilometer =
-                node["maxPaceInMinutesPerKilometer"]?.asDouble()
+                summary["maxPaceInMinutesPerKilometer"]?.asDouble()
             maxRunCadenceInStepsPerMinute =
-                node["maxRunCadenceInStepsPerMinute"]?.asDouble()
-            maxSpeedInMetersPerSecond = node["maxSpeedInMetersPerSecond"]?.asDouble()
-            numberOfActiveLengths = node["numberOfActiveLengths"]?.asInt()
-            startingLatitudeInDegree = node["startingLatitudeInDegree"]?.asDouble()
-            startingLongitudeInDegree = node["startingLongitudeInDegree"]?.asDouble()
-            steps = node.get("steps")?.asInt()
-            totalElevationGainInMeters = node["totalElevationGainInMeters"]?.asDouble()
-            totalElevationLossInMeters = node["totalElevationLossInMeters"]?.asDouble()
-            isParent = node["isParent"]?.asBoolean()
-            parentSummaryId = node["parentSummaryId"]?.asText()
-            manual = node["manual"]?.asBoolean()
-        }.build()
-    }
-
-    private fun createSample(node: JsonNode): GarminActivityDetailsSample {
-        return GarminActivityDetailsSample.newBuilder().apply {
-            startTimeInSeconds = node["startTimeInSeconds"].asDouble()
-            airTemperatureCelcius = node["airTemperatureCelcius"]?.asDouble()
-            heartrate = node["heartrate"]?.asInt()
-            speedMetersPerSecond = node["speedMetersPerSecond"]?.asDouble()
-            stepsPerMinute = node["stepsPerMinute"]?.asDouble()
-            totalDistanceInMeters = node["totalDistanceInMeters"]?.asDouble()
-            timerDurationInSeconds = node["timerDurationInSeconds"]?.asInt()
-            clockDurationInSeconds = node["clockDurationInSeconds"]?.asInt()
-            movingDurationInSeconds = node["movingDurationInSeconds"]?.asInt()
-            powerInWatts = node["powerInWatts"]?.asDouble()
-            bikeCadenceInRPM = node["bikeCadenceInRPM"]?.asInt()
-            swimCadenceInStrokesPerMinute = node["swimCadenceInStrokesPerMinute"]?.asInt()
-            latitudeInDegree = node["latitudeInDegree"]?.asDouble()
-            longitudeInDegree = node["longitudeInDegree"]?.asDouble()
-            elevationInMeters = node["elevationInMeters"]?.asDouble()
+                summary["maxRunCadenceInStepsPerMinute"]?.asDouble()
+            maxSpeedInMetersPerSecond = summary["maxSpeedInMetersPerSecond"]?.asDouble()
+            numberOfActiveLengths = summary["numberOfActiveLengths"]?.asInt()
+            startingLatitudeInDegree = summary["startingLatitudeInDegree"]?.asDouble()
+            startingLongitudeInDegree = summary["startingLongitudeInDegree"]?.asDouble()
+            steps = summary["steps"]?.asInt()
+            totalElevationGainInMeters = summary["totalElevationGainInMeters"]?.asDouble()
+            totalElevationLossInMeters = summary["totalElevationLossInMeters"]?.asDouble()
+            isParent = summary["isParent"]?.asBoolean()
+            parentSummaryId = summary["parentSummaryId"]?.asText()
+            manual = summary["manual"]?.asBoolean()
         }.build()
     }
 
     companion object {
         const val ROOT = "activityDetails"
+        const val SUB_NODE = "summary"
     }
 }

@@ -80,9 +80,7 @@ class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiS
     @POST
     @Path("stress")
     fun addStress(@Context requestContext: ContainerRequestContext): Response {
-        // todo remove
         val tree = requestContext.getProperty("tree") as JsonNode
-        logger.info("Got Stress Data: {}", tree.toPrettyString())
         return healthApiService.processStress(tree, requestContext)
     }
 

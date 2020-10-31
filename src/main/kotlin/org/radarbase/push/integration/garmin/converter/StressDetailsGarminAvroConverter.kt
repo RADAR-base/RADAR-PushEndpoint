@@ -35,8 +35,6 @@ class StressDetailsGarminAvroConverter(topic: String = "push_integration_garmin_
             startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
             durationInSeconds = node["durationInSeconds"]?.asInt()
             calendarDate = node["calendarDate"]?.asText()
-            timeOffsetStressLevelValues = getMap(node["timeOffsetStressLevelValues"]) ?: emptyMap()
-            timeOffsetBodyBatteryValues = getMap(node["timeOffsetBodyBatteryValues"]) ?: emptyMap()
         }.build()
     }
 

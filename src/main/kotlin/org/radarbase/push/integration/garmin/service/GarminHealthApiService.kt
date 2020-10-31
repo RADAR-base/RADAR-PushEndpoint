@@ -33,7 +33,7 @@ class GarminHealthApiService(
 
     private val epochsConverter = EpochsGarminAvroConverter(garminConfig.epochSummariesTopicName)
 
-    private val sleepsConverter = SleepsGarminAvroConverter(garminConfig.sleepsTopicName)
+    private val sleepSummaryConverter = SleepsGarminAvroConverter(garminConfig.sleepsTopicName)
 
     private val bodyCompsConverter =
         BodyCompGarminAvroConverter(garminConfig.bodyCompositionsTopicName)
@@ -50,10 +50,40 @@ class GarminHealthApiService(
     private val respirationConverter =
         RespirationGarminAvroConverter(garminConfig.respirationTopicName)
 
+    private val activityDetailsSampleConverter = ActivityDetailsSampleGarminAvroConverter(
+        garminConfig.activityDetailsSampleTopicName
+    )
+
+    private val bodyBatterySampleConverter = BodyBatterySampleGarminAvroConverter(
+        garminConfig.bodyBatterySampleTopicName
+    )
+
+    private val heartRateSampleConverter = HeartRateSampleGarminAvroConverter(
+        garminConfig.heartRateSampleConverter
+    )
+
+    private val sleepLevelConverter = SleepLevelGarminAvroConverter(
+        garminConfig.sleepLevelTopicName
+    )
+
+    private val sleepPulseOxConverter =
+        SleepPulseOxGarminAvroConverter(garminConfig.pulseOXTopicName)
+
+    private val sleepRespirationConverter =
+        SleepRespirationGarminAvroConverter(garminConfig.respirationTopicName)
+
+    private val stressLevelConverter = StressLevelGarminAvroConverter(
+        garminConfig.stressLevelTopicName
+    )
+
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = dailiesConverter.validateAndConvert(tree, request)
         producerPool.produce(dailiesConverter.topic, records)
+
+        val samples = heartRateSampleConverter.validateAndConvert(tree, request)
+        producerPool.produce(heartRateSampleConverter.topic, samples)
+
         return Response.status(OK).build()
     }
 
@@ -68,6 +98,10 @@ class GarminHealthApiService(
     fun processActivityDetails(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = activityDetailsConverter.validateAndConvert(tree, request)
         producerPool.produce(activityDetailsConverter.topic, records)
+
+        val samples = activityDetailsSampleConverter.validateAndConvert(tree, request)
+        producerPool.produce(activityDetailsSampleConverter.topic, samples)
+
         return Response.status(OK).build()
     }
 
@@ -85,8 +119,18 @@ class GarminHealthApiService(
 
     @Throws(IOException::class, BadRequestException::class)
     fun processSleeps(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = sleepsConverter.validateAndConvert(tree, request)
-        producerPool.produce(sleepsConverter.topic, records)
+        val records = sleepSummaryConverter.validateAndConvert(tree, request)
+        producerPool.produce(sleepSummaryConverter.topic, records)
+
+        val levels = sleepLevelConverter.validateAndConvert(tree, request)
+        producerPool.produce(sleepLevelConverter.topic, levels)
+
+        val pulseOx = sleepPulseOxConverter.validateAndConvert(tree, request)
+        producerPool.produce(sleepPulseOxConverter.topic, pulseOx)
+
+        val respiration = sleepRespirationConverter.validateAndConvert(tree, request)
+        producerPool.produce(sleepRespirationConverter.topic, respiration)
+
         return Response.status(OK).build()
     }
 
@@ -101,6 +145,13 @@ class GarminHealthApiService(
     fun processStress(tree: JsonNode, request: ContainerRequestContext): Response {
         val records = stressConverter.validateAndConvert(tree, request)
         producerPool.produce(stressConverter.topic, records)
+
+        val levels = stressLevelConverter.validateAndConvert(tree, request)
+        producerPool.produce(stressLevelConverter.topic, levels)
+
+        val bodyBattery = bodyBatterySampleConverter.validateAndConvert(tree, request)
+        producerPool.produce(bodyBatterySampleConverter.topic, bodyBattery)
+
         return Response.status(OK).build()
     }
 

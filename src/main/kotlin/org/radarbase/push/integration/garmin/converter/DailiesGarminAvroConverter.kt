@@ -49,7 +49,6 @@ class DailiesGarminAvroConverter(topic: String = "push_integration_garmin_daily"
                 node["maxHeartRateInBeatsPerMinute"]?.asInt()
             restingHeartRateInBeatsPerMinute =
                 node["restingHeartRateInBeatsPerMinute"]?.asInt()
-            timeOffsetHeartRateSamples = getMap(node["timeOffsetHeartRateSamples"]) ?: emptyMap()
             averageStressLevel = node["averageStressLevel"]?.asInt()
             maxStressLevel = node["maxStressLevel"]?.asInt()
             stressDurationInSeconds = node["stressDurationInSeconds"]?.asInt()

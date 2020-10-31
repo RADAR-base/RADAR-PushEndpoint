@@ -12,8 +12,6 @@ import javax.ws.rs.container.ContainerRequestContext
 
 abstract class GarminAvroConverter(override val topic: String) : AvroConverter {
 
-    private val objectMapper: ObjectMapper = ObjectMapper()
-
     fun observationKey(requestContext: ContainerRequestContext): ObservationKey {
         val user: User = requestContext.getProperty("user") as User
         return ObservationKey(user.projectId, user.userId, user.sourceId)
@@ -26,13 +24,5 @@ abstract class GarminAvroConverter(override val topic: String) : AvroConverter {
             List<Pair<SpecificRecord, SpecificRecord>> {
         validate(tree)
         return convert(tree, requestContext)
-    }
-
-    protected fun getMap(node: JsonNode?): Map<String, Double>? {
-        return if (node == null) {
-            null
-        } else {
-            objectMapper.convertValue(node, object : TypeReference<Map<String, Double>>() {})
-        }
     }
 }
