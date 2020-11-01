@@ -31,7 +31,7 @@ class ServiceUserRepository : UserRepository {
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getAccessToken(user: User): String {
-        return "b95c7301-3476-46c3-a5a8-76d4040e137a"
+        return ""
     }
 
     /**
@@ -46,7 +46,7 @@ class ServiceUserRepository : UserRepository {
 
     @Throws(IOException::class, NotAuthorizedException::class)
     fun getUserAccessTokenSecret(user: User): String {
-        return "l3hpoaC3w1pVGyt4Xt1B5nbtt120XpvdFmw"
+        return ""
     }
 
     @Throws(IOException::class)
