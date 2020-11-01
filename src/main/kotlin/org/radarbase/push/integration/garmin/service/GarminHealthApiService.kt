@@ -54,7 +54,7 @@ class GarminHealthApiService(
         garminConfig.activityDetailsSampleTopicName
     )
 
-    private val bodyBatterySampleConverter = BodyBatterySampleGarminAvroConverter(
+    private val stressBodyBatteryConverter = StressBodyBatteryGarminAvroConverter(
         garminConfig.bodyBatterySampleTopicName
     )
 
@@ -149,8 +149,8 @@ class GarminHealthApiService(
         val levels = stressLevelConverter.validateAndConvert(tree, request)
         producerPool.produce(stressLevelConverter.topic, levels)
 
-        val bodyBattery = bodyBatterySampleConverter.validateAndConvert(tree, request)
-        producerPool.produce(bodyBatterySampleConverter.topic, bodyBattery)
+        val bodyBattery = stressBodyBatteryConverter.validateAndConvert(tree, request)
+        producerPool.produce(stressBodyBatteryConverter.topic, bodyBattery)
 
         return Response.status(OK).build()
     }

@@ -37,8 +37,8 @@ class ServiceUserRepository : UserRepository {
     /**
      * Garmin uses Oauth 1.0 and hence has a user access
      * token secret instead of a refresh token. This should
-     * not be required in most cases anyways since the access token
-     * never expires.
+     * not be required in most cases anyways since only the access token
+     * is required.
      */
     override fun getRefreshToken(user: User): String {
         return getUserAccessTokenSecret(user)

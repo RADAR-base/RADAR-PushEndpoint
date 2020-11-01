@@ -7,8 +7,9 @@ import org.radarcns.push.integration.garmin.GarminBodyBatterySample
 import java.time.Instant
 import javax.ws.rs.container.ContainerRequestContext
 
-class BodyBatterySampleGarminAvroConverter(
-    topic: String = "push_integration_garmin_body_battery_sample"
+class StressBodyBatteryGarminAvroConverter(
+    topic: String = "push_integration_garmin_body_battery_sample",
+    val root: String = ROOT
 ) :
     GarminAvroConverter(topic) {
     override fun validate(tree: JsonNode) = Unit
@@ -19,7 +20,7 @@ class BodyBatterySampleGarminAvroConverter(
     ): List<Pair<SpecificRecord, SpecificRecord>> {
         val observationKey = observationKey(request)
 
-        return tree[ROOT].map { node ->
+        return tree[root].map { node ->
             getSamples(
                 node[SUB_NODE], node["summaryId"].asText(),
                 observationKey, node["startTimeInSeconds"].asDouble()

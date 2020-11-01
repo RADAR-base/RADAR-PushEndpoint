@@ -49,31 +49,12 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
 
-  #---------------------------------------------------------------------------#
-  # Management Portal                                                         #
-  #---------------------------------------------------------------------------#
-  managementportal-app:
-    image: radarbase/management-portal:0.6.0
-    ports:
-      - "127.0.0.1:8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-      MANAGEMENTPORTAL_FRONTEND_CLIENT_SECRET: ""
-      MANAGEMENTPORTAL_COMMON_BASE_URL: http://localhost:8080
-      MANAGEMENTPORTAL_COMMON_MANAGEMENT_PORTAL_BASE_URL: http://localhost:8080
-      MANAGEMENTPORTAL_OAUTH_CLIENTS_FILE: /mp-includes/config/oauth_client_details.csv
-      MANAGEMENTPORTAL_CATALOGUE_SERVER_ENABLE_AUTO_IMPORT: 'false'
-      JAVA_OPTS: -Xmx256m  # maximum heap size for the JVM running ManagementPortal, increase this as necessary
-    volumes:
-      - ./src/integrationTest/docker/etc/:/mp-includes/
-
-  gateway:
+  push-endpoint:
       build: .
-      image: radarbase/radar-gateway:SNAPSHOT
+      image: radarbase/radar-push-endpoint:SNAPSHOT
       depends_on:
         - kafka-1
         - schema-registry-1
-        - managementportal-app
       ports:
         - "127.0.0.1:8090:8090"
       volumes:
