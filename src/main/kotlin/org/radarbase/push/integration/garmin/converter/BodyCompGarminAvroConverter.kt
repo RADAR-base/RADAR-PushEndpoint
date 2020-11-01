@@ -43,6 +43,6 @@ class BodyCompGarminAvroConverter(topic: String = "push_integration_garmin_body_
     }
 
     companion object {
-        const val ROOT = "bodyCompositions"
+        const val ROOT = "bodyComps"
     }
 }

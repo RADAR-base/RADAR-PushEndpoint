@@ -39,6 +39,6 @@ class StressDetailsGarminAvroConverter(topic: String = "push_integration_garmin_
     }
 
     companion object {
-        const val ROOT = "stress"
+        const val ROOT = "stressDetails"
     }
 }

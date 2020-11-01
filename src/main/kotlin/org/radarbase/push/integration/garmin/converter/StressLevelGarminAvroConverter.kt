@@ -28,11 +28,15 @@ class StressLevelGarminAvroConverter(
     }
 
     private fun getSamples(
-        node: JsonNode,
+        node: JsonNode?,
         summaryId: String,
         observationKey: ObservationKey,
         startTime: Double
     ): List<Pair<ObservationKey, GarminStressLevelSample>> {
+        if (node == null) {
+            return emptyList()
+        }
+
         return node.fields().asSequence().map { (key, value) ->
             Pair(
                 observationKey,
@@ -47,7 +51,7 @@ class StressLevelGarminAvroConverter(
     }
 
     companion object {
-        const val ROOT = "stress"
+        const val ROOT = "stressDetails"
         const val SUB_NODE = "timeOffsetStressLevelValues"
     }
 }

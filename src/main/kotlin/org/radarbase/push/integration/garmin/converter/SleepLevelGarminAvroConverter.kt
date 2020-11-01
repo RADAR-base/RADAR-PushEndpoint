@@ -24,10 +24,14 @@ class SleepLevelGarminAvroConverter(
     }
 
     private fun getSamples(
-        node: JsonNode,
+        node: JsonNode?,
         summaryId: String,
         observationKey: ObservationKey
     ): List<Pair<ObservationKey, GarminSleepLevel>> {
+        if (node == null) {
+            return emptyList()
+        }
+
         return node.fields().asSequence().map { (key, value) ->
             value.map {
                 Pair(

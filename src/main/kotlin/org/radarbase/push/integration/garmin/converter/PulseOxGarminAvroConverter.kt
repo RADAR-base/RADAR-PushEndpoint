@@ -52,7 +52,7 @@ class PulseOxGarminAvroConverter(topic: String = "push_integration_garmin_pulse_
     }
 
     companion object {
-        const val ROOT = "pulseOx"
+        const val ROOT = "pulseox"
         const val SUB_NODE = "timeOffsetSpo2Values"
     }
 }

@@ -41,6 +41,6 @@ class MoveIQGarminAvroConverter(topic: String = "push_integration_garmin_move_iq
     }
 
     companion object {
-        const val ROOT = "moveIQs"
+        const val ROOT = "moveIQActivities"
     }
 }

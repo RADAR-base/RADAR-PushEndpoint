@@ -50,7 +50,7 @@ class RespirationGarminAvroConverter(topic: String = "push_integration_garmin_re
     }
 
     companion object {
-        const val ROOT = "respiration"
+        const val ROOT = "allDayRespiration"
         const val SUB_NODE = "timeOffsetEpochToBreaths"
     }
 }
