@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminActivitySummary
+import org.radarcns.push.garmin.GarminActivitySummary
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -32,39 +32,29 @@ class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_act
             summaryId = node["summaryId"]?.asText()
             time = node["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
+            startTimeOffset = node["startTimeOffsetInSeconds"]?.asInt()
             activityType = node["activityType"]?.asText()
-            durationInSeconds = node["durationInSeconds"]?.asInt()
-            averageBikeCadenceInRoundsPerMinute =
-                node["averageBikeCadenceInRoundsPerMinute"]?.asDouble()
-            averageHeartRateInBeatsPerMinute =
-                node["averageHeartRateInBeatsPerMinute"]?.asInt()
-            averageRunCadenceInStepsPerMinute =
-                node["averageRunCadenceInStepsPerMinute"]?.asDouble()
-            averageSpeedInMetersPerSecond =
-                node["averageSpeedInMetersPerSecond"]?.asDouble()
-            averageSwimCadenceInStrokesPerMinute =
-                node["averageSwimCadenceInStrokesPerMinute"]?.asDouble()
-            averagePaceInMinutesPerKilometer =
-                node["averagePaceInMinutesPerKilometer"]?.asDouble()
+            duration = node["durationInSeconds"]?.asInt()
+            averageBikeCadence = node["averageBikeCadenceInRoundsPerMinute"]?.floatValue()
+            averageHeartRate = node["averageHeartRateInBeatsPerMinute"]?.asInt()
+            averageRunCadence = node["averageRunCadenceInStepsPerMinute"]?.floatValue()
+            averageSpeed = node["averageSpeedInMetersPerSecond"]?.floatValue()
+            averageSwimCadence = node["averageSwimCadenceInStrokesPerMinute"]?.floatValue()
+            averagePace = node["averagePaceInMinutesPerKilometer"]?.floatValue()
             activeKilocalories = node["activeKilocalories"]?.asInt()
             deviceName = node["deviceName"]?.asText()
-            distanceInMeters = node["distanceInMeters"]?.asDouble()
-            maxBikeCadenceInRoundsPerMinute =
-                node["maxBikeCadenceInRoundsPerMinute"]?.asDouble()
-            maxHeartRateInBeatsPerMinute =
-                node["maxHeartRateInBeatsPerMinute"]?.asInt()
-            maxPaceInMinutesPerKilometer =
-                node["maxPaceInMinutesPerKilometer"]?.asDouble()
-            maxRunCadenceInStepsPerMinute =
-                node["maxRunCadenceInStepsPerMinute"]?.asDouble()
-            maxSpeedInMetersPerSecond = node["maxSpeedInMetersPerSecond"]?.asDouble()
+            distance = node["distanceInMeters"]?.floatValue()
+            maxBikeCadence = node["maxBikeCadenceInRoundsPerMinute"]?.floatValue()
+            maxHeartRate = node["maxHeartRateInBeatsPerMinute"]?.asInt()
+            maxPace = node["maxPaceInMinutesPerKilometer"]?.floatValue()
+            maxRunCadence = node["maxRunCadenceInStepsPerMinute"]?.floatValue()
+            maxSpeed = node["maxSpeedInMetersPerSecond"]?.floatValue()
             numberOfActiveLengths = node["numberOfActiveLengths"]?.asInt()
-            startingLatitudeInDegree = node["startingLatitudeInDegree"]?.asDouble()
-            startingLongitudeInDegree = node["startingLongitudeInDegree"]?.asDouble()
+            startingLatitude = node["startingLatitudeInDegree"]?.floatValue()
+            startingLongitude = node["startingLongitudeInDegree"]?.floatValue()
             steps = node.get("steps")?.asInt()
-            totalElevationGainInMeters = node["totalElevationGainInMeters"]?.asDouble()
-            totalElevationLossInMeters = node["totalElevationLossInMeters"]?.asDouble()
+            totalElevationGain = node["totalElevationGainInMeters"]?.floatValue()
+            totalElevationLoss = node["totalElevationLossInMeters"]?.floatValue()
             isParent = node["isParent"]?.asBoolean()
             parentSummaryId = node["parentSummaryId"]?.asText()
             manual = node["manual"]?.asBoolean()

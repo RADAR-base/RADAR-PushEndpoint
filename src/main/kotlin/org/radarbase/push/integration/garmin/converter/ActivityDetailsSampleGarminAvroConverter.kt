@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminActivityDetailsSample
+import org.radarcns.push.garmin.GarminActivityDetailsSample
 import java.time.Instant
 import javax.ws.rs.container.ContainerRequestContext
 
@@ -40,20 +40,20 @@ class ActivityDetailsSampleGarminAvroConverter(
                     this.summaryId = summaryId
                     time = sample["startTimeInSeconds"].asDouble()
                     timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    airTemperatureCelcius = sample["airTemperatureCelcius"]?.asDouble()
-                    heartrate = sample["heartRate"]?.asInt()
-                    speedMetersPerSecond = sample["speedMetersPerSecond"]?.asDouble()
-                    stepsPerMinute = sample["stepsPerMinute"]?.asDouble()
-                    totalDistanceInMeters = sample["totalDistanceInMeters"]?.asDouble()
-                    timerDurationInSeconds = sample["timerDurationInSeconds"]?.asInt()
-                    clockDurationInSeconds = sample["clockDurationInSeconds"]?.asInt()
-                    movingDurationInSeconds = sample["movingDurationInSeconds"]?.asInt()
-                    powerInWatts = sample["powerInWatts"]?.asDouble()
-                    bikeCadenceInRPM = sample["bikeCadenceInRPM"]?.asInt()
-                    swimCadenceInStrokesPerMinute = sample["swimCadenceInStrokesPerMinute"]?.asInt()
-                    latitudeInDegree = sample["latitudeInDegree"]?.asDouble()
-                    longitudeInDegree = sample["longitudeInDegree"]?.asDouble()
-                    elevationInMeters = sample["elevationInMeters"]?.asDouble()
+                    airTemperature = sample["airTemperatureCelcius"]?.floatValue()
+                    heartRate = sample["heartRate"]?.asInt()
+                    speed = sample["speedMetersPerSecond"]?.floatValue()
+                    stepsPerMinute = sample["stepsPerMinute"]?.floatValue()
+                    totalDistance = sample["totalDistanceInMeters"]?.floatValue()
+                    timerDuration = sample["timerDurationInSeconds"]?.asInt()
+                    clockDuration = sample["clockDurationInSeconds"]?.asInt()
+                    movingDuration = sample["movingDurationInSeconds"]?.asInt()
+                    power = sample["powerInWatts"]?.floatValue()
+                    bikeCadence = sample["bikeCadenceInRPM"]?.asInt()
+                    swimCadence = sample["swimCadenceInStrokesPerMinute"]?.asInt()
+                    latitude = sample["latitudeInDegree"]?.floatValue()
+                    longitude = sample["longitudeInDegree"]?.floatValue()
+                    elevation = sample["elevationInMeters"]?.floatValue()
                 }.build()
             )
         }

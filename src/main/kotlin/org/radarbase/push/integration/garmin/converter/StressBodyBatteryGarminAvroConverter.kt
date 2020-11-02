@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminBodyBatterySample
+import org.radarcns.push.garmin.GarminBodyBatterySample
 import java.time.Instant
 import javax.ws.rs.container.ContainerRequestContext
 
@@ -44,7 +44,7 @@ class StressBodyBatteryGarminAvroConverter(
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    this.bodyBattery = value?.asDouble()
+                    this.bodyBattery = value?.floatValue()
                 }.build()
             )
         }.toList()

@@ -58,23 +58,22 @@ data class PushIntegrationConfig(
 data class GarminConfig(
     val userRepositoryClass: String =
         "org.radarbase.push.integration.garmin.user.ServiceUserRepository",
-    val dailiesTopicName: String = "push_integration_garmin_daily",
-    val activitiesTopicName: String = "push_integration_garmin_activity",
-    val activityDetailsTopicName: String = "push_integration_garmin_activity_detail",
-    val manualActivitiesTopicName: String = "push_integration_garmin_manual_activity",
-    val epochSummariesTopicName: String = "push_integration_garmin_epoch",
-    val sleepsTopicName: String = "push_integration_garmin_sleep",
-    val bodyCompositionsTopicName: String = "push_integration_garmin_body_composition",
-    val stressTopicName: String = "push_integration_garmin_stress",
-    val userMetricsTopicName: String = "push_integration_garmin_user_metrics",
-    val moveIQTopicName: String = "push_integration_garmin_move_iq",
-    val pulseOXTopicName: String = "push_integration_garmin_pulse_ox",
-    val respirationTopicName: String = "push_integration_garmin_respiration",
-    val activityDetailsSampleTopicName: String = "push_integration_garmin_activity_detail_sample",
-    val bodyBatterySampleTopicName: String = "push_integration_garmin_body_battery_sample",
-    val heartRateSampleConverter: String = "push_integration_garmin_heart_rate_sample",
-    val sleepLevelTopicName: String = "push_integration_garmin_sleep_level",
-    val stressLevelTopicName: String = "push_integration_garmin_stress_level"
+    val dailiesTopicName: String = "push_garmin_daily_summary",
+    val activitiesTopicName: String = "push_garmin_activity_summary",
+    val activityDetailsTopicName: String = "push_garmin_activity_detail",
+    val epochSummariesTopicName: String = "push_garmin_epoch_summary",
+    val sleepsTopicName: String = "push_garmin_sleep_summary",
+    val bodyCompositionsTopicName: String = "push_garmin_body_composition",
+    val stressTopicName: String = "push_garmin_stress_detail_summary",
+    val userMetricsTopicName: String = "push_garmin_user_metrics",
+    val moveIQTopicName: String = "push_garmin_move_iq_summary",
+    val pulseOXTopicName: String = "push_garmin_pulse_ox",
+    val respirationTopicName: String = "push_garmin_respiration",
+    val activityDetailsSampleTopicName: String = "push_garmin_activity_detail_sample",
+    val bodyBatterySampleTopicName: String = "push_garmin_body_battery_sample",
+    val heartRateSampleConverter: String = "push_garmin_heart_rate_sample",
+    val sleepLevelTopicName: String = "push_garmin_sleep_level",
+    val stressLevelTopicName: String = "push_garmin_stress_level"
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
 

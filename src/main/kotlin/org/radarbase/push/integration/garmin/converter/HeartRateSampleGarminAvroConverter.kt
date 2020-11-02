@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminHeartRateSample
+import org.radarcns.push.garmin.GarminHeartRateSample
 import java.time.Instant
 import javax.ws.rs.container.ContainerRequestContext
 
@@ -44,7 +44,7 @@ class HeartRateSampleGarminAvroConverter(
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    this.heartrate = value?.asDouble()
+                    this.heartRate = value?.floatValue()
                 }.build()
             )
         }.toList()

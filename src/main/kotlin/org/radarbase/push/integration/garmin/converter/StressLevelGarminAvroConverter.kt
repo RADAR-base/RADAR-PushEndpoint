@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminStressLevelSample
+import org.radarcns.push.garmin.GarminStressLevelSample
 import java.time.Instant
 import javax.ws.rs.container.ContainerRequestContext
 
@@ -44,7 +44,7 @@ class StressLevelGarminAvroConverter(
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    this.stressLevel = value?.asDouble()
+                    this.stressLevel = value?.floatValue()
                 }.build()
             )
         }.toList()

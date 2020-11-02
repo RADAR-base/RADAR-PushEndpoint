@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminSleepSummary
+import org.radarcns.push.garmin.GarminSleepSummary
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -32,14 +32,14 @@ class SleepsGarminAvroConverter(topic: String = "push_integration_garmin_sleep")
             summaryId = node["summaryId"]?.asText()
             time = node["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            calendarDate = node["calendarDate"]?.asText()
-            startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
-            durationInSeconds = node["durationInSeconds"]?.asInt()
-            unmeasurableSleepInSeconds = node["unmeasurableSleepDurationInSeconds"]?.asInt()
-            deepSleepDurationInSeconds = node["deepSleepDurationInSeconds"]?.asInt()
-            lightSleepDurationInSeconds = node["lightSleepDurationInSeconds"]?.asInt()
-            remSleepInSeconds = node["remSleepInSeconds"]?.asInt()
-            awakeDurationInSeconds = node["awakeDurationInSeconds"]?.asInt()
+            date = node["calendarDate"]?.asText()
+            startTimeOffset = node["startTimeOffsetInSeconds"]?.asInt()
+            duration = node["durationInSeconds"]?.asInt()
+            unmeasurableSleepDuration = node["unmeasurableSleepDurationInSeconds"]?.asInt()
+            deepSleepDuration = node["deepSleepDurationInSeconds"]?.asInt()
+            lightSleepDuration = node["lightSleepDurationInSeconds"]?.asInt()
+            remSleepDuration = node["remSleepInSeconds"]?.asInt()
+            awakeDuration = node["awakeDurationInSeconds"]?.asInt()
             validation = node["validation"]?.asText()
         }.build()
     }

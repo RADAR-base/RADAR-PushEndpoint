@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminPulseOx
+import org.radarcns.push.garmin.GarminPulseOx
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -40,10 +40,10 @@ class PulseOxGarminAvroConverter(topic: String = "push_integration_garmin_pulse_
                     summaryId = node["summaryId"]?.asText()
                     time = startTime + key.toDouble()
                     timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
-                    durationInSeconds = node["durationInSeconds"]?.asInt()
-                    calendarDate = node["calendarDate"]?.asText()
-                    spo2Value = value?.asDouble()
+                    startTimeOffset = node["startTimeOffsetInSeconds"]?.asInt()
+                    duration = node["durationInSeconds"]?.asInt()
+                    date = node["calendarDate"]?.asText()
+                    spo2Value = value?.floatValue()
                     onDemand = node["onDemand"]?.asBoolean()
                 }.build()
             )

@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminUserMetrics
+import org.radarcns.push.garmin.GarminUserMetrics
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -32,8 +32,8 @@ class UserMetricsGarminAvroConverter(topic: String = "push_integration_garmin_us
             summaryId = node["summaryId"]?.asText()
             time = Instant.now().toEpochMilli() / 1000.0
             timeReceived = time
-            calendarDate = node["calendarDate"]?.asText()
-            vo2Max = node["vo2Max"]?.asDouble()
+            date = node["calendarDate"]?.asText()
+            vo2Max = node["vo2Max"]?.floatValue()
             fitnessAge = node["fitnessAge"]?.asInt()
         }.build()
     }

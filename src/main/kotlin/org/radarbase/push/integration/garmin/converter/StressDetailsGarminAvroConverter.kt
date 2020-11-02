@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminStressDetailSummary
+import org.radarcns.push.garmin.GarminStressDetailSummary
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -32,9 +32,9 @@ class StressDetailsGarminAvroConverter(topic: String = "push_integration_garmin_
             summaryId = node["summaryId"]?.asText()
             time = node["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
-            durationInSeconds = node["durationInSeconds"]?.asInt()
-            calendarDate = node["calendarDate"]?.asText()
+            startTimeOffset = node["startTimeOffsetInSeconds"]?.asInt()
+            duration = node["durationInSeconds"]?.asInt()
+            date = node["calendarDate"]?.asText()
         }.build()
     }
 

@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminSleepLevel
+import org.radarcns.push.garmin.GarminSleepLevel
 import javax.ws.rs.container.ContainerRequestContext
 
 class SleepLevelGarminAvroConverter(
@@ -39,8 +39,8 @@ class SleepLevelGarminAvroConverter(
                     GarminSleepLevel.newBuilder().apply {
                         this.summaryId = summaryId
                         sleepLevel = key
-                        startTimeInSeconds = it["startTimeInSeconds"].asDouble()
-                        endTimeInSeconds = it["endTimeInSeconds"].asDouble()
+                        startTime = it["startTimeInSeconds"].asDouble()
+                        endTime = it["endTimeInSeconds"].asDouble()
                     }.build()
                 )
             }

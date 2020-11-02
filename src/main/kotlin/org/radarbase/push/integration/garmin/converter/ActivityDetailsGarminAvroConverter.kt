@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminActivityDetails
+import org.radarcns.push.garmin.GarminActivityDetails
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -31,39 +31,29 @@ class ActivityDetailsGarminAvroConverter(topic: String = "push_integration_garmi
             summaryId = node["summaryId"]?.asText()
             time = summary["startTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            startTimeOffsetInSeconds = summary["startTimeOffsetInSeconds"]?.asInt()
+            startTimeOffset = summary["startTimeOffsetInSeconds"]?.asInt()
             activityType = summary["activityType"]?.asText()
-            durationInSeconds = summary["durationInSeconds"]?.asInt()
-            averageBikeCadenceInRoundsPerMinute =
-                summary["averageBikeCadenceInRoundsPerMinute"]?.asDouble()
-            averageHeartRateInBeatsPerMinute =
-                summary["averageHeartRateInBeatsPerMinute"]?.asInt()
-            averageRunCadenceInStepsPerMinute =
-                summary["averageRunCadenceInStepsPerMinute"]?.asDouble()
-            averageSpeedInMetersPerSecond =
-                summary["averageSpeedInMetersPerSecond"]?.asDouble()
-            averageSwimCadenceInStrokesPerMinute =
-                summary["averageSwimCadenceInStrokesPerMinute"]?.asDouble()
-            averagePaceInMinutesPerKilometer =
-                summary["averagePaceInMinutesPerKilometer"]?.asDouble()
+            duration = summary["durationInSeconds"]?.asInt()
+            averageBikeCadence = summary["averageBikeCadenceInRoundsPerMinute"]?.floatValue()
+            averageHeartRate = summary["averageHeartRateInBeatsPerMinute"]?.asInt()
+            averageRunCadence = summary["averageRunCadenceInStepsPerMinute"]?.floatValue()
+            averageSpeed = summary["averageSpeedInMetersPerSecond"]?.floatValue()
+            averageSwimCadence = summary["averageSwimCadenceInStrokesPerMinute"]?.floatValue()
+            averagePace = summary["averagePaceInMinutesPerKilometer"]?.floatValue()
             activeKilocalories = summary["activeKilocalories"]?.asInt()
             deviceName = summary["deviceName"]?.asText()
-            distanceInMeters = summary["distanceInMeters"]?.asDouble()
-            maxBikeCadenceInRoundsPerMinute =
-                summary["maxBikeCadenceInRoundsPerMinute"]?.asDouble()
-            maxHeartRateInBeatsPerMinute =
-                summary["maxHeartRateInBeatsPerMinute"]?.asInt()
-            maxPaceInMinutesPerKilometer =
-                summary["maxPaceInMinutesPerKilometer"]?.asDouble()
-            maxRunCadenceInStepsPerMinute =
-                summary["maxRunCadenceInStepsPerMinute"]?.asDouble()
-            maxSpeedInMetersPerSecond = summary["maxSpeedInMetersPerSecond"]?.asDouble()
+            distance = summary["distanceInMeters"]?.floatValue()
+            maxBikeCadence = summary["maxBikeCadenceInRoundsPerMinute"]?.floatValue()
+            maxHeartRate = summary["maxHeartRateInBeatsPerMinute"]?.asInt()
+            maxPace = summary["maxPaceInMinutesPerKilometer"]?.floatValue()
+            maxRunCadence = summary["maxRunCadenceInStepsPerMinute"]?.floatValue()
+            maxSpeed = summary["maxSpeedInMetersPerSecond"]?.floatValue()
             numberOfActiveLengths = summary["numberOfActiveLengths"]?.asInt()
-            startingLatitudeInDegree = summary["startingLatitudeInDegree"]?.asDouble()
-            startingLongitudeInDegree = summary["startingLongitudeInDegree"]?.asDouble()
+            startingLatitude = summary["startingLatitudeInDegree"]?.floatValue()
+            startingLongitude = summary["startingLongitudeInDegree"]?.floatValue()
             steps = summary["steps"]?.asInt()
-            totalElevationGainInMeters = summary["totalElevationGainInMeters"]?.asDouble()
-            totalElevationLossInMeters = summary["totalElevationLossInMeters"]?.asDouble()
+            totalElevationGain = summary["totalElevationGainInMeters"]?.floatValue()
+            totalElevationLoss = summary["totalElevationLossInMeters"]?.floatValue()
             isParent = summary["isParent"]?.asBoolean()
             parentSummaryId = summary["parentSummaryId"]?.asText()
             manual = summary["manual"]?.asBoolean()

@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
-import org.radarcns.push.integration.garmin.GarminBodyComposition
+import org.radarcns.push.garmin.GarminBodyComposition
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -32,13 +32,13 @@ class BodyCompGarminAvroConverter(topic: String = "push_integration_garmin_body_
             summaryId = node["summaryId"]?.asText()
             time = node["measurementTimeInSeconds"].asDouble()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
-            measurementTimeOffsetInSeconds = node["measurementTimeOffsetInSeconds"]?.asInt()
-            muscleMassInGrams = node["muscleMassInGrams"]?.asInt()
-            boneMassInGrams = node["boneMassInGrams"]?.asInt()
-            bodyWaterInPercent = node["bodyWaterInPercent"]?.asDouble()
-            bodyFatInPercent = node["bodyFatInPercent"]?.asDouble()
-            bodyMassIndex = node["bodyMassIndex"]?.asDouble()
-            weightInGrams = node["weightInGrams"]?.asInt()
+            measurementTimeOffset = node["measurementTimeOffsetInSeconds"]?.asInt()
+            muscleMass = node["muscleMassInGrams"]?.asInt()
+            boneMass = node["boneMassInGrams"]?.asInt()
+            bodyWater = node["bodyWaterInPercent"]?.floatValue()
+            bodyFat = node["bodyFatInPercent"]?.floatValue()
+            bodyMassIndex = node["bodyMassIndex"]?.floatValue()
+            weight = node["weightInGrams"]?.asInt()
         }.build()
     }
 

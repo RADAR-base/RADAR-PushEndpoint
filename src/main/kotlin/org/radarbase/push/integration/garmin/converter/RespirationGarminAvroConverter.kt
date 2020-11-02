@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminRespiration
+import org.radarcns.push.garmin.GarminRespiration
 import java.time.Instant
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.container.ContainerRequestContext
@@ -41,9 +41,9 @@ class RespirationGarminAvroConverter(topic: String = "push_integration_garmin_re
                     summaryId = node["summaryId"]?.asText()
                     time = startTime + key.toDouble()
                     timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    startTimeOffsetInSeconds = node["startTimeOffsetInSeconds"]?.asInt()
-                    respirationInBreathsPerMinute = value?.asDouble()
-                    durationInSeconds = node["durationInSeconds"]?.asInt()
+                    startTimeOffset = node["startTimeOffsetInSeconds"]?.asInt()
+                    respiration = value?.floatValue()
+                    duration = node["durationInSeconds"]?.asInt()
                 }.build()
             )
         }.toList()

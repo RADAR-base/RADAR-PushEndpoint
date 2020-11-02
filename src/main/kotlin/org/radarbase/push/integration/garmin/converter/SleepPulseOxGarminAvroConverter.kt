@@ -3,7 +3,7 @@ package org.radarbase.push.integration.garmin.converter
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.integration.garmin.GarminPulseOx
+import org.radarcns.push.garmin.GarminPulseOx
 import java.time.Instant
 import javax.ws.rs.container.ContainerRequestContext
 
@@ -46,9 +46,9 @@ class SleepPulseOxGarminAvroConverter(
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    this.spo2Value = value?.asDouble()
-                    this.calendarDate = calendarDate
-                    this.startTimeOffsetInSeconds = offset
+                    this.spo2Value = value?.floatValue()
+                    this.date = calendarDate
+                    this.startTimeOffset = offset
                 }.build()
             )
         }.toList()
