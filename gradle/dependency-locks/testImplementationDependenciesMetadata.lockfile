@@ -58,6 +58,6 @@ org.radarbase:lzfse-decode:0.1.0
 org.radarbase:radar-commons:0.13.0
 org.radarbase:radar-jersey:0.4.2.1
 org.radarcns:radar-auth:0.6.0
-org.radarcns:radar-schemas-commons:0.5.14
+org.radarcns:radar-schemas-commons:0.6.0-SNAPSHOT
 org.slf4j:slf4j-api:1.7.30
 org.xerial.snappy:snappy-java:1.1.7.3

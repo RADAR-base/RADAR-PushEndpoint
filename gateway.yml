@@ -3,7 +3,7 @@
 
 server:
     # URI to serve data to
-    baseUri: http://0.0.0.0:8090/radar-gateway/
+    baseUri: http://0.0.0.0:8090/push/integration
     # Maximum number of simultaneous requests to Kafka.
     #maxRequests: 200
     # Maximum request content length, also when decompressed.
