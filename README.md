@@ -15,11 +15,12 @@ Currently, Garmin is integrated. For adding more services, see the [Extending se
 
 ```yaml
    pushIntegration:
-      enabledServices: ["garmin", "service-2", ..., "service-n"]
       # Push service specific config
       garmin: 
+        enabled: true
         userRepositoryClass: "org.radarbase.push.integration.garmin.user.ServiceUserRepository"
       service-n:
+        enabled: true
         property-xyz: "value"
 ```
 
@@ -40,21 +41,21 @@ TOPIC=test
 docker-compose exec kafka-1 kafka-topics --create --topic $TOPIC --bootstrap-server kafka-1:9092
 ```
 
-Now the service is accessible through <http://localhost:8090/push/integration/>.
+Now the service is accessible through <http://localhost:8090/push/integrations/>.
 Garmin endpoints are available at -
-- <http://localhost:8090/push/integration/garmin/dailies>
-- <http://localhost:8090/push/integration/garmin/activities>
-- <http://localhost:8090/push/integration/garmin/activityDetails>
-- <http://localhost:8090/push/integration/garmin/manualActivities>
-- <http://localhost:8090/push/integration/garmin/epochs>
-- <http://localhost:8090/push/integration/garmin/sleeps>
-- <http://localhost:8090/push/integration/garmin/bodyCompositions>
-- <http://localhost:8090/push/integration/garmin/stress>
-- <http://localhost:8090/push/integration/garmin/userMetrics>
-- <http://localhost:8090/push/integration/garmin/moveIQ>
-- <http://localhost:8090/push/integration/garmin/pulseOx>
-- <http://localhost:8090/push/integration/garmin/respiration>
-- <http://localhost:8090/push/integration/garmin/deregister>
+- <http://localhost:8090/push/integrations/garmin/dailies>
+- <http://localhost:8090/push/integrations/garmin/activities>
+- <http://localhost:8090/push/integrations/garmin/activityDetails>
+- <http://localhost:8090/push/integrations/garmin/manualActivities>
+- <http://localhost:8090/push/integrations/garmin/epochs>
+- <http://localhost:8090/push/integrations/garmin/sleeps>
+- <http://localhost:8090/push/integrations/garmin/bodyCompositions>
+- <http://localhost:8090/push/integrations/garmin/stress>
+- <http://localhost:8090/push/integrations/garmin/userMetrics>
+- <http://localhost:8090/push/integrations/garmin/moveIQ>
+- <http://localhost:8090/push/integrations/garmin/pulseOx>
+- <http://localhost:8090/push/integrations/garmin/respiration>
+- <http://localhost:8090/push/integrations/garmin/deregister>
 
 ## Extending
 This section walks through add a new push service integration. These should be implemented in a
@@ -135,12 +136,12 @@ Next, add the configuration to the [Config](src/main/kotlin/org/radarbase/gatewa
 ```kotlin
 ...
 data class PushIntegrationConfig(
-    val enabledServices: List<String> = listOf("garmin", "servicex"),
     val garmin: GarminConfig = GarminConfig(),
     val servicex: ServiceXConfig
 )
 
 data class ServiceXConfig(
+    val enabled: Boolean = false,
     val userRepositoryClass: String,
     val property1: String,
     val property2: List<String>
@@ -153,20 +154,13 @@ Finally, add your newly created Resource Enhancer to [PushIntegrationEnhancerFac
 ```kotlin
 ...
         // Push Service specific enhancers
-        config.pushIntegration.enabledServices.forEach { service ->
-            enhancersList.addAll(
-                when (service) {
-                    "garmin" -> listOf(GarminPushIntegrationResourceEnhancer(config))
-                    "servicex" -> listOf(ServiceXIntegrationResourceEnhancer(config))
-
-                    // Add more enhancers as the integrations are added
-                    else -> throw IllegalStateException(
-                        "The configured push integration for $service is not " +
-                                "available."
-                    )
-                }
-            )
+        if (config.pushIntegration.garmin.enabled) {
+            enhancersList.add(GarminPushIntegrationResourceEnhancer(config))
         }
+        if(config.pushIntegration.servicex.enabled) {
+            enhancersList.add(ServiceXIntegrationResourceEnhancer(config))
+        }
+
 
 ...
 ```
