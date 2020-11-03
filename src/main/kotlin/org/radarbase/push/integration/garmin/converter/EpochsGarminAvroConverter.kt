@@ -2,10 +2,10 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminEpochSummary
 import java.time.Instant
 import javax.ws.rs.BadRequestException
-import javax.ws.rs.container.ContainerRequestContext
 
 class EpochsGarminAvroConverter(topic: String = "push_integration_garmin_epoch") :
     GarminAvroConverter(topic) {
@@ -19,12 +19,11 @@ class EpochsGarminAvroConverter(topic: String = "push_integration_garmin_epoch")
 
     override fun convert(
         tree: JsonNode,
-        request: ContainerRequestContext
+        user: User
     ): List<Pair<SpecificRecord, SpecificRecord>> {
 
-        val observationKey = observationKey(request)
         return tree[ROOT]
-            .map { node -> Pair(observationKey, getRecord(node)) }
+            .map { node -> Pair(user.observationKey, getRecord(node)) }
     }
 
     private fun getRecord(node: JsonNode): GarminEpochSummary {

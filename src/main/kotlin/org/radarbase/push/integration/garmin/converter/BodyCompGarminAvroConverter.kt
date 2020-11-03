@@ -2,10 +2,10 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminBodyComposition
 import java.time.Instant
 import javax.ws.rs.BadRequestException
-import javax.ws.rs.container.ContainerRequestContext
 
 class BodyCompGarminAvroConverter(topic: String = "push_integration_garmin_body_composition") :
     GarminAvroConverter(topic) {
@@ -17,14 +17,10 @@ class BodyCompGarminAvroConverter(topic: String = "push_integration_garmin_body_
         }
     }
 
-    override fun convert(
-        tree: JsonNode,
-        request: ContainerRequestContext
-    ): List<Pair<SpecificRecord, SpecificRecord>> {
+    override fun convert(tree: JsonNode, user: User): List<Pair<SpecificRecord, SpecificRecord>> {
 
-        val observationKey = observationKey(request)
         return tree[ROOT]
-            .map { node -> Pair(observationKey, getRecord(node)) }
+            .map { node -> Pair(user.observationKey, getRecord(node)) }
     }
 
     private fun getRecord(node: JsonNode): GarminBodyComposition {

@@ -2,11 +2,11 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminPulseOx
 import java.time.Instant
 import javax.ws.rs.BadRequestException
-import javax.ws.rs.container.ContainerRequestContext
 
 class PulseOxGarminAvroConverter(topic: String = "push_integration_garmin_pulse_ox") :
     GarminAvroConverter(topic) {
@@ -18,15 +18,11 @@ class PulseOxGarminAvroConverter(topic: String = "push_integration_garmin_pulse_
         }
     }
 
-    override fun convert(
-        tree: JsonNode,
-        request: ContainerRequestContext
-    ): List<Pair<SpecificRecord, SpecificRecord>> {
+    override fun convert(tree: JsonNode, user: User): List<Pair<SpecificRecord, SpecificRecord>> {
 
-        val observationKey = observationKey(request)
         return tree[ROOT]
             .map { node ->
-                getRecords(node, observationKey)
+                getRecords(node, user.observationKey)
             }.flatten()
     }
 

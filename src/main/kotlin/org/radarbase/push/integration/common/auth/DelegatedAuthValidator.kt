@@ -12,6 +12,8 @@ class DelegatedAuthValidator(
     @Context private val namedValidators: IterableProvider<AuthValidator>
 ) : AuthValidator {
 
+    private val basePath: String = "push"
+
     fun delegate(): AuthValidator {
         return when {
             uriInfo.matches(GARMIN_QUALIFIER) -> namedValidators.named(GARMIN_QUALIFIER).get()
@@ -20,7 +22,8 @@ class DelegatedAuthValidator(
         }
     }
 
-    private fun UriInfo.matches(name: String): Boolean = this.path.contains(name)
+    private fun UriInfo.matches(name: String): Boolean =
+        this.absolutePath.path.contains("^/$basePath/integrations/$name/.*".toRegex())
 
     companion object {
         const val GARMIN_QUALIFIER = "garmin"

@@ -2,10 +2,10 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminActivityDetailsSample
 import java.time.Instant
-import javax.ws.rs.container.ContainerRequestContext
 
 class ActivityDetailsSampleGarminAvroConverter(
     topic: String = "push_integration_garmin_activity_detail_sample"
@@ -13,15 +13,11 @@ class ActivityDetailsSampleGarminAvroConverter(
     GarminAvroConverter(topic) {
     override fun validate(tree: JsonNode) = Unit
 
-    override fun convert(
-        tree: JsonNode,
-        request: ContainerRequestContext
-    ): List<Pair<SpecificRecord, SpecificRecord>> {
-        val observationKey = observationKey(request)
+    override fun convert(tree: JsonNode, user: User): List<Pair<SpecificRecord, SpecificRecord>> {
         return tree[ROOT]
             .map { node ->
                 createSamples(
-                    node[SUB_NODE], node["summaryId"].asText(), observationKey
+                    node[SUB_NODE], node["summaryId"].asText(), user.observationKey
                 )
             }.flatten()
     }

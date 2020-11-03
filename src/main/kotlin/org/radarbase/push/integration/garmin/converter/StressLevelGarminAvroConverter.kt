@@ -2,6 +2,7 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminStressLevelSample
 import java.time.Instant
@@ -15,14 +16,13 @@ class StressLevelGarminAvroConverter(
 
     override fun convert(
         tree: JsonNode,
-        request: ContainerRequestContext
+        user: User
     ): List<Pair<SpecificRecord, SpecificRecord>> {
-        val observationKey = observationKey(request)
 
         return tree[ROOT].map { node ->
             getSamples(
                 node[SUB_NODE], node["summaryId"].asText(),
-                observationKey, node["startTimeInSeconds"].asDouble()
+                user.observationKey, node["startTimeInSeconds"].asDouble()
             )
         }.flatten()
     }

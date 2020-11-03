@@ -37,25 +37,16 @@ data class Config(
 }
 
 data class PushIntegrationConfig(
-    val enabledServices: List<String> = listOf("garmin"),
     val garmin: GarminConfig = GarminConfig()
 ) {
     fun validate() {
-        enabledServices.forEach { service ->
-            when (service) {
-                "garmin" -> garmin.validate()
-
-                // Add more validation as services are added
-                else -> throw IllegalStateException(
-                    "The configured push integration for $service is not " +
-                            "available."
-                )
-            }
-        }
+        garmin.validate()
+        // Add more validations as services are added
     }
 }
 
 data class GarminConfig(
+    val enabled: Boolean = false,
     val userRepositoryClass: String =
         "org.radarbase.push.integration.garmin.user.ServiceUserRepository",
     val dailiesTopicName: String = "push_garmin_daily_summary",
@@ -78,9 +69,11 @@ data class GarminConfig(
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
 
     fun validate() {
-        check(UserRepository::class.java.isAssignableFrom(userRepository)) {
-            "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.push.integrations.common.user.UserRepository`"
+        if (enabled) {
+            check(UserRepository::class.java.isAssignableFrom(userRepository)) {
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
+                        " `org.radarbase.push.integrations.common.user.UserRepository`"
+            }
         }
     }
 }

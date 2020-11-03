@@ -5,12 +5,12 @@ import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
+import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.garmin.converter.*
 import java.io.IOException
 import javax.inject.Named
 import javax.ws.rs.BadRequestException
-import javax.ws.rs.container.ContainerRequestContext
 import javax.ws.rs.core.Context
 import javax.ws.rs.core.Response
 import javax.ws.rs.core.Response.Status.OK
@@ -77,118 +77,115 @@ class GarminHealthApiService(
     )
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processDailies(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = dailiesConverter.validateAndConvert(tree, request)
+    fun processDailies(tree: JsonNode, user: User): Response {
+        val records = dailiesConverter.validateAndConvert(tree, user)
         producerPool.produce(dailiesConverter.topic, records)
 
-        val samples = heartRateSampleConverter.validateAndConvert(tree, request)
+        val samples = heartRateSampleConverter.validateAndConvert(tree, user)
         producerPool.produce(heartRateSampleConverter.topic, samples)
 
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processActivities(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = activitiesConverter.validateAndConvert(tree, request)
+    fun processActivities(tree: JsonNode, user: User): Response {
+        val records = activitiesConverter.validateAndConvert(tree, user)
         producerPool.produce(activitiesConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processActivityDetails(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = activityDetailsConverter.validateAndConvert(tree, request)
+    fun processActivityDetails(tree: JsonNode, user: User): Response {
+        val records = activityDetailsConverter.validateAndConvert(tree, user)
         producerPool.produce(activityDetailsConverter.topic, records)
 
-        val samples = activityDetailsSampleConverter.validateAndConvert(tree, request)
+        val samples = activityDetailsSampleConverter.validateAndConvert(tree, user)
         producerPool.produce(activityDetailsSampleConverter.topic, samples)
 
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processManualActivities(tree: JsonNode, requestContext: ContainerRequestContext): Response {
-        return this.processActivities(tree, requestContext)
+    fun processManualActivities(tree: JsonNode, user: User): Response {
+        return this.processActivities(tree, user)
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processEpochs(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = epochsConverter.validateAndConvert(tree, request)
+    fun processEpochs(tree: JsonNode, user: User): Response {
+        val records = epochsConverter.validateAndConvert(tree, user)
         producerPool.produce(epochsConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processSleeps(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = sleepSummaryConverter.validateAndConvert(tree, request)
+    fun processSleeps(tree: JsonNode, user: User): Response {
+        val records = sleepSummaryConverter.validateAndConvert(tree, user)
         producerPool.produce(sleepSummaryConverter.topic, records)
 
-        val levels = sleepLevelConverter.validateAndConvert(tree, request)
+        val levels = sleepLevelConverter.validateAndConvert(tree, user)
         producerPool.produce(sleepLevelConverter.topic, levels)
 
-        val pulseOx = sleepPulseOxConverter.validateAndConvert(tree, request)
+        val pulseOx = sleepPulseOxConverter.validateAndConvert(tree, user)
         producerPool.produce(sleepPulseOxConverter.topic, pulseOx)
 
-        val respiration = sleepRespirationConverter.validateAndConvert(tree, request)
+        val respiration = sleepRespirationConverter.validateAndConvert(tree, user)
         producerPool.produce(sleepRespirationConverter.topic, respiration)
 
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processBodyCompositions(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = bodyCompsConverter.validateAndConvert(tree, request)
+    fun processBodyCompositions(tree: JsonNode, user: User): Response {
+        val records = bodyCompsConverter.validateAndConvert(tree, user)
         producerPool.produce(bodyCompsConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processStress(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = stressConverter.validateAndConvert(tree, request)
+    fun processStress(tree: JsonNode, user: User): Response {
+        val records = stressConverter.validateAndConvert(tree, user)
         producerPool.produce(stressConverter.topic, records)
 
-        val levels = stressLevelConverter.validateAndConvert(tree, request)
+        val levels = stressLevelConverter.validateAndConvert(tree, user)
         producerPool.produce(stressLevelConverter.topic, levels)
 
-        val bodyBattery = stressBodyBatteryConverter.validateAndConvert(tree, request)
+        val bodyBattery = stressBodyBatteryConverter.validateAndConvert(tree, user)
         producerPool.produce(stressBodyBatteryConverter.topic, bodyBattery)
 
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processUserMetrics(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = userMetricsConverter.validateAndConvert(tree, request)
+    fun processUserMetrics(tree: JsonNode, user: User): Response {
+        val records = userMetricsConverter.validateAndConvert(tree, user)
         producerPool.produce(userMetricsConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processMoveIQ(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = moveIQConverter.validateAndConvert(tree, request)
+    fun processMoveIQ(tree: JsonNode, user: User): Response {
+        val records = moveIQConverter.validateAndConvert(tree, user)
         producerPool.produce(moveIQConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processPulseOx(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = pulseOxConverter.validateAndConvert(tree, request)
+    fun processPulseOx(tree: JsonNode, user: User): Response {
+        val records = pulseOxConverter.validateAndConvert(tree, user)
         producerPool.produce(pulseOxConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
-    fun processRespiration(tree: JsonNode, request: ContainerRequestContext): Response {
-        val records = respirationConverter.validateAndConvert(tree, request)
+    fun processRespiration(tree: JsonNode, user: User): Response {
+        val records = respirationConverter.validateAndConvert(tree, user)
         producerPool.produce(respirationConverter.topic, records)
         return Response.status(OK).build()
     }
 
     @Throws(IOException::class, NoSuchElementException::class, BadRequestException::class)
-    fun handleDeregistration(userId: String?): Response {
-        if (userId.isNullOrBlank()) {
-            throw BadRequestException("Invalid userId for degregistration")
-        }
-        userRepository.reportDeregistration(userRepository.findByExternalId(userId))
+    fun handleDeregistration(user: User): Response {
+        userRepository.reportDeregistration(user)
         return Response.status(OK).build()
     }
 }

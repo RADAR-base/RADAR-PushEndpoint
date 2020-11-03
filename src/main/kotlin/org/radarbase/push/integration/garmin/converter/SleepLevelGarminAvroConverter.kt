@@ -2,9 +2,10 @@ package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
+import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminSleepLevel
-import javax.ws.rs.container.ContainerRequestContext
+import java.time.Instant
 
 class SleepLevelGarminAvroConverter(
     topic: String = "push_integration_garmin_sleep_level"
@@ -12,14 +13,9 @@ class SleepLevelGarminAvroConverter(
     GarminAvroConverter(topic) {
     override fun validate(tree: JsonNode) = Unit
 
-    override fun convert(
-        tree: JsonNode,
-        request: ContainerRequestContext
-    ): List<Pair<SpecificRecord, SpecificRecord>> {
-        val observationKey = observationKey(request)
-
+    override fun convert(tree: JsonNode, user: User): List<Pair<SpecificRecord, SpecificRecord>> {
         return tree[ROOT].map { node ->
-            getSamples(node[SUB_NODE], node["summaryId"].asText(), observationKey)
+            getSamples(node[SUB_NODE], node["summaryId"].asText(), user.observationKey)
         }.flatten()
     }
 
@@ -37,6 +33,8 @@ class SleepLevelGarminAvroConverter(
                 Pair(
                     observationKey,
                     GarminSleepLevel.newBuilder().apply {
+                        time = it["startTimeInSeconds"].asDouble()
+                        timeReceived = Instant.now().toEpochMilli() / 1000.0
                         this.summaryId = summaryId
                         sleepLevel = key
                         startTime = it["startTimeInSeconds"].asDouble()
