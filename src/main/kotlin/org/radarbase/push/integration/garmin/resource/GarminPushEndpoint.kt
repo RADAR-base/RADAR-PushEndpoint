@@ -18,121 +18,87 @@ import javax.ws.rs.core.Response
 @Singleton
 @Path("garmin")
 @Authenticated
-class GarminPushEndpoint(@Context private val healthApiService: GarminHealthApiService) {
+class GarminPushEndpoint(
+    @Context private val healthApiService: GarminHealthApiService,
+    @Context @Named(GARMIN_QUALIFIER) private val tree: JsonNode,
+    @Context @Named(GARMIN_QUALIFIER) private val user: User
+) {
 
     @POST
     @Path("dailies")
-    fun addDalies(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addDalies(): Response {
         return healthApiService.processDailies(tree, user)
     }
 
     @POST
     @Path("activities")
-    fun addActivities(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addActivities(): Response {
         return healthApiService.processActivities(tree, user)
     }
 
     @POST
     @Path("activityDetails")
-    fun addActivityDetails(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addActivityDetails(): Response {
         return healthApiService.processActivityDetails(tree, user)
     }
 
     @POST
     @Path("manualActivities")
-    fun addManualActivities(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addManualActivities(): Response {
         return healthApiService.processManualActivities(tree, user)
     }
 
     @POST
     @Path("epochs")
-    fun addEpochSummaries(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addEpochSummaries(): Response {
         return healthApiService.processEpochs(tree, user)
     }
 
     @POST
     @Path("sleeps")
-    fun addSleeps(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addSleeps(): Response {
         return healthApiService.processSleeps(tree, user)
     }
 
     @POST
     @Path("bodyCompositions")
-    fun addBodyCompositions(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addBodyCompositions(): Response {
         return healthApiService.processBodyCompositions(tree, user)
     }
 
     @POST
     @Path("stress")
-    fun addStress(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addStress(): Response {
         return healthApiService.processStress(tree, user)
     }
 
     @POST
     @Path("userMetrics")
-    fun addUserMetrics(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addUserMetrics(): Response {
         return healthApiService.processUserMetrics(tree, user)
     }
 
     @POST
     @Path("moveIQ")
-    fun addMoveIQ(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addMoveIQ(): Response {
         return healthApiService.processMoveIQ(tree, user)
     }
 
     @POST
     @Path("pulseOx")
-    fun addPluseOX(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addPluseOX(): Response {
         return healthApiService.processPulseOx(tree, user)
     }
 
     @POST
     @Path("respiration")
-    fun addRespiration(
-        @Context @Named(GARMIN_QUALIFIER) tree: JsonNode,
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun addRespiration(): Response {
         return healthApiService.processRespiration(tree, user)
     }
 
     @POST
     @Path("deregister")
-    fun deregisterUser(
-        @Context @Named(GARMIN_QUALIFIER) user: User
-    ): Response {
+    fun deregisterUser(): Response {
         return healthApiService.handleDeregistration(user)
     }
 

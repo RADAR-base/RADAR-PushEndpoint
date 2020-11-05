@@ -2,6 +2,7 @@ package org.radarbase.push.integration
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.glassfish.jersey.internal.inject.AbstractBinder
+import org.glassfish.jersey.process.internal.RequestScoped
 import org.glassfish.jersey.server.ResourceConfig
 import org.radarbase.gateway.Config
 import org.radarbase.jersey.auth.AuthValidator
@@ -43,10 +44,14 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
 
         bindFactory(GarminJsonNodeFactory::class.java)
             .to(JsonNode::class.java)
+            .proxy(true)
             .named(GARMIN_QUALIFIER)
+            .`in`(RequestScoped::class.java)
 
         bindFactory(GarminUserFactory::class.java)
             .to(User::class.java)
+            .proxy(true)
             .named(GARMIN_QUALIFIER)
+            .`in`(RequestScoped::class.java)
     }
 }
