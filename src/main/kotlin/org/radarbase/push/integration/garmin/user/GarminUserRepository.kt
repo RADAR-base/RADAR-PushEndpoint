@@ -1,0 +1,53 @@
+/*
+ * Copyright 2018 The Hyve
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+package org.radarbase.push.integration.garmin.user
+
+import org.radarbase.push.integration.common.user.User
+import org.radarbase.push.integration.common.user.UserRepository
+import java.io.IOException
+import javax.ws.rs.NotAuthorizedException
+
+/**
+ * User repository for Garmin users.
+ */
+abstract class GarminUserRepository : UserRepository {
+
+    /**
+     * Garmin uses Oauth 1.0 and hence has a user access
+     * token secret instead of a refresh token. This should
+     * not be required in most cases anyways since only the access token
+     * is required.
+     */
+    @Throws(IOException::class, NotAuthorizedException::class)
+    override fun getRefreshToken(user: User): String {
+        return getUserAccessTokenSecret(user)
+    }
+
+    @Throws(IOException::class, NotAuthorizedException::class)
+    abstract fun getUserAccessTokenSecret(user: User): String
+
+    /**
+     * This is to report any deregistrations of the users.
+     * This should update the user's authorised status to false in the external repository.
+     *
+     * @throws IOException            if the user's status cannot be updated in the repository.
+     * @throws NoSuchElementException if the user does not exists in this repository.
+     */
+    @Throws(IOException::class)
+    abstract fun reportDeregistration(user: User)
+
+}

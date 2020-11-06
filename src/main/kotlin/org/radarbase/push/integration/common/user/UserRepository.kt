@@ -63,17 +63,6 @@ interface UserRepository {
     fun getRefreshToken(user: User): String
 
     /**
-     * This is to report any deregistrations of the users.
-     * This should update the user's authorised status to false in the external repository.
-     *
-     * @throws IOException            if the user's status cannot be updated in the repository.
-     * @throws NoSuchElementException if the user does not exists in this repository.
-     */
-    @Throws(IOException::class)
-    fun reportDeregistration(user: User)
-
-
-    /**
      * Finds [User] using [User.externalUserId]
      *
      * @throws IOException            if there was an error when finding the user.

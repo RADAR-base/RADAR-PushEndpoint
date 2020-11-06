@@ -5,7 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGI
 import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.config.EnhancerFactory
-import org.radarbase.push.integration.common.user.UserRepository
+import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -70,9 +70,9 @@ data class GarminConfig(
 
     fun validate() {
         if (enabled) {
-            check(UserRepository::class.java.isAssignableFrom(userRepository)) {
+            check(GarminUserRepository::class.java.isAssignableFrom(userRepository)) {
                 "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                        " `org.radarbase.push.integrations.common.user.UserRepository`"
+                        " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
             }
         }
     }
