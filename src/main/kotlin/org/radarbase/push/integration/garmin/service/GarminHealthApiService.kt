@@ -6,8 +6,8 @@ import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.User
-import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.garmin.converter.*
+import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.io.IOException
 import javax.inject.Named
 import javax.ws.rs.BadRequestException
@@ -16,7 +16,7 @@ import javax.ws.rs.core.Response
 import javax.ws.rs.core.Response.Status.OK
 
 class GarminHealthApiService(
-    @Named(GARMIN_QUALIFIER) private val userRepository: UserRepository,
+    @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository,
     @Context private val producerPool: ProducerPool,
     @Context private val config: Config
 ) {

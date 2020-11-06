@@ -2,7 +2,7 @@ package org.radarbase.push.integration.garmin.service
 
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
-import org.radarbase.push.integration.common.user.UserRepository
+import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import javax.inject.Named
 import javax.ws.rs.core.Context
 
@@ -12,7 +12,7 @@ import javax.ws.rs.core.Context
  */
 class BackfillService(
     @Context config: Config,
-    @Named(GARMIN_QUALIFIER) userRepository: UserRepository
+    @Named(GARMIN_QUALIFIER) userRepository: GarminUserRepository
 ) {
     // TODO: discuss about this since we need some way to store the offset for historic requests
     //  made for each user

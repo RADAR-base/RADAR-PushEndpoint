@@ -7,7 +7,7 @@ import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.auth.disabled.DisabledAuth
 import org.radarbase.jersey.exception.HttpUnauthorizedException
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
-import org.radarbase.push.integration.common.user.UserRepository
+import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.slf4j.LoggerFactory
 import javax.inject.Named
 import javax.ws.rs.container.ContainerRequestContext
@@ -16,7 +16,7 @@ import javax.ws.rs.core.Context
 
 class GarminAuthValidator(
     @Context private val objectMapper: ObjectMapper,
-    @Named(GARMIN_QUALIFIER) private val userRepository: UserRepository
+    @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository
 ) :
     AuthValidator {
     override fun verify(token: String, request: ContainerRequestContext): Auth? {

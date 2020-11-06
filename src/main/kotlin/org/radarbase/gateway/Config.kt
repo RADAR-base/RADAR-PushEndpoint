@@ -48,7 +48,7 @@ data class PushIntegrationConfig(
 data class GarminConfig(
     val enabled: Boolean = false,
     val userRepositoryClass: String =
-        "org.radarbase.push.integration.garmin.user.ServiceUserRepository",
+        "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
     val dailiesTopicName: String = "push_garmin_daily_summary",
     val activitiesTopicName: String = "push_garmin_activity_summary",
     val activityDetailsTopicName: String = "push_garmin_activity_detail",
