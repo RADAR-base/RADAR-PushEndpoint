@@ -20,6 +20,7 @@ jakarta.validation:jakarta.validation-api:2.0.2
 jakarta.ws.rs:jakarta.ws.rs-api:2.1.6
 org.apache.avro:avro:1.9.2
 org.apache.commons:commons-compress:1.19
+org.apache.commons:commons-pool2:2.6.2
 org.apache.kafka:kafka-clients:5.5.2-ccs
 org.glassfish.hk2.external:aopalliance-repackaged:2.6.1
 org.glassfish.hk2.external:jakarta.inject:2.6.1
@@ -48,3 +49,4 @@ org.radarcns:radar-auth:0.6.0
 org.radarcns:radar-schemas-commons:0.6.0-SNAPSHOT
 org.slf4j:slf4j-api:1.7.30
 org.xerial.snappy:snappy-java:1.1.7.3
+redis.clients:jedis:3.3.0

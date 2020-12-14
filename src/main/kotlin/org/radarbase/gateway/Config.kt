@@ -9,6 +9,7 @@ import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Instant
 
 data class Config(
     /** Radar-jersey resource configuration class. */
@@ -47,6 +48,9 @@ data class PushIntegrationConfig(
 
 data class GarminConfig(
     val enabled: Boolean = false,
+    val consumerKey: String = "",
+    val consumerSecret: String = "",
+    val backfill: BackfillConfig = BackfillConfig(),
     val userRepositoryClass: String =
         "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
     val dailiesTopicName: String = "push_garmin_daily_summary",
@@ -77,6 +81,25 @@ data class GarminConfig(
         }
     }
 }
+
+data class BackfillConfig(
+    val enabled: Boolean = true,
+    val redis: RedisConfig = RedisConfig(),
+    val maxThreads: Int = 4,
+    val defaultEndDate: Instant = Instant.MAX,
+    val userBackfill: List<UserBackfillConfig> = emptyList()
+)
+
+data class RedisConfig(
+    val uri: String = "redis://localhost:6379",
+    val lockPrefix: String = "radar-push-garmin/lock/"
+)
+
+data class UserBackfillConfig(
+    val userId: String,
+    val startDate: Instant,
+    val endDate: Instant
+)
 
 data class GatewayServerConfig(
     /** Base URL to serve data with. This will determine the base path and the port. */

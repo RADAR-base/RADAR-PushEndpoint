@@ -35,6 +35,7 @@ javax.activation:javax.activation-api:1.2.0
 javax.xml.bind:jaxb-api:2.3.1
 org.apache.avro:avro:1.9.2
 org.apache.commons:commons-compress:1.19
+org.apache.commons:commons-pool2:2.6.2
 org.apache.kafka:kafka-clients:5.5.2-ccs
 org.glassfish.external:management-api:3.2.1
 org.glassfish.gmbal:gmbal:4.0.0
@@ -84,3 +85,4 @@ org.radarcns:radar-schemas-commons:0.6.0-SNAPSHOT
 org.slf4j:slf4j-api:1.7.30
 org.xerial.snappy:snappy-java:1.1.7.3
 org.yaml:snakeyaml:1.26
+redis.clients:jedis:3.3.0

@@ -16,15 +16,17 @@
  */
 package org.radarbase.push.integration.garmin.user
 
+import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.UserRepository
 import java.io.IOException
+import java.time.Instant
 import javax.ws.rs.NotAuthorizedException
 
 /**
  * User repository for Garmin users.
  */
-abstract class GarminUserRepository : UserRepository {
+abstract class GarminUserRepository(private val config: Config) : UserRepository {
 
     /**
      * Garmin uses Oauth 1.0 and hence has a user access
@@ -39,6 +41,18 @@ abstract class GarminUserRepository : UserRepository {
 
     @Throws(IOException::class, NotAuthorizedException::class)
     abstract fun getUserAccessTokenSecret(user: User): String
+
+    fun getBackfillStartDate(user: User): Instant {
+        return config.pushIntegration.garmin.backfill.userBackfill.find {
+            it.userId == user.id
+        }?.startDate ?: user.startDate
+    }
+
+    fun getBackfillEndDate(user: User): Instant {
+        return config.pushIntegration.garmin.backfill.userBackfill.find {
+            it.userId == user.id
+        }?.endDate ?: config.pushIntegration.garmin.backfill.defaultEndDate
+    }
 
     /**
      * This is to report any deregistrations of the users.

@@ -12,6 +12,7 @@ import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.auth.GarminAuthValidator
 import org.radarbase.push.integration.garmin.factory.GarminJsonNodeFactory
 import org.radarbase.push.integration.garmin.factory.GarminUserFactory
+import org.radarbase.push.integration.garmin.service.BackfillService
 import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import javax.inject.Singleton
@@ -25,6 +26,9 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
             "org.radarbase.push.integration.common.filter"
         )
     }
+
+    override val classes: Array<Class<*>>
+        get() = arrayOf(BackfillService::class.java)
 
     override fun AbstractBinder.enhance() {
 
