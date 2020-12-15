@@ -44,9 +44,12 @@ dependencies {
     implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
 
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
-    implementation("com.fasterxml.jackson.core:jackson-databind:${project.property("jacksonVersion")}")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${project.property("jacksonVersion")}")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${project.property("jacksonVersion")}")
+
+    val jacksonVersion: String by project
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
 
     val grizzlyVersion: String by project
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")

@@ -53,7 +53,7 @@ class BackfillService(
         when (event?.type) {
             INITIALIZATION_FINISHED -> start()
             DESTROY_FINISHED -> stop()
-            else -> logger.info("Application event received: $event")
+            else -> logger.info("Application event received: ${event?.type}")
         }
     }
 
@@ -62,12 +62,13 @@ class BackfillService(
     private fun start() {
         logger.info("Application Initialisation completed. Starting Backfill service...")
 
-        executorService.scheduleAtFixedRate(this::iterateUsers, 1, 5, TimeUnit.MINUTES)
+        executorService.scheduleAtFixedRate(::iterateUsers, 1, 5, TimeUnit.MINUTES)
     }
 
     private fun stop() {
         logger.info("Application Destroy completed. Stopping Backfill service...")
         try {
+            requestExecutorService.awaitTermination(30, TimeUnit.SECONDS)
             executorService.awaitTermination(30, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
             logger.error("Failed to complete execution: interrupted")
@@ -76,21 +77,21 @@ class BackfillService(
 
     private fun iterateUsers() {
         while (futures.any { !it.isDone }) {
-            logger.info("The previous task is already running. Waiting for next iteration.")
-            Thread.sleep(10000)
+            logger.info("The previous task is already running. Waiting ${WAIT_TIME_MS / 1000}s...")
+            Thread.sleep(WAIT_TIME_MS)
         }
         futures.clear()
         logger.info("Making Garmin Backfill requests...")
         try {
             userRepository.stream().forEach { user ->
-                remoteLockManager.tryRunLocked(user.id) {
+                remoteLockManager.tryRunLocked(user.versionedId) {
                     requestGenerator.requests(user, requestsPerUserPerIteration).forEach { req ->
                         futures.add(requestExecutorService.submit { makeRequest(req) })
                     }
                 }
             }
         } catch (exc: IOException) {
-            logger.warn("Exception while making backfill requests.", exc)
+            logger.warn("Exception while making Backfill requests.", exc)
         }
     }
 
@@ -106,5 +107,6 @@ class BackfillService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(BackfillService::class.java)
+        private const val WAIT_TIME_MS = 10000L
     }
 }

@@ -23,7 +23,7 @@ class OffsetRedisPersistence(
     override fun read(path: String): Offsets? {
         return try {
             redisHolder.execute { redis ->
-                redis[path.toString()]?.let { value ->
+                redis[path]?.let { value ->
                     redisOffsetReader.readValue<RedisOffsets>(value)
                         .offsets
                         .fold(Offsets(), { set, (userId, route, offset) ->

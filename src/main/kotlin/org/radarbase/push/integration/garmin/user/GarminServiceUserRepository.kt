@@ -21,8 +21,8 @@ class GarminServiceUserRepository(
             sourceId = "test",
             externalUserId = "a0015b7d-8904-40d7-8852-815cb7ad7a0b",
             isAuthorized = true,
-            startDate = Instant.ofEpochSecond(1590324060),
-            endDate = Instant.ofEpochSecond(1590418800),
+            startDate = Instant.ofEpochSecond(1589548126),
+            endDate = Instant.ofEpochSecond(1590844126),
         )
     )
 

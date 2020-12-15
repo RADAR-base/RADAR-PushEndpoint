@@ -57,10 +57,11 @@ auth:
 pushIntegration:
     garmin:
         enabled: true
-
-# Redis configuration
-redis:
-    # Redis URI
-    uri: redis://localhost:6379
-    # Key prefix for locks
-    lockPrefix: radar-push-garmin/lock/
+        backfill:
+            defaultEndDate: "1590844126"
+            # Redis configuration
+            redis:
+                # Redis URI
+                uri: redis://localhost:6379
+                # Key prefix for locks
+                lockPrefix: radar-push-garmin/lock/

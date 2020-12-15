@@ -14,5 +14,6 @@ data class GarminUser(
     override val startDate: Instant,
     override val endDate: Instant,
     override val version: String? = null,
-    override val observationKey: ObservationKey = ObservationKey(projectId, userId, sourceId)
+    override val observationKey: ObservationKey = ObservationKey(projectId, userId, sourceId),
+    override val versionedId: String = "$id${version?.let { "#$it" } ?: ""}"
 ) : User

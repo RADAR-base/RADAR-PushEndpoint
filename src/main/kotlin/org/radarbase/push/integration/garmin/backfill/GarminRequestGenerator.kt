@@ -29,40 +29,47 @@ class GarminRequestGenerator(
             config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
+        GarminDailiesRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
     )
 
     override fun requests(user: User, max: Int): List<RestRequest> {
         return routes.map { route ->
-            val offsets: Offsets? = offsetPersistenceFactory.read(user.id)
+            val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
             val startDate = userRepository.getBackfillStartDate(user)
-            val offset: Instant = if (offsets == null) {
-                // no offsets present for user, take the start date
+            val startOffset: Instant = if (offsets == null) {
                 logger.debug("No offsets found for $user, using the start date.")
                 startDate
             } else {
                 logger.debug("Offsets found in persistence.")
                 offsets.offsetsMap.getOrDefault(
-                    UserRoute(user.id, route.toString()), startDate
+                    UserRoute(user.versionedId, route.toString()), startDate
                 ).takeIf { it >= startDate } ?: startDate
             }
             val endDate = userRepository.getBackfillEndDate(user)
-            if (endDate < offset.plus(defaultQueryRange)) {
-                emptyList()
-            } else {
-                route.generateRequests(
-                    user,
-                    offset,
-                    offset.plus(defaultQueryRange),
-                    max / routes.size
-                )
+            val endTime = when {
+                endDate <= startOffset -> return@map emptyList() // Already at end. No further requests
+                endDate < startOffset.plus(defaultQueryRange) -> endDate
+                else -> startOffset.plus(defaultQueryRange)
             }
+            route.generateRequests(user, startOffset, endTime, max / routes.size)
         }.flatten()
     }
 
     override fun requestSuccessful(request: RestRequest, response: Response) {
-        val offsets: Offsets? = offsetPersistenceFactory.read(request.user.id)
-        offsetPersistenceFactory.writer(Path.of(request.user.id), offsets).use {
-            it.add(UserRouteOffset(request.user.id, request.route.toString(), request.endDate))
+        logger.debug("Request successful: {}. Writing to offsets...", request.request)
+        val offsets: Offsets? = offsetPersistenceFactory.read(request.user.versionedId)
+        offsetPersistenceFactory.writer(Path.of(request.user.versionedId), offsets).use {
+            it.add(
+                UserRouteOffset(
+                    request.user.versionedId,
+                    request.route.toString(),
+                    request.endDate
+                )
+            )
         }
     }
 

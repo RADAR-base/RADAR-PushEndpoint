@@ -2,7 +2,6 @@ package org.radarbase.push.integration.garmin.util.offset
 
 import java.util.*
 
-@Suppress("EqualsOrHashCode")
 class UserRoute(val userId: String, val route: String) : Comparable<UserRoute> {
     private val hash = Objects.hash(userId, route)
 
@@ -12,4 +11,16 @@ class UserRoute(val userId: String, val route: String) : Comparable<UserRoute> {
         this, other,
         UserRoute::userId, UserRoute::route
     )
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as UserRoute
+
+        if (userId != other.userId) return false
+        if (route != other.route) return false
+
+        return true
+    }
 }
