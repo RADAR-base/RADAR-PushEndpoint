@@ -3,6 +3,7 @@ package org.radarbase.push.integration.garmin.backfill
 import okhttp3.Response
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.user.User
+import org.radarbase.push.integration.garmin.backfill.route.*
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.radarbase.push.integration.garmin.util.offset.*
@@ -19,7 +20,7 @@ class GarminRequestGenerator(
         RedisHolder(JedisPool(config.pushIntegration.garmin.backfill.redis.uri)),
     private val offsetPersistenceFactory: OffsetPersistenceFactory =
         OffsetRedisPersistence(redisHolder),
-    private val defaultQueryRange: Duration = Duration.ofDays(5),
+    private val defaultQueryRange: Duration = Duration.ofDays(15),
 ) :
     RequestGenerator {
 
@@ -34,6 +35,51 @@ class GarminRequestGenerator(
             config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
+        GarminActivityDetailsRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminBodyCompsRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminEpochsRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminMoveIQRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminPulseOxRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminRespirationRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminSleepsRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminStressDetailsRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        ),
+        GarminUserMetricsRoute(
+            config.pushIntegration.garmin.consumerKey,
+            config.pushIntegration.garmin.consumerSecret,
+            userRepository
+        )
     )
 
     override fun requests(user: User, max: Int): List<RestRequest> {

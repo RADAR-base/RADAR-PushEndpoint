@@ -45,7 +45,7 @@ class BackfillService(
     )
     private val httpClient = OkHttpClient()
     private val requestsPerUserPerIteration: Int
-        get() = 20
+        get() = 40
 
     private val futures: MutableList<Future<*>> = mutableListOf()
 
@@ -98,10 +98,11 @@ class BackfillService(
     private fun makeRequest(req: RestRequest) {
         logger.debug("Making Request: {}", req.request)
         val response = httpClient.newCall(req.request).execute()
-        when (response.code) {
-            in 200..204 -> requestGenerator.requestSuccessful(req, response)
-            // TODO: Add backoff for rate limit error code
-            else -> requestGenerator.requestFailed(req, response)
+        response.use {
+            when (it.code) {
+                in 200..204 -> requestGenerator.requestSuccessful(req, it)
+                else -> requestGenerator.requestFailed(req, it)
+            }
         }
     }
 
