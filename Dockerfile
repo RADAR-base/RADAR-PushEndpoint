@@ -27,20 +27,20 @@ COPY ./src/ /code/src
 RUN gradle distTar \
     && cd build/distributions \
     && tar xzf *.tar.gz \
-    && rm *.tar.gz radar-gateway-*/lib/radar-gateway-*.jar
+    && rm *.tar.gz radar-push-endpoint-*/lib/radar-push-endpoint-*.jar
 
 FROM openjdk:11-jre-slim
 
 MAINTAINER @blootsvoets
 
-LABEL description="RADAR-base Gateway docker container"
+LABEL description="RADAR-base Push Api Gateway docker container"
 
-COPY --from=builder /code/build/distributions/radar-gateway-*/bin/* /usr/bin/
-COPY --from=builder /code/build/distributions/radar-gateway-*/lib/* /usr/lib/
-COPY --from=builder /code/build/libs/radar-gateway-*.jar /usr/lib/
+COPY --from=builder /code/build/distributions/radar-push-endpoint-*/bin/* /usr/bin/
+COPY --from=builder /code/build/distributions/radar-push-endpoint-*/lib/* /usr/lib/
+COPY --from=builder /code/build/libs/radar-push-endpoint-*.jar /usr/lib/
 
 USER 101
 
 EXPOSE 8090
 
-CMD ["radar-gateway"]
+CMD ["radar-push-endpoint"]
