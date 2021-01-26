@@ -38,7 +38,7 @@ interface UserRepository {
      * @throws IOException if the list cannot be retrieved from the repository.
      */
     @Throws(IOException::class)
-    fun stream(): Stream<out User>
+    fun stream(): Stream<User?>
 
     /**
      * Get the current access token of given user.
@@ -71,9 +71,9 @@ interface UserRepository {
     @Throws(NoSuchElementException::class, IOException::class)
     fun findByExternalId(externalId: String): User {
         return stream()
-            .filter { user -> user.externalUserId == externalId }
-            .findFirst()
-            .orElseGet { throw NoSuchElementException("User not found in the User repository") }
+                .filter { user -> user!!.externalUserId == externalId }
+                .findFirst()
+                .orElseGet { throw NoSuchElementException("User not found in the User repository") }!!
     }
 
 }
