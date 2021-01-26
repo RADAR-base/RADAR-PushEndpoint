@@ -11,6 +11,7 @@ interface User {
     val externalUserId: String
     val startDate: Instant
     val endDate: Instant
+    val createdAt: Instant
     val version: String?
     val isAuthorized: Boolean
     val observationKey: ObservationKey
