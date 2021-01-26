@@ -30,10 +30,10 @@ class GarminServiceUserRepository(
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
     private val client: OkHttpClient? = OkHttpClient()
     private val cachedCredentials: HashMap<String, OAuth1UserCredentials>? = HashMap<String, OAuth1UserCredentials>()
-    private val nextFetch = AtomicReference<Instant>(Instant.EPOCH)
+    private var nextFetch = MIN_INSTANT
 
     private val baseUrl: HttpUrl = garminConfig.userRepositoryUrl.toHttpUrl()
-    private val timedCachedUsers: Set<User?> = HashSet<User?>()
+    private var timedCachedUsers: List<User?> = ArrayList<User?>()
 
     // TODO: Index by externalId for quick lookup
     private val cachedMap: Map<String, User> = mapOf(
@@ -58,7 +58,12 @@ class GarminServiceUserRepository(
     }
 
     @Throws(IOException::class)
-    override fun stream(): Stream<User?> = timedCachedUsers.stream()
+    override fun stream(): Stream<User?> {
+        if (hasPendingUpdates()) {
+            applyPendingUpdates()
+        }
+        return timedCachedUsers.stream()
+    }
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getAccessToken(user: User): String {
@@ -90,6 +95,20 @@ class GarminServiceUserRepository(
 
     override fun findByExternalId(externalId: String): User {
         return super.findByExternalId(externalId)!!
+    }
+
+    override fun hasPendingUpdates(): Boolean {
+        val now = Instant.now()
+        return now.isAfter(nextFetch)
+    }
+
+    @Throws(IOException::class)
+    override fun applyPendingUpdates() {
+        logger.info("Requesting user information from webservice")
+        val request = requestFor("users?source-type=Garmin")!!.build()
+        timedCachedUsers = makeRequest<Users>(request, USER_LIST_READER).getUsers()
+
+        nextFetch = Instant.now().plus(FETCH_THRESHOLD)
     }
 
     private fun requestFor(relativeUrl: String): Request.Builder? {
@@ -141,6 +160,8 @@ class GarminServiceUserRepository(
         private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
         private val EMPTY_BODY: RequestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), "")
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
+        var MIN_INSTANT = Instant.EPOCH
+
 
         private val logger = LoggerFactory.getLogger(GarminServiceUserRepository::class.java)
     }
