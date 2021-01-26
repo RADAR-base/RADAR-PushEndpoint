@@ -5,19 +5,23 @@ import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import io.confluent.common.config.ConfigException
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
+import org.radarcns.exception.TokenException
+import org.radarcns.oauth.OAuth2Client
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.URL
 import java.time.Duration
 import java.time.Instant
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
 import java.util.stream.Stream
 import javax.ws.rs.NotAuthorizedException
 import javax.ws.rs.core.Context
@@ -32,23 +36,35 @@ class GarminServiceUserRepository(
     private val cachedCredentials: HashMap<String, OAuth1UserCredentials>? = HashMap<String, OAuth1UserCredentials>()
     private var nextFetch = MIN_INSTANT
 
-    private val baseUrl: HttpUrl = garminConfig.userRepositoryUrl.toHttpUrl()
+    private var baseUrl: HttpUrl
     private var timedCachedUsers: List<User?> = ArrayList<User?>()
 
-    // TODO: Index by externalId for quick lookup
-    private val cachedMap: Map<String, User> = mapOf(
-            "1" to GarminUser(
-                    id = "1",
-                    projectId = "test",
-                    userId = "test",
-                    sourceId = "test",
-                    externalUserId = "a0015b7d-8904-40d7-8852-815cb7ad7a0b",
-                    isAuthorized = true,
-                    startDate = Instant.ofEpochSecond(1589548126),
-                    endDate = Instant.ofEpochSecond(1590844126),
-                    createdAt = Instant.ofEpochSecond(1589548126),
-            )
-    )
+    private var repositoryClient: OAuth2Client? = null
+    private var basicCredentials: String? = null
+    private var tokenUrl: URL
+    private var clientId: String
+    private var clientSecret: String
+
+    init {
+        baseUrl = garminConfig.userRepositoryUrl.toHttpUrl()
+        tokenUrl = URL(garminConfig.userRepositoryTokenUrl)
+        clientId = garminConfig.userRepositoryClientId
+        clientSecret = garminConfig.userRepositoryClientSecret
+
+        if (tokenUrl != null) {
+            if (clientId.isEmpty()) {
+                throw ConfigException("Client ID for user repository is not set.")
+            }
+            repositoryClient = OAuth2Client.Builder()
+                    .credentials(clientId, clientSecret)
+                    .endpoint(tokenUrl)
+                    .scopes("SUBJECT.READ")
+                    .httpClient(client)
+                    .build()
+        } else if (clientId != null) {
+            basicCredentials = Credentials.basic(clientId, clientSecret)
+        }
+    }
 
     @Throws(IOException::class)
 //    override fun get(key: String): User? = cachedMap[key]
@@ -73,7 +89,7 @@ class GarminServiceUserRepository(
             credentials =  makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
             cachedCredentials!![user.id] = credentials
         }
-        return credentials!!.accessToken
+        return credentials.accessToken
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
@@ -82,7 +98,7 @@ class GarminServiceUserRepository(
         if (credentials == null) {
             val request = requestFor("users/" + user.id + "/token")!!.build()
             credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-            cachedCredentials!![user.id] = credentials
+            cachedCredentials[user.id] = credentials
         }
         return credentials.accessTokenSecret
     }
@@ -94,7 +110,7 @@ class GarminServiceUserRepository(
     }
 
     override fun findByExternalId(externalId: String): User {
-        return super.findByExternalId(externalId)!!
+        return super.findByExternalId(externalId)
     }
 
     override fun hasPendingUpdates(): Boolean {
@@ -111,10 +127,32 @@ class GarminServiceUserRepository(
         nextFetch = Instant.now().plus(FETCH_THRESHOLD)
     }
 
+    @Throws(IOException::class)
     private fun requestFor(relativeUrl: String): Request.Builder? {
         val url: HttpUrl = baseUrl.resolve(relativeUrl)
                 ?: throw IllegalArgumentException("Relative URL is invalid")
-        return Request.Builder().url(url)
+        val builder: Request.Builder = Request.Builder().url(url)
+        val authorization = requestAuthorization()
+        if (authorization != null) {
+            builder.addHeader("Authorization", authorization)
+        }
+
+        return builder
+    }
+
+    @Throws(IOException::class)
+    private fun requestAuthorization(): String? {
+        return if (repositoryClient != null) {
+            try {
+                "Bearer " + repositoryClient!!.validToken.accessToken
+            } catch (ex: TokenException) {
+                throw IOException(ex)
+            }
+        } else if (basicCredentials != null) {
+            basicCredentials
+        } else {
+            null
+        }
     }
 
     @Throws(IOException::class)
@@ -122,7 +160,7 @@ class GarminServiceUserRepository(
         logger.info("Requesting info from {}", request.url)
         client!!.newCall(request).execute().use { response ->
             val body: ResponseBody? = response.body
-            if (response.code === 404) {
+            if (response.code == 404) {
                 throw NoSuchElementException("URL " + request.url + " does not exist")
             } else if (!response.isSuccessful || body == null) {
                 var message = "Failed to make request"
@@ -158,7 +196,7 @@ class GarminServiceUserRepository(
         private val USER_LIST_READER: ObjectReader = JSON_READER.forType(Users::class.java)
         private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
         private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
-        private val EMPTY_BODY: RequestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), "")
+        private val EMPTY_BODY: RequestBody = "".toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
         var MIN_INSTANT = Instant.EPOCH
 

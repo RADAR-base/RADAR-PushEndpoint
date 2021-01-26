@@ -8,7 +8,8 @@ import java.util.*
 
 class Users @JsonCreator constructor(@JsonProperty("users") users: List<GarminUser?>?) {
     private val users: List<GarminUser?>
-    fun getUsers(): List<User?> {
+
+    fun getUsers(): List<GarminUser?> {
         return users
     }
 
