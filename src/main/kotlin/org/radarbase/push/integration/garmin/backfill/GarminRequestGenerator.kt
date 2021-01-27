@@ -107,16 +107,13 @@ class GarminRequestGenerator(
 
     override fun requestSuccessful(request: RestRequest, response: Response) {
         logger.debug("Request successful: {}. Writing to offsets...", request.request)
-        val offsets: Offsets? = offsetPersistenceFactory.read(request.user.versionedId)
-        offsetPersistenceFactory.writer(Path.of(request.user.versionedId), offsets).use {
-            it.add(
-                UserRouteOffset(
-                    request.user.versionedId,
-                    request.route.toString(),
-                    request.endDate
-                )
+        offsetPersistenceFactory.add(
+            Path.of(request.user.versionedId), UserRouteOffset(
+                request.user.versionedId,
+                request.route.toString(),
+                request.endDate
             )
-        }
+        )
     }
 
     override fun requestFailed(request: RestRequest, response: Response) {
