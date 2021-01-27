@@ -58,7 +58,7 @@ class GarminServiceUserRepository(
             repositoryClient = OAuth2Client.Builder()
                     .credentials(clientId, clientSecret)
                     .endpoint(tokenUrl)
-                    .scopes("SUBJECT.READ")
+                    .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE")
                     .httpClient(client)
                     .build()
         } else if (clientId != null) {
@@ -87,7 +87,7 @@ class GarminServiceUserRepository(
         if (credentials == null) {
             val request = requestFor("users/" + user.id + "/token")!!.build()
             credentials =  makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-            cachedCredentials!![user.id] = credentials
+            cachedCredentials[user.id] = credentials
         }
         return credentials.accessToken
     }
@@ -105,7 +105,7 @@ class GarminServiceUserRepository(
 
     @Throws(IOException::class)
     override fun reportDeregistration(user: User) {
-        val request = requestFor("users/" + user.id + "/deregister")!!.build()
+        val request = requestFor("users/" + user.id + "/deregister")!!.method("POST", EMPTY_BODY).build()
         return makeRequest(request, null)
     }
 
@@ -174,7 +174,8 @@ class GarminServiceUserRepository(
             }
             val bodyString = body.string()
             return try {
-                reader!!.readValue(bodyString)
+                if (reader == null) "" as T
+                else reader!!.readValue(bodyString)
             } catch (ex: JsonProcessingException) {
                 logger.error("Failed to parse JSON: {}\n{}", ex.toString(), bodyString)
                 throw ex
