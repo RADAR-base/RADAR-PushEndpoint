@@ -67,7 +67,6 @@ class GarminServiceUserRepository(
     }
 
     @Throws(IOException::class)
-//    override fun get(key: String): User? = cachedMap[key]
     override fun get(key: String): User? {
         val request: Request = requestFor("users/$key")!!.build()
         return makeRequest(request, USER_READER)
@@ -81,25 +80,22 @@ class GarminServiceUserRepository(
         return timedCachedUsers.stream()
     }
 
+    fun requestUserCredentials(user: User): OAuth1UserCredentials {
+        val request = requestFor("users/" + user.id + "/token")!!.build()
+        val credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
+        cachedCredentials?.set(user.id, credentials)
+        return credentials
+    }
+
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getAccessToken(user: User): String {
-        var credentials: OAuth1UserCredentials? = cachedCredentials!![user.id]
-        if (credentials == null) {
-            val request = requestFor("users/" + user.id + "/token")!!.build()
-            credentials =  makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-            cachedCredentials[user.id] = credentials
-        }
+        val credentials: OAuth1UserCredentials = cachedCredentials!![user.id] ?: requestUserCredentials(user)
         return credentials.accessToken
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getUserAccessTokenSecret(user: User): String {
-        var credentials: OAuth1UserCredentials? = cachedCredentials!![user.id]
-        if (credentials == null) {
-            val request = requestFor("users/" + user.id + "/token")!!.build()
-            credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-            cachedCredentials[user.id] = credentials
-        }
+        val credentials: OAuth1UserCredentials = cachedCredentials!![user.id] ?: requestUserCredentials(user)
         return credentials.accessTokenSecret
     }
 
@@ -142,16 +138,16 @@ class GarminServiceUserRepository(
 
     @Throws(IOException::class)
     private fun requestAuthorization(): String? {
-        return if (repositoryClient != null) {
-            try {
-                "Bearer " + repositoryClient!!.validToken.accessToken
-            } catch (ex: TokenException) {
-                throw IOException(ex)
+        return when {
+            repositoryClient != null -> {
+                try {
+                    "Bearer " + repositoryClient!!.validToken.accessToken
+                } catch (ex: TokenException) {
+                    throw IOException(ex)
+                }
             }
-        } else if (basicCredentials != null) {
-            basicCredentials
-        } else {
-            null
+            basicCredentials != null -> basicCredentials
+            else -> null
         }
     }
 
@@ -164,9 +160,7 @@ class GarminServiceUserRepository(
                 throw NoSuchElementException("URL " + request.url + " does not exist")
             } else if (!response.isSuccessful || body == null) {
                 var message = "Failed to make request"
-                if (response.code > 0) {
-                    message += " (HTTP status code " + response.code + ')'
-                }
+                message += " (HTTP status code " + response.code + ')'
                 if (body != null) {
                     message += body.string()
                 }
@@ -185,10 +179,10 @@ class GarminServiceUserRepository(
 
     private fun String.toHttpUrl(): HttpUrl {
         var urlString: String = this.trim()
-        if (urlString[urlString.length - 1] != '/') {
-            urlString += '/'
-        }
-        return urlString.toHttpUrlOrNull() ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
+        if (urlString[urlString.length - 1] != '/') urlString += '/'
+
+        return urlString.toHttpUrlOrNull()
+                ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
     }
 
     companion object {
