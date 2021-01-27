@@ -84,8 +84,8 @@ class BackfillService(
         logger.info("Making Garmin Backfill requests...")
         try {
             userRepository.stream().forEach { user ->
-                remoteLockManager.tryRunLocked(user.versionedId) {
-                    requestGenerator.requests(user, requestsPerUserPerIteration).forEach { req ->
+                remoteLockManager.tryRunLocked(user!!.versionedId) {
+                    requestGenerator.requests(user!!, requestsPerUserPerIteration).forEach { req ->
                         futures.add(requestExecutorService.submit { makeRequest(req) })
                     }
                 }
