@@ -1,12 +1,16 @@
 package org.radarbase.push.integration.garmin.user
 
+import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.user.User
 import java.io.IOException
 import java.time.Instant
 import java.util.stream.Stream
 import javax.ws.rs.NotAuthorizedException
+import javax.ws.rs.core.Context
 
-class GarminServiceUserRepository : GarminUserRepository() {
+class GarminServiceUserRepository(
+    @Context private val config: Config
+) : GarminUserRepository(config) {
 
     // TODO: Index by externalId for quick lookup
     private val cachedMap: Map<String, User> = mapOf(
@@ -17,8 +21,8 @@ class GarminServiceUserRepository : GarminUserRepository() {
             sourceId = "test",
             externalUserId = "a0015b7d-8904-40d7-8852-815cb7ad7a0b",
             isAuthorized = true,
-            startDate = Instant.ofEpochSecond(1590324060),
-            endDate = Instant.ofEpochSecond(1590418800),
+            startDate = Instant.ofEpochSecond(1589548126),
+            endDate = Instant.ofEpochSecond(1590844126),
         )
     )
 

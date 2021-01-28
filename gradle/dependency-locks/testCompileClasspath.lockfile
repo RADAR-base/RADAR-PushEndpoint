@@ -1,10 +1,13 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
-com.auth0:java-jwt:3.8.0
-com.fasterxml.jackson.core:jackson-annotations:2.11.3
-com.fasterxml.jackson.core:jackson-core:2.11.3
-com.fasterxml.jackson.core:jackson-databind:2.11.3
+com.auth0:java-jwt:3.11.0
+com.fasterxml.jackson.core:jackson-annotations:2.11.4
+com.fasterxml.jackson.core:jackson-core:2.11.4
+com.fasterxml.jackson.core:jackson-databind:2.11.4
+com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.4
+com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.11.4
+com.fasterxml.jackson.module:jackson-module-kotlin:2.11.4
 com.github.luben:zstd-jni:1.4.4-7
 com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0
 com.squareup.okhttp3:mockwebserver:4.9.0
@@ -24,6 +27,7 @@ net.bytebuddy:byte-buddy-agent:1.9.0
 net.bytebuddy:byte-buddy:1.9.0
 org.apache.avro:avro:1.9.2
 org.apache.commons:commons-compress:1.19
+org.apache.commons:commons-pool2:2.6.2
 org.apache.kafka:kafka-clients:5.5.2-ccs
 org.apiguardian:apiguardian-api:1.1.0
 org.glassfish.hk2.external:aopalliance-repackaged:2.6.1
@@ -60,3 +64,5 @@ org.radarcns:radar-auth:0.6.0
 org.radarcns:radar-schemas-commons:0.6.0-SNAPSHOT
 org.slf4j:slf4j-api:1.7.30
 org.xerial.snappy:snappy-java:1.1.7.3
+org.yaml:snakeyaml:1.26
+redis.clients:jedis:3.3.0

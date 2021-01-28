@@ -52,6 +52,16 @@ auth:
         #ecdsa: []
         # RSA public keys
         #rsa: []
+
+# Push Service specific configuration
 pushIntegration:
     garmin:
         enabled: true
+        backfill:
+            defaultEndDate: "1590844126"
+            # Redis configuration
+            redis:
+                # Redis URI
+                uri: redis://localhost:6379
+                # Key prefix for locks
+                lockPrefix: radar-push-garmin/lock/

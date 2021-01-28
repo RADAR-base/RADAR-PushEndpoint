@@ -59,3 +59,10 @@ services:
         - "127.0.0.1:8090:8090"
       volumes:
         - ./gateway.yml:/etc/radar-gateway/gateway.yml
+
+  redis:
+      image: bitnami/redis
+      ports:
+          - "6379:6379"
+      environment:
+          ALLOW_EMPTY_PASSWORD: "yes"
