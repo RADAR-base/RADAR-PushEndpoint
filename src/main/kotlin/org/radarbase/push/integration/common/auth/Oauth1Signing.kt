@@ -86,20 +86,15 @@ class Oauth1Signing(
     private fun String.toBytesUtf8() = this.toByteArray()
 
     private fun HashMap<String, String>.toHeaderFormat() =
-        filter { it.key in baseKeys }
-            .toList()
-            .sortedBy { (key, _) -> key }
-            .toMap()
-            .map { "${it.key}=\"${it.value}\"" }
-            .joinToString(", ")
-
+        filterKeys { it in baseKeys }
+            .toMutableList()
+            .sortWith { (key, _) -> key }  // sort in place
+            .joinToString(", ") { (key, value) -> "$key=\"$value\"" }
 
     private fun HashMap<String, String>.encodeForSignature() =
-        toList()
-            .sortedBy { (key, _) -> key }
-            .toMap()
-            .map { "${it.key}=${it.value}" }
-            .joinToString("&")
+        toMutableList()
+            .sortWith { (key, _) -> key }  // sort in place
+            .joinToString("&") { (key, value) -> "$key=$value" }
             .encodeUtf8()
 
     private fun String.encodeUtf8() = URLEncoder.encode(this, "UTF-8").replace("+", "%2B")

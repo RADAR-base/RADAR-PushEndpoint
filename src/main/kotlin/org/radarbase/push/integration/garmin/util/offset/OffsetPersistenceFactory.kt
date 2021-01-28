@@ -15,30 +15,7 @@ interface OffsetPersistenceFactory {
     fun read(path: String): Offsets?
 
     /**
-     * Create a writer to write offsets to the persistence store.
-     * Always close the writer after use.
+     * Add a specific Offset to the provided path.
      */
-    fun writer(path: Path, startSet: Offsets? = null): Writer
-
-    /** Offset Writer to given persistence type. */
-    interface Writer : Closeable, Flushable {
-        /** Current offsets. */
-        val offsets: Offsets
-
-        /**
-         * Add a single offset to the writer.
-         */
-        fun add(offset: UserRouteOffset) = offsets.add(offset)
-
-        /**
-         * Add all elements in given offset set to the writer.
-         */
-        fun addAll(offsets: Offsets) = offsets.addAll(offsets)
-
-        /**
-         * Trigger an asynchronous write operation. If this is called multiple times before the
-         * operation is executed, the operation will be executed only once.
-         */
-        fun triggerWrite()
-    }
+    fun add(path: Path, offset: UserRouteOffset)
 }

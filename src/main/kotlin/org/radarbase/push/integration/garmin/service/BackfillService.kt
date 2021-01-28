@@ -76,33 +76,42 @@ class BackfillService(
     }
 
     private fun iterateUsers() {
-        while (futures.any { !it.isDone }) {
-            logger.info("The previous task is already running. Waiting ${WAIT_TIME_MS / 1000}s...")
-            Thread.sleep(WAIT_TIME_MS)
-        }
-        futures.clear()
-        logger.info("Making Garmin Backfill requests...")
         try {
-            userRepository.stream().forEach { user ->
-                remoteLockManager.tryRunLocked(user!!.versionedId) {
-                    requestGenerator.requests(user!!, requestsPerUserPerIteration).forEach { req ->
-                        futures.add(requestExecutorService.submit { makeRequest(req) })
-                    }
-                }
+            while (futures.any { !it.isDone }) {
+                logger.info("The previous task is already running. Waiting ${WAIT_TIME_MS / 1000}s...")
+                Thread.sleep(WAIT_TIME_MS)
             }
-        } catch (exc: IOException) {
-            logger.warn("Exception while making Backfill requests.", exc)
+            futures.clear()
+            logger.info("Making Garmin Backfill requests...")
+            try {
+                userRepository.stream().forEach { user ->
+                    futures.add(requestExecutorService.submit {
+                        remoteLockManager.tryRunLocked(user!!.versionedId) {
+                            requestGenerator.requests(user!!, requestsPerUserPerIteration)
+                                .forEach { req -> makeRequest(req) }
+                        }
+                    })
+                }
+            } catch (exc: IOException) {
+                logger.warn("I/O Exception while making Backfill requests.", exc)
+            }
+        } catch (ex: Throwable) {
+            logger.warn("Error Making Garmin Backfill requests.", ex)
         }
     }
 
     private fun makeRequest(req: RestRequest) {
         logger.debug("Making Request: {}", req.request)
-        val response = httpClient.newCall(req.request).execute()
-        response.use {
-            when (it.code) {
-                in 200..204 -> requestGenerator.requestSuccessful(req, it)
-                else -> requestGenerator.requestFailed(req, it)
+        try {
+            httpClient.newCall(req.request).execute().use { response ->
+                if (response.isSuccessful) {
+                    requestGenerator.requestSuccessful(req, response)
+                } else {
+                    requestGenerator.requestFailed(req, response)
+                }
             }
+        } catch (ex: Throwable) {
+            logger.warn("Error making request ${req.request.url}.", ex)
         }
     }
 

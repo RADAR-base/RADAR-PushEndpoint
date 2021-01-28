@@ -1,4 +1,4 @@
-rootProject.name = "radar-gateway"
+rootProject.name = "radar-push-endpoint"
 
 pluginManagement {
     val kotlinVersion: String by settings

@@ -28,7 +28,11 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
     }
 
     override val classes: Array<Class<*>>
-        get() = arrayOf(BackfillService::class.java)
+        get() = if (config.pushIntegration.garmin.backfill.enabled) {
+            arrayOf(BackfillService::class.java)
+        } else {
+            emptyArray()
+        }
 
     override fun AbstractBinder.enhance() {
 
