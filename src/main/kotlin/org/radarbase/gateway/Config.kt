@@ -7,15 +7,11 @@ import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.config.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Path
 import java.time.Instant
 
 data class Config(
     /** Radar-jersey resource configuration class. */
     val resourceConfig: Class<out EnhancerFactory> = PushIntegrationEnhancerFactory::class.java,
-    /** Authorization configurations. */
-    val auth: AuthConfig = AuthConfig(),
     /** Kafka configurations. */
     val kafka: KafkaConfig = KafkaConfig(),
     /** Server configurations. */
@@ -32,7 +28,6 @@ data class Config(
      */
     fun validate() {
         kafka.validate()
-        auth.validate()
         pushIntegration.validate()
     }
 }
@@ -167,60 +162,4 @@ data class KafkaConfig(
             MAX_SCHEMAS_PER_SUBJECT_CONFIG to 10_000
         )
     }
-}
-
-data class AuthConfig(
-    /** OAuth 2.0 resource name. */
-    val resourceName: String = "res_gateway",
-    /**
-     * Whether to check that the user that submits data has the reported source ID registered
-     * in the ManagementPortal.
-     */
-    val checkSourceId: Boolean = true,
-    /** OAuth 2.0 token issuer. If null, this is not checked. */
-    val issuer: String? = null,
-    /**
-     * ManagementPortal URL. If available, this is used to read the public key from
-     * ManagementPortal directly. This is the recommended method of getting public key.
-     */
-    val managementPortalUrl: String? = null,
-    /** Key store for checking the digital signature of OAuth 2.0 JWTs. */
-    val keyStore: KeyStoreConfig = KeyStoreConfig(),
-    /** Public keys for checking the digital signature of OAuth 2.0 JWTs. */
-    val publicKeys: KeyConfig = KeyConfig()
-) {
-    fun validate() {
-        keyStore.validate()
-        check(managementPortalUrl != null || keyStore.isConfigured || publicKeys.isConfigured) {
-            "At least one of auth.keyStore, auth.publicKeys or auth.managementPortalUrl must be configured"
-        }
-    }
-}
-
-data class KeyStoreConfig(
-    /** Path to the p12 key store. */
-    val path: Path? = null,
-    /** Key alias in the key store. */
-    val alias: String? = null,
-    /** Password of the key store. */
-    val password: String? = null
-) {
-    fun validate() {
-        if (path != null) {
-            check(Files.exists(path)) { "KeyStore configured in auth.keyStore.path does not exist" }
-            checkNotNull(alias) { "KeyStore is configured without auth.keyStore.alias" }
-            checkNotNull(password) { "KeyStore is configured without auth.keyStore.password" }
-        }
-    }
-
-    val isConfigured: Boolean = path != null
-}
-
-data class KeyConfig(
-    /** List of ECDSA public key signatures in PEM format. */
-    val ecdsa: List<String>? = null,
-    /** List of RSA public key signatures in PEM format. */
-    val rsa: List<String>? = null
-) {
-    val isConfigured: Boolean = !ecdsa.isNullOrEmpty() || !rsa.isNullOrEmpty()
 }

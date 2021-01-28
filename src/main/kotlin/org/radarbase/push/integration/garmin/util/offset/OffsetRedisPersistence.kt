@@ -5,13 +5,11 @@ import com.fasterxml.jackson.databind.ObjectWriter
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import org.radarbase.push.integration.garmin.util.PostponedWriter
 import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.nio.file.Path
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 
 /**
  * Accesses a OffsetRange json object a Redis entry.
@@ -40,31 +38,22 @@ class OffsetRedisPersistence(
         }
     }
 
-    override fun writer(
-        path: Path,
-        startSet: Offsets?
-    ): OffsetPersistenceFactory.Writer = RedisWriter(path, startSet)
-
-    private inner class RedisWriter(
-        private val path: Path,
-        startSet: Offsets?
-    ) : PostponedWriter("offsets", 1, TimeUnit.SECONDS),
-        OffsetPersistenceFactory.Writer {
-        override val offsets: Offsets = startSet ?: Offsets()
-
-        override fun doWrite(): Unit = try {
-            val offsets = RedisOffsets(offsets.offsetsMap.map { (userRoute, offset) ->
-                RedisOffset(
-                    userRoute.userId,
-                    userRoute.route,
-                    offset
-                )
-            })
-
+    /**
+     * Read the specified Path in Redis and adds the given UserRouteOffset to the offsets.
+     */
+    override fun add(path: Path, offset: UserRouteOffset) {
+        val offsets: Offsets = (read(path.toString()) ?: Offsets()).apply { add(offset) }
+        val redisOffsets = RedisOffsets(offsets.offsetsMap.map { (userRoute, offset) ->
+            RedisOffset(
+                userRoute.userId,
+                userRoute.route,
+                offset
+            )
+        })
+        try {
             redisHolder.execute { redis ->
-                redis.set(path.toString(), redisOffsetWriter.writeValueAsString(offsets))
+                redis.set(path.toString(), redisOffsetWriter.writeValueAsString(redisOffsets))
             }
-            Unit
         } catch (e: IOException) {
             logger.error("Failed to write offsets to Redis: {}", e.toString())
         }
