@@ -1,19 +1,6 @@
 package org.radarbase.push.integration.common.user
 
-import com.fasterxml.jackson.annotation.JsonCreator
-import com.fasterxml.jackson.annotation.JsonProperty
 import org.radarbase.push.integration.garmin.user.GarminUser
-import java.util.*
 
 
-class Users @JsonCreator constructor(@JsonProperty("users") users: List<GarminUser?>?) {
-    private val users: List<GarminUser?>
-
-    fun getUsers(): List<GarminUser?> {
-        return users
-    }
-
-    init {
-        this.users = ArrayList<GarminUser?>(users)
-    }
-}
+data class Users(val users: List<GarminUser>)
