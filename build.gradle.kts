@@ -31,7 +31,7 @@ repositories {
 
 val integrationTest = testSets.create("integrationTest")
 
-dependencies {
+dependencies {    
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
 
@@ -42,6 +42,8 @@ dependencies {
 
     implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}")
     implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
+
+    implementation("org.radarcns:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
