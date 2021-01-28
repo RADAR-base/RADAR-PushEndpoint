@@ -38,7 +38,7 @@ interface UserRepository {
      * @throws IOException if the list cannot be retrieved from the repository.
      */
     @Throws(IOException::class)
-    fun stream(): Stream<User?>
+    fun stream(): Stream<User>
 
     /**
      * Get the current access token of given user.

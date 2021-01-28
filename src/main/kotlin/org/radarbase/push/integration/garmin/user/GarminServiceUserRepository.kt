@@ -22,24 +22,23 @@ import java.net.URL
 import java.time.Duration
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Stream
 import javax.ws.rs.NotAuthorizedException
 import javax.ws.rs.core.Context
-import kotlin.collections.HashMap
-
 
 class GarminServiceUserRepository(
         @Context private val config: Config
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
-    private val client: OkHttpClient? = OkHttpClient()
-    private val cachedCredentials: HashMap<String, OAuth1UserCredentials>? = HashMap<String, OAuth1UserCredentials>()
+    private val client: OkHttpClient = OkHttpClient()
+    private val cachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> = ConcurrentHashMap<String, OAuth1UserCredentials>()
     private var nextFetch = MIN_INSTANT
 
     private var baseUrl: HttpUrl
-    private var timedCachedUsers: List<User?> = ArrayList<User?>()
+    private var timedCachedUsers: List<User> = ArrayList<User>()
 
-    private var repositoryClient: OAuth2Client? = null
+    private lateinit var repositoryClient: OAuth2Client
     private var basicCredentials: String? = null
     private var tokenUrl: URL
     private var clientId: String
@@ -68,12 +67,12 @@ class GarminServiceUserRepository(
 
     @Throws(IOException::class)
     override fun get(key: String): User? {
-        val request: Request = requestFor("users/$key")!!.build()
+        val request: Request = requestFor("users/$key").build()
         return makeRequest(request, USER_READER)
     }
 
     @Throws(IOException::class)
-    override fun stream(): Stream<User?> {
+    override fun stream(): Stream<User> {
         if (hasPendingUpdates()) {
             applyPendingUpdates()
         }
@@ -81,7 +80,7 @@ class GarminServiceUserRepository(
     }
 
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
-        val request = requestFor("users/" + user.id + "/token")!!.build()
+        val request = requestFor("users/" + user.id + "/token").build()
         val credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
         cachedCredentials?.set(user.id, credentials)
         return credentials
@@ -89,19 +88,19 @@ class GarminServiceUserRepository(
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getAccessToken(user: User): String {
-        val credentials: OAuth1UserCredentials = cachedCredentials!![user.id] ?: requestUserCredentials(user)
+        val credentials: OAuth1UserCredentials = cachedCredentials[user.id] ?: requestUserCredentials(user)
         return credentials.accessToken
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getUserAccessTokenSecret(user: User): String {
-        val credentials: OAuth1UserCredentials = cachedCredentials!![user.id] ?: requestUserCredentials(user)
-        return credentials.accessTokenSecret
+        // To be removed once signing implementation added
+        return ""
     }
 
     @Throws(IOException::class)
     override fun reportDeregistration(user: User) {
-        val request = requestFor("users/" + user.id + "/deregister")!!.method("POST", EMPTY_BODY).build()
+        val request = requestFor("users/" + user.id + "/deregister").method("POST", EMPTY_BODY).build()
         return makeRequest(request, null)
     }
 
@@ -117,14 +116,14 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     override fun applyPendingUpdates() {
         logger.info("Requesting user information from webservice")
-        val request = requestFor("users?source-type=Garmin")!!.build()
-        timedCachedUsers = makeRequest<Users>(request, USER_LIST_READER).getUsers()
+        val request = requestFor("users?source-type=Garmin").build()
+        timedCachedUsers = makeRequest<Users>(request, USER_LIST_READER).users
 
         nextFetch = Instant.now().plus(FETCH_THRESHOLD)
     }
 
     @Throws(IOException::class)
-    private fun requestFor(relativeUrl: String): Request.Builder? {
+    private fun requestFor(relativeUrl: String): Request.Builder {
         val url: HttpUrl = baseUrl.resolve(relativeUrl)
                 ?: throw IllegalArgumentException("Relative URL is invalid")
         val builder: Request.Builder = Request.Builder().url(url)
@@ -141,7 +140,7 @@ class GarminServiceUserRepository(
         return when {
             repositoryClient != null -> {
                 try {
-                    "Bearer " + repositoryClient!!.validToken.accessToken
+                    "Bearer " + repositoryClient.validToken.accessToken
                 } catch (ex: TokenException) {
                     throw IOException(ex)
                 }
@@ -154,13 +153,12 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     private fun <T> makeRequest(request: Request, reader: ObjectReader?): T {
         logger.info("Requesting info from {}", request.url)
-        client!!.newCall(request).execute().use { response ->
+        client.newCall(request).execute().use { response ->
             val body: ResponseBody? = response.body
             if (response.code == 404) {
                 throw NoSuchElementException("URL " + request.url + " does not exist")
             } else if (!response.isSuccessful || body == null) {
-                var message = "Failed to make request"
-                message += " (HTTP status code " + response.code + ')'
+                var message = "Failed to make request (HTTP status code " + response.code + ')'
                 if (body != null) {
                     message += body.string()
                 }
@@ -169,7 +167,7 @@ class GarminServiceUserRepository(
             val bodyString = body.string()
             return try {
                 if (reader == null) "" as T
-                else reader!!.readValue(bodyString)
+                else reader.readValue(bodyString)
             } catch (ex: JsonProcessingException) {
                 logger.error("Failed to parse JSON: {}\n{}", ex.toString(), bodyString)
                 throw ex
