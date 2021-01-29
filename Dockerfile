@@ -18,7 +18,6 @@ WORKDIR /code
 ENV GRADLE_USER_HOME=/code/.gradlecache
 
 COPY ./build.gradle.kts ./gradle.properties ./settings.gradle.kts /code/
-COPY gradle/dependency-locks /code/gradle/dependency-locks
 
 RUN gradle downloadDockerDependencies
 
@@ -31,7 +30,7 @@ RUN gradle distTar \
 
 FROM openjdk:11-jre-slim
 
-MAINTAINER @blootsvoets
+MAINTAINER @yatharthranjan
 
 LABEL description="RADAR-base Push Api Gateway docker container"
 
