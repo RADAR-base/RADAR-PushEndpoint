@@ -86,8 +86,8 @@ class BackfillService(
             try {
                 userRepository.stream().forEach { user ->
                     futures.add(requestExecutorService.submit {
-                        remoteLockManager.tryRunLocked(user!!.versionedId) {
-                            requestGenerator.requests(user!!, requestsPerUserPerIteration)
+                        remoteLockManager.tryRunLocked(user.versionedId) {
+                            requestGenerator.requests(user, requestsPerUserPerIteration)
                                 .forEach { req -> makeRequest(req) }
                         }
                     })

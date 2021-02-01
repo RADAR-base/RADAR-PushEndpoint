@@ -51,19 +51,21 @@ class GarminServiceUserRepository(
         clientId = garminConfig.userRepositoryClientId
         clientSecret = garminConfig.userRepositoryClientSecret
 
-        if (tokenUrl != null) {
-            if (clientId.isEmpty()) {
-                throw ConfigException("Client ID for user repository is not set.")
-            }
-            repositoryClient = OAuth2Client.Builder()
-                    .credentials(clientId, clientSecret)
-                    .endpoint(tokenUrl)
-                    .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE")
-                    .httpClient(client)
-                    .build()
-        } else if (clientId != null) {
-            basicCredentials = Credentials.basic(clientId, clientSecret)
-        }
+        if (tokenUrl != null && clientId.isEmpty())
+            throw ConfigException("Client ID for user repository is not set.")
+
+        repositoryClient = if (tokenUrl != null) {
+            OAuth2Client.Builder()
+                .credentials(clientId, clientSecret)
+                .endpoint(tokenUrl)
+                .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE")
+                .httpClient(client)
+                .build()
+        } else OAuth2Client.Builder().build()
+
+        basicCredentials = if (tokenUrl == null && clientId != null) {
+            Credentials.basic(clientId, clientSecret)
+        } else null
     }
 
     @Throws(IOException::class)

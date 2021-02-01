@@ -71,9 +71,9 @@ interface UserRepository {
     @Throws(NoSuchElementException::class, IOException::class)
     fun findByExternalId(externalId: String): User {
         return stream()
-                .filter { user -> user!!.serviceUserId == externalId }
+                .filter { user -> user.serviceUserId == externalId }
                 .findFirst()
-                .orElseGet { throw NoSuchElementException("User not found in the User repository") }!!
+                .orElseGet { throw NoSuchElementException("User not found in the User repository") }
     }
 
     /**
