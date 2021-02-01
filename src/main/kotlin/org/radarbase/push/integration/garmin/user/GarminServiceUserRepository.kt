@@ -12,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
+import org.radarbase.push.integration.common.auth.OAuthSignature
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
 import org.radarcns.exception.TokenException
@@ -96,6 +97,11 @@ class GarminServiceUserRepository(
     override fun getUserAccessTokenSecret(user: User): String {
         // To be removed once signing implementation added
         return ""
+    }
+
+    override fun getOAuthSignature(user: User, url: String, method: String, params: Map<String, String>): OAuthSignature {
+        val request = requestFor("users/" + user.id + "/token/sign").method("POST", EMPTY_BODY).build()
+        return makeRequest(request, SIGNATURE_READER)
     }
 
     @Throws(IOException::class)
@@ -189,6 +195,7 @@ class GarminServiceUserRepository(
         private val USER_LIST_READER: ObjectReader = JSON_READER.forType(Users::class.java)
         private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
         private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
+        private val SIGNATURE_READER: ObjectReader = JSON_READER.forType(OAuthSignature::class.java)
         private val EMPTY_BODY: RequestBody = "".toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
         var MIN_INSTANT = Instant.EPOCH

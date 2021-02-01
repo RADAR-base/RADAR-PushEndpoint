@@ -19,7 +19,6 @@ abstract class GarminRoute(
         get() = 5
 
     fun createRequest(user: User, url: String): Request {
-
         val oauth1 = Oauth1Signing(
             oauthKeys = OauthKeys(
                 consumerKey,
@@ -28,13 +27,14 @@ abstract class GarminRoute(
                 userRepository.getUserAccessTokenSecret(user)
             )
         )
-
+        val parameters = oauth1.getParams()
+        val signature = userRepository.getOAuthSignature(user, url,"GET", parameters)
         val request = Request.Builder()
             .url(url)
             .get()
             .build()
 
-        return oauth1.signRequest(request)
+        return oauth1.signRequest(request, parameters, signature.signedUrl)
     }
 
 

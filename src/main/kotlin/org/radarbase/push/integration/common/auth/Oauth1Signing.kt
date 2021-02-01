@@ -10,24 +10,25 @@ import java.security.GeneralSecurityException
 import java.util.*
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import kotlin.collections.HashMap
 
 class Oauth1Signing(
     val oauthKeys: OauthKeys,
     val nonce: String = UUID.randomUUID().toString(),
     val timestamp: Long = System.currentTimeMillis() / 1000L
 ) {
-
-    @Throws(IOException::class)
-    fun signRequest(request: Request): Request {
-
-        //Setup default parameters that will be sent with authorization header
-        val parameters = hashMapOf(
+    fun getParams(): HashMap<String, String>
+         = hashMapOf(
             OAUTH_CONSUMER_KEY to oauthKeys.consumerKey,
             OAUTH_NONCE to nonce,
             OAUTH_SIGNATURE_METHOD to OAUTH_SIGNATURE_METHOD_VALUE,
             OAUTH_TIMESTAMP to timestamp.toString(),
             OAUTH_VERSION to OAUTH_VERSION_VALUE
         )
+
+    @Throws(IOException::class)
+    fun signRequest(request: Request, parameters: HashMap<String, String>, signature: String): Request {
+        // Insert token to parameters
         oauthKeys.accessToken?.let { parameters[OAUTH_TOKEN] = it }
 
         //Copy query parameters into param map
@@ -54,14 +55,8 @@ class Oauth1Signing(
                 ?.also { parameters.putAll(it) }
         }
 
-        //Create signature
-        val method = request.method.encodeUtf8()
-        val baseUrl = request.url.newBuilder().query(null).build().toString().encodeUtf8()
-        val signingKey = oauthKeys.consumerSecret.encodeUtf8() +
-                "&${oauthKeys.accessSecret?.encodeUtf8() ?: ""}"
-        val params = parameters.encodeForSignature()
-        val dataToSign = "$method&$baseUrl&$params"
-        parameters[OAUTH_SIGNATURE] = sign(signingKey, dataToSign).encodeUtf8()
+        //Insert signature
+        parameters[OAUTH_SIGNATURE] = signature
 
         //Create auth header
         val authHeader = "OAuth ${parameters.toHeaderFormat()}"
@@ -86,16 +81,12 @@ class Oauth1Signing(
     private fun String.toBytesUtf8() = this.toByteArray()
 
     private fun HashMap<String, String>.toHeaderFormat() =
-        filterKeys { it in baseKeys }
-            .toMutableList()
-            .sortWith { (key, _) -> key }  // sort in place
-            .joinToString(", ") { (key, value) -> "$key=\"$value\"" }
-
-    private fun HashMap<String, String>.encodeForSignature() =
-        toMutableList()
-            .sortWith { (key, _) -> key }  // sort in place
-            .joinToString("&") { (key, value) -> "$key=$value" }
-            .encodeUtf8()
+        filter { it.key in baseKeys }
+            .toList()
+            .sortedBy { (key, _) -> key }
+            .toMap()
+            .map { "${it.key}=\"${it.value}\"" }
+            .joinToString(", ")
 
     private fun String.encodeUtf8() = URLEncoder.encode(this, "UTF-8").replace("+", "%2B")
 
