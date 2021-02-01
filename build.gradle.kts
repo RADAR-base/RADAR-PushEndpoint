@@ -31,7 +31,7 @@ repositories {
 
 val integrationTest = testSets.create("integrationTest")
 
-dependencies {    
+dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
 
