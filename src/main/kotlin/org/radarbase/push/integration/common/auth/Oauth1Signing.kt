@@ -87,13 +87,13 @@ class Oauth1Signing(
 
     private fun HashMap<String, String>.toHeaderFormat() =
         filterKeys { it in baseKeys }
-            .toMutableList()
-            .sortWith { (key, _) -> key }  // sort in place
+            .entries
+            .sortedBy { (key, _) -> key }
             .joinToString(", ") { (key, value) -> "$key=\"$value\"" }
 
     private fun HashMap<String, String>.encodeForSignature() =
-        toMutableList()
-            .sortWith { (key, _) -> key }  // sort in place
+            entries
+            .sortedBy { (key, _) -> key }
             .joinToString("&") { (key, value) -> "$key=$value" }
             .encodeUtf8()
 

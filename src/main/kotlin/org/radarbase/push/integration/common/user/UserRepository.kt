@@ -38,7 +38,7 @@ interface UserRepository {
      * @throws IOException if the list cannot be retrieved from the repository.
      */
     @Throws(IOException::class)
-    fun stream(): Stream<out User>
+    fun stream(): Stream<User>
 
     /**
      * Get the current access token of given user.
@@ -71,9 +71,25 @@ interface UserRepository {
     @Throws(NoSuchElementException::class, IOException::class)
     fun findByExternalId(externalId: String): User {
         return stream()
-            .filter { user -> user.externalUserId == externalId }
-            .findFirst()
-            .orElseGet { throw NoSuchElementException("User not found in the User repository") }
+                .filter { user -> user.serviceUserId == externalId }
+                .findFirst()
+                .orElseGet { throw NoSuchElementException("User not found in the User repository") }
     }
+
+    /**
+     * The functions allows the repository to supply when there are pending updates.
+     * This gives more control to the user repository in updating and caching users.
+     * @return `true` if there are new updates available, `false` otherwise.
+     */
+    fun hasPendingUpdates(): Boolean
+
+    /**
+     * Apply any pending updates to users. This could include, for instance, refreshing a cache
+     * of users with latest information.
+     * This is called when [.hasPendingUpdates] is `true`.
+     * @throws IOException if there was an error when applying updates.
+     */
+    @Throws(IOException::class)
+    fun applyPendingUpdates()
 
 }
