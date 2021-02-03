@@ -33,22 +33,22 @@ abstract class GarminRoute(
             .build()
 
         val accessToken = userRepository.getAccessToken(user)
-        val parameters = getParams(request.url, accessToken)
+        val parameters = getParams(request.url)
         val oauth1 = Oauth1Signing(parameters)
 
         val signature = userRepository.getOAuthSignature(user, baseUrl, ROUTE_METHOD, parameters)
+        parameters[OAUTH_TOKEN] = accessToken
         parameters[OAUTH_SIGNATURE] = signature.signedUrl
 
         return oauth1.signRequest(request)
     }
 
-    fun getParams(url: HttpUrl, accessToken: String): HashMap<String, String> {
+    fun getParams(url: HttpUrl): HashMap<String, String> {
         val parameters = hashMapOf(
             OAUTH_CONSUMER_KEY to consumerKey,
             OAUTH_NONCE to java.util.UUID.randomUUID().toString(),
             OAUTH_SIGNATURE_METHOD to OAUTH_SIGNATURE_METHOD_VALUE,
             OAUTH_TIMESTAMP to (System.currentTimeMillis() / 1000L).toString(),
-            OAUTH_TOKEN to accessToken,
             OAUTH_VERSION to OAUTH_VERSION_VALUE
         )
 
