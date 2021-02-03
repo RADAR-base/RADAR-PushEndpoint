@@ -39,6 +39,7 @@ class GarminAuthValidator(
                         userRepository.findByExternalId(k)
                     } catch (exc: NoSuchElementException) {
                         isAnyUnauthorised = true
+                        // TODO: Call to deregister user when available
                         logger.warn(
                             "no_user: {}", "The user $k could not be found in the " +
                                 "user repository."
@@ -46,6 +47,7 @@ class GarminAuthValidator(
                         return@filter false
                     }
                     if (!user.isAuthorized) {
+                        // TODO: Change to deregister user when available
                         userRepository.reportDeregistration(user)
                         isAnyUnauthorised = true
                         logger.warn(
@@ -56,21 +58,21 @@ class GarminAuthValidator(
                     if (userRepository.getAccessToken(user) != v[0][USER_ACCESS_TOKEN_KEY].asText()
                     ) {
                         isAnyUnauthorised = true
+                        // TODO: Change to deregister user when available
                         userRepository.reportDeregistration(user)
                         logger.warn(
-                            "invalid_user: {}", "The token for user $k does not" +
+                            "invalid_token: {}", "The token for user $k does not" +
                                 " match with the records on the system."
                         )
                         return@filter false
                     }
                     true
-                }.mapKeys { (k, _) ->
-                    userRepository.findByExternalId(k)
-                }.mapValues { (_, v) ->
-                    // Map the List<JsonNode> back to <data-type>: [ {<data-1>}, {<data-2>} ]
-                    // so it can be processed in the services without much refactoring
-                    objectMapper.createObjectNode()
-                        .set(tree.fieldNames().next(), objectMapper.valueToTree(v))
+                }.entries.associate { (k, v) ->
+                    userRepository.findByExternalId(k) to
+                        // Map the List<JsonNode> back to <data-type>: [ {<data-1>}, {<data-2>} ]
+                        // so it can be processed in the services without much refactoring
+                        objectMapper.createObjectNode()
+                            .set(tree.fieldNames().next(), objectMapper.valueToTree(v))
                 }
 
             request.setProperty("user_tree_map", userTreeMap)
