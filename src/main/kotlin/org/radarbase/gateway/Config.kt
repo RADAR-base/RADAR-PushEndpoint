@@ -48,10 +48,10 @@ data class GarminConfig(
     val backfill: BackfillConfig = BackfillConfig(),
     val userRepositoryClass: String =
         "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
-    val userRepositoryUrl: String = "",
+    val userRepositoryUrl: String = "http://localhost:8080/",
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
-    val userRepositoryTokenUrl: String = "",
+    val userRepositoryTokenUrl: String = "http://localhost:8080/token/",
     val dailiesTopicName: String = "push_garmin_daily_summary",
     val activitiesTopicName: String = "push_garmin_activity_summary",
     val activityDetailsTopicName: String = "push_garmin_activity_detail",
