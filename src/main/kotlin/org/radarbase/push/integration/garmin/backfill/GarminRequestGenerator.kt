@@ -27,57 +27,46 @@ class GarminRequestGenerator(
     private val routes: List<Route> = listOf(
         GarminActivitiesRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminDailiesRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminActivityDetailsRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminBodyCompsRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminEpochsRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminMoveIQRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminPulseOxRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminRespirationRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminSleepsRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminStressDetailsRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         ),
         GarminUserMetricsRoute(
             config.pushIntegration.garmin.consumerKey,
-            config.pushIntegration.garmin.consumerSecret,
             userRepository
         )
     )
