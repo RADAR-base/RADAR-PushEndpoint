@@ -8,8 +8,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.confluent.common.config.ConfigException
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.push.integration.common.auth.OAuthSignature
@@ -29,7 +30,7 @@ import javax.ws.rs.NotAuthorizedException
 import javax.ws.rs.core.Context
 
 class GarminServiceUserRepository(
-        @Context private val config: Config
+    @Context private val config: Config
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
     private val client: OkHttpClient = OkHttpClient()
@@ -102,7 +103,9 @@ class GarminServiceUserRepository(
     }
 
     override fun getOAuthSignature(user: User, url: String, method: String, params: Map<String, String>): OAuthSignature {
-        val request = requestFor("users/" + user.id + "/token/sign").method("POST", EMPTY_BODY).build()
+        val res = JSONObject().put("url", url).put("method", method).put("params", params).toString()
+        val body = res.toRequestBody(JSON_MEDIA_TYPE)
+        val request = requestFor("users/" + user.id + "/token/sign").method("POST", body).build()
         return makeRequest(request, SIGNATURE_READER)
     }
 
@@ -198,9 +201,10 @@ class GarminServiceUserRepository(
         private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
         private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
         private val SIGNATURE_READER: ObjectReader = JSON_READER.forType(OAuthSignature::class.java)
-        private val EMPTY_BODY: RequestBody = "".toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
-        var MIN_INSTANT = Instant.EPOCH
+        val MIN_INSTANT = Instant.EPOCH
 
 
         private val logger = LoggerFactory.getLogger(GarminServiceUserRepository::class.java)
