@@ -54,7 +54,7 @@ abstract class GarminUserRepository(private val config: Config) : UserRepository
             it.userId == user.versionedId
         }?.endDate?.takeIf { it <= user.endDate }
             ?: config.pushIntegration.garmin.backfill.defaultEndDate.takeIf { it < user.endDate }
-            ?: user.endDate
+            ?: user.createdAt
     }
 
     abstract fun getOAuthSignature(user: User, url: String, method: String, params: Map<String, String>): OAuthSignature
