@@ -23,15 +23,15 @@ class Oauth1Signing(
             .joinToString(", ") { (key, value) -> "$key=\"$value\"" }
 
     companion object {
-        private const val OAUTH_CONSUMER_KEY = "oauth_consumer_key"
-        private const val OAUTH_NONCE = "oauth_nonce"
-        private const val OAUTH_SIGNATURE = "oauth_signature"
-        private const val OAUTH_SIGNATURE_METHOD = "oauth_signature_method"
-        private const val OAUTH_SIGNATURE_METHOD_VALUE = "HMAC-SHA1"
-        private const val OAUTH_TIMESTAMP = "oauth_timestamp"
-        private const val OAUTH_TOKEN = "oauth_token"
-        private const val OAUTH_VERSION = "oauth_version"
-        private const val OAUTH_VERSION_VALUE = "1.0"
+        const val OAUTH_CONSUMER_KEY = "oauth_consumer_key"
+        const val OAUTH_NONCE = "oauth_nonce"
+        const val OAUTH_SIGNATURE = "oauth_signature"
+        const val OAUTH_SIGNATURE_METHOD = "oauth_signature_method"
+        const val OAUTH_SIGNATURE_METHOD_VALUE = "HMAC-SHA1"
+        const val OAUTH_TIMESTAMP = "oauth_timestamp"
+        const val OAUTH_TOKEN = "oauth_token"
+        const val OAUTH_VERSION = "oauth_version"
+        const val OAUTH_VERSION_VALUE = "1.0"
 
         private val baseKeys = arrayListOf(
             OAUTH_CONSUMER_KEY,
