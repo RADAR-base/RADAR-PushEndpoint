@@ -13,6 +13,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
+import org.radarbase.jersey.exception.HttpBadRequestException
 import org.radarbase.push.integration.common.auth.OAuthSignature
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
@@ -98,8 +99,7 @@ class GarminServiceUserRepository(
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getUserAccessTokenSecret(user: User): String {
-        // To be removed once signing implementation added
-        return ""
+        throw HttpBadRequestException("", "Not available for source type")
     }
 
     override fun getOAuthSignature(user: User, url: String, method: String, params: Map<String, String>): OAuthSignature {
