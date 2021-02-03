@@ -3,6 +3,15 @@ package org.radarbase.push.integration.garmin.backfill.route
 import okhttp3.HttpUrl
 import okhttp3.Request
 import org.radarbase.push.integration.common.auth.Oauth1Signing
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_CONSUMER_KEY
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_TOKEN
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_SIGNATURE
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_SIGNATURE_METHOD
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_SIGNATURE_METHOD_VALUE
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION_VALUE
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_NONCE
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_TIMESTAMP
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.backfill.RestRequest
 import org.radarbase.push.integration.garmin.backfill.Route
@@ -78,16 +87,6 @@ abstract class GarminRoute(
 
         const val GARMIN_BACKFILL_BASE_URL =
             "https://healthapi.garmin.com/wellness-api/rest/backfill"
-
-        private const val OAUTH_CONSUMER_KEY = "oauth_consumer_key"
-        private const val OAUTH_NONCE = "oauth_nonce"
-        private const val OAUTH_SIGNATURE = "oauth_signature"
-        private const val OAUTH_SIGNATURE_METHOD = "oauth_signature_method"
-        private const val OAUTH_SIGNATURE_METHOD_VALUE = "HMAC-SHA1"
-        private const val OAUTH_TIMESTAMP = "oauth_timestamp"
-        private const val OAUTH_TOKEN = "oauth_token"
-        private const val OAUTH_VERSION = "oauth_version"
-        private const val OAUTH_VERSION_VALUE = "1.0"
-        private const val ROUTE_METHOD = "GET"
+        const val ROUTE_METHOD = "GET"
     }
 }
