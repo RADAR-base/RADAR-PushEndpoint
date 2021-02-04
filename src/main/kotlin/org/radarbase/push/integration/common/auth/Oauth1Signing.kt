@@ -2,10 +2,9 @@ package org.radarbase.push.integration.common.auth
 
 import okhttp3.Request
 import java.io.IOException
-import kotlin.collections.HashMap
 
 class Oauth1Signing(
-    val parameters: HashMap<String, String>
+    val parameters: Map<String, String>
 ) {
 
     @Throws(IOException::class)
@@ -16,7 +15,7 @@ class Oauth1Signing(
         return request.newBuilder().addHeader("Authorization", authHeader).build()
     }
 
-    private fun HashMap<String, String>.toHeaderFormat() =
+    private fun Map<String, String>.toHeaderFormat() =
         filterKeys { it in baseKeys }
             .entries
             .sortedBy { (key, _) -> key }

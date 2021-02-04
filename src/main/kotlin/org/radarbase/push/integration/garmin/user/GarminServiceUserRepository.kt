@@ -14,7 +14,7 @@ import org.json.JSONObject
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.jersey.exception.HttpBadRequestException
-import org.radarbase.push.integration.common.auth.OAuthSignature
+import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
 import org.radarcns.exception.TokenException
@@ -98,11 +98,11 @@ class GarminServiceUserRepository(
         throw HttpBadRequestException("", "Not available for source type")
     }
 
-    override fun getOAuthSignature(user: User, url: String, method: String, params: Map<String, String>): OAuthSignature {
-        val res = JSONObject().put("url", url).put("method", method).put("params", params).toString()
-        val body = res.toRequestBody(JSON_MEDIA_TYPE)
+    override fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams {
+        val body = JSONObject(payload).toString().toRequestBody(JSON_MEDIA_TYPE)
         val request = requestFor("users/" + user.id + "/token/sign").method("POST", body).build()
-        return makeRequest(request, SIGNATURE_READER)
+
+        return makeRequest(request, SIGNED_REQUEST_READER)
     }
 
     @Throws(IOException::class)
@@ -196,7 +196,7 @@ class GarminServiceUserRepository(
         private val USER_LIST_READER: ObjectReader = JSON_READER.forType(Users::class.java)
         private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
         private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
-        private val SIGNATURE_READER: ObjectReader = JSON_READER.forType(OAuthSignature::class.java)
+        private val SIGNED_REQUEST_READER: ObjectReader = JSON_READER.forType(SignRequestParams::class.java)
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)

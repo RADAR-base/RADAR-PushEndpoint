@@ -4,14 +4,11 @@ import okhttp3.HttpUrl
 import okhttp3.Request
 import org.radarbase.push.integration.common.auth.Oauth1Signing
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_CONSUMER_KEY
-import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_TOKEN
-import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_SIGNATURE
-import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_SIGNATURE_METHOD
-import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_SIGNATURE_METHOD_VALUE
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION_VALUE
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_NONCE
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_TIMESTAMP
+import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.backfill.RestRequest
 import org.radarbase.push.integration.garmin.backfill.Route
@@ -32,29 +29,23 @@ abstract class GarminRoute(
             .get()
             .build()
 
-        val accessToken = userRepository.getAccessToken(user)
         val parameters = getParams(request.url)
-        val oauth1 = Oauth1Signing(parameters)
+        val requestParams = SignRequestParams(baseUrl, ROUTE_METHOD, parameters)
+        val signedRequest = userRepository.getSignedRequest(user, requestParams)
 
-        val signature = userRepository.getOAuthSignature(user, baseUrl, ROUTE_METHOD, parameters)
-        parameters[OAUTH_TOKEN] = accessToken
-        parameters[OAUTH_SIGNATURE] = signature.signedUrl
-
-        return oauth1.signRequest(request)
+        return Oauth1Signing(signedRequest.parameters).signRequest(request)
     }
 
-    fun getParams(url: HttpUrl): HashMap<String, String> {
+    fun getParams(url: HttpUrl): Map<String, String> {
         return (
             mapOf(
                 OAUTH_CONSUMER_KEY to consumerKey,
                 OAUTH_NONCE to java.util.UUID.randomUUID().toString(),
-                OAUTH_SIGNATURE_METHOD to OAUTH_SIGNATURE_METHOD_VALUE,
                 OAUTH_TIMESTAMP to (System.currentTimeMillis() / 1000L).toString(),
                 OAUTH_VERSION to OAUTH_VERSION_VALUE,
             )
-            + (0 until querySize)
-                .map { url.queryParameterName(it) to url.queryParameterValue(it) ?: "" }
-        )
+                + (0 until url.querySize).associate { Pair(url.queryParameterName(it), url.queryParameterValue(it) ?: "") }
+            )
     }
 
 
