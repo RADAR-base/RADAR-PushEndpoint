@@ -41,7 +41,7 @@ class GarminServiceUserRepository(
     private var baseUrl: HttpUrl
     private var timedCachedUsers: List<User> = ArrayList<User>()
 
-    private lateinit var repositoryClient: OAuth2Client
+    private val repositoryClient: OAuth2Client
     private var basicCredentials: String? = null
     private var tokenUrl: URL
     private var clientId: String
@@ -53,21 +53,17 @@ class GarminServiceUserRepository(
         clientId = garminConfig.userRepositoryClientId
         clientSecret = garminConfig.userRepositoryClientSecret
 
-        if (tokenUrl != null && clientId.isEmpty())
+        if (clientId.isEmpty())
             throw ConfigException("Client ID for user repository is not set.")
 
-        repositoryClient = if (tokenUrl != null) {
-            OAuth2Client.Builder()
+        repositoryClient = OAuth2Client.Builder()
                 .credentials(clientId, clientSecret)
                 .endpoint(tokenUrl)
                 .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE")
                 .httpClient(client)
                 .build()
-        } else OAuth2Client.Builder().build()
 
-        basicCredentials = if (tokenUrl == null && clientId != null) {
-            Credentials.basic(clientId, clientSecret)
-        } else null
+        basicCredentials = if (clientId.isNotEmpty()) Credentials.basic(clientId, clientSecret) else null
     }
 
     @Throws(IOException::class)
@@ -87,7 +83,7 @@ class GarminServiceUserRepository(
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
         val request = requestFor("users/" + user.id + "/token").build()
         val credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-        cachedCredentials?.set(user.id, credentials)
+        cachedCredentials.set(user.id, credentials)
         return credentials
     }
 
