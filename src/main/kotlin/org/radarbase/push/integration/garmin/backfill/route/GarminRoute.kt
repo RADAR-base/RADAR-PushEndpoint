@@ -44,18 +44,17 @@ abstract class GarminRoute(
     }
 
     fun getParams(url: HttpUrl): HashMap<String, String> {
-        val parameters = hashMapOf(
-            OAUTH_CONSUMER_KEY to consumerKey,
-            OAUTH_NONCE to java.util.UUID.randomUUID().toString(),
-            OAUTH_SIGNATURE_METHOD to OAUTH_SIGNATURE_METHOD_VALUE,
-            OAUTH_TIMESTAMP to (System.currentTimeMillis() / 1000L).toString(),
-            OAUTH_VERSION to OAUTH_VERSION_VALUE
+        return (
+            mapOf(
+                OAUTH_CONSUMER_KEY to consumerKey,
+                OAUTH_NONCE to java.util.UUID.randomUUID().toString(),
+                OAUTH_SIGNATURE_METHOD to OAUTH_SIGNATURE_METHOD_VALUE,
+                OAUTH_TIMESTAMP to (System.currentTimeMillis() / 1000L).toString(),
+                OAUTH_VERSION to OAUTH_VERSION_VALUE,
+            )
+            + (0 until querySize)
+                .map { url.queryParameterName(it) to url.queryParameterValue(it) ?: "" }
         )
-
-        for (i in 0 until url.querySize) {
-            parameters[url.queryParameterName(i)] = url.queryParameterValue(i) ?: ""
-        }
-        return parameters
     }
 
 
