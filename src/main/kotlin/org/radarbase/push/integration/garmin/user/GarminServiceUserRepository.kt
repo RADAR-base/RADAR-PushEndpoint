@@ -42,7 +42,6 @@ class GarminServiceUserRepository(
     private var timedCachedUsers: List<User> = ArrayList<User>()
 
     private val repositoryClient: OAuth2Client
-    private var basicCredentials: String? = null
     private var tokenUrl: URL
     private var clientId: String
     private var clientSecret: String
@@ -57,13 +56,11 @@ class GarminServiceUserRepository(
             throw ConfigException("Client ID for user repository is not set.")
 
         repositoryClient = OAuth2Client.Builder()
-                .credentials(clientId, clientSecret)
-                .endpoint(tokenUrl)
-                .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE")
-                .httpClient(client)
-                .build()
-
-        basicCredentials = if (clientId.isNotEmpty()) Credentials.basic(clientId, clientSecret) else null
+            .credentials(clientId, clientSecret)
+            .endpoint(tokenUrl)
+            .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE", "MEASUREMENT.CREATE")
+            .httpClient(client)
+            .build()
     }
 
     @Throws(IOException::class)
@@ -132,29 +129,22 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     private fun requestFor(relativeUrl: String): Request.Builder {
         val url: HttpUrl = baseUrl.resolve(relativeUrl)
-                ?: throw IllegalArgumentException("Relative URL is invalid")
+            ?: throw IllegalArgumentException("Relative URL is invalid")
         val builder: Request.Builder = Request.Builder().url(url)
         val authorization = requestAuthorization()
-        if (authorization != null) {
-            builder.addHeader("Authorization", authorization)
-        }
+        builder.addHeader("Authorization", authorization)
 
         return builder
     }
 
     @Throws(IOException::class)
-    private fun requestAuthorization(): String? {
-        return when {
-            repositoryClient != null -> {
-                try {
-                    "Bearer " + repositoryClient.validToken.accessToken
-                } catch (ex: TokenException) {
-                    throw IOException(ex)
-                }
-            }
-            basicCredentials != null -> basicCredentials
-            else -> null
+    private fun requestAuthorization(): String {
+        return try {
+            "Bearer " + repositoryClient.validToken.accessToken
+        } catch (ex: TokenException) {
+            throw IOException(ex)
         }
+
     }
 
     @Throws(IOException::class)
@@ -187,7 +177,7 @@ class GarminServiceUserRepository(
         if (urlString[urlString.length - 1] != '/') urlString += '/'
 
         return urlString.toHttpUrlOrNull()
-                ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
+            ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
     }
 
     companion object {
