@@ -4,9 +4,8 @@ import org.radarbase.push.integration.garmin.user.GarminUserRepository
 
 class GarminActivitiesRoute(
     consumerKey: String,
-    consumerSecret: String,
     userRepository: GarminUserRepository
-) : GarminRoute(consumerKey, consumerSecret, userRepository) {
+) : GarminRoute(consumerKey, userRepository) {
 
     override fun subPath(): String = "activities"
 
