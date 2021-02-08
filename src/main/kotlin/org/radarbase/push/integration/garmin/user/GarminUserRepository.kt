@@ -59,14 +59,10 @@ abstract class GarminUserRepository(private val config: Config) : UserRepository
 
     abstract fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams
 
-    /**
-     * This is to report any deregistrations of the users.
-     * This should update the user's authorised status to false in the external repository.
-     *
-     * @throws IOException            if the user's status cannot be updated in the repository.
-     * @throws NoSuchElementException if the user does not exists in this repository.
-     */
-    @Throws(IOException::class)
-    abstract fun reportDeregistration(user: User)
 
+    /**
+     * This is to deregister the users from garmin. It requires serviceUserId and userAccessToken.
+     *
+     * */
+    abstract fun deregisterUser(serviceUserId: String, userAccessToken: String)
 }

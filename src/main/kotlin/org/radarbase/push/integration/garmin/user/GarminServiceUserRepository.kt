@@ -35,16 +35,18 @@ class GarminServiceUserRepository(
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
     private val client: OkHttpClient = OkHttpClient()
-    private val cachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> = ConcurrentHashMap<String, OAuth1UserCredentials>()
+    private val cachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> =
+        ConcurrentHashMap<String, OAuth1UserCredentials>()
     private var nextFetch = MIN_INSTANT
 
-    private var baseUrl: HttpUrl
+    private val baseUrl: HttpUrl
+
     private var timedCachedUsers: List<User> = ArrayList<User>()
 
     private val repositoryClient: OAuth2Client
-    private var tokenUrl: URL
-    private var clientId: String
-    private var clientSecret: String
+    private val tokenUrl: URL
+    private val clientId: String
+    private val clientSecret: String
 
     init {
         baseUrl = garminConfig.userRepositoryUrl.toHttpUrl()
@@ -80,7 +82,7 @@ class GarminServiceUserRepository(
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
         val request = requestFor("users/" + user.id + "/token").build()
         val credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-        cachedCredentials.set(user.id, credentials)
+        cachedCredentials[user.id] = credentials
         return credentials
     }
 
@@ -102,9 +104,10 @@ class GarminServiceUserRepository(
         return makeRequest(request, SIGNED_REQUEST_READER)
     }
 
-    @Throws(IOException::class)
-    override fun reportDeregistration(user: User) {
-        val request = requestFor("users/" + user.id + "/deregister").method("POST", EMPTY_BODY).build()
+    override fun deregisterUser(serviceUserId: String, userAccessToken: String) {
+        val request =
+            requestFor("source-clients/garmin/authorization/$serviceUserId?accessToken=$userAccessToken")
+                .method("DELETE", EMPTY_BODY).build()
         return makeRequest(request, null)
     }
 
@@ -182,13 +185,18 @@ class GarminServiceUserRepository(
 
     companion object {
         private val JSON_FACTORY = JsonFactory()
-        private val JSON_READER: ObjectReader = ObjectMapper(JSON_FACTORY).registerModule(JavaTimeModule()).reader()
+        private val JSON_READER: ObjectReader =
+            ObjectMapper(JSON_FACTORY).registerModule(JavaTimeModule()).reader()
         private val USER_LIST_READER: ObjectReader = JSON_READER.forType(Users::class.java)
         private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
-        private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
-        private val SIGNED_REQUEST_READER: ObjectReader = JSON_READER.forType(SignRequestParams::class.java)
+
+        private val OAUTH_READER: ObjectReader =
+            JSON_READER.forType(OAuth1UserCredentials::class.java)
+        private val SIGNED_REQUEST_READER: ObjectReader =
+            JSON_READER.forType(SignRequestParams::class.java)
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
+
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
         val MIN_INSTANT = Instant.EPOCH
 

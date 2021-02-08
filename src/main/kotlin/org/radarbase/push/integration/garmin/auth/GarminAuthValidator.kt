@@ -35,11 +35,12 @@ class GarminAuthValidator(
                 tree[tree.fieldNames().next()].groupBy { node ->
                     node[USER_ID_KEY].asText()
                 }.filter { (k, v) ->
+                    val accessToken = v[0][USER_ACCESS_TOKEN_KEY].asText()
                     val user = try {
                         userRepository.findByExternalId(k)
                     } catch (exc: NoSuchElementException) {
                         isAnyUnauthorised = true
-                        // TODO: Call to deregister user when available
+                        userRepository.deregisterUser(k, accessToken)
                         logger.warn(
                             "no_user: {}", "The user $k could not be found in the " +
                                 "user repository."
@@ -47,19 +48,16 @@ class GarminAuthValidator(
                         return@filter false
                     }
                     if (!user.isAuthorized) {
-                        // TODO: Change to deregister user when available
-                        userRepository.reportDeregistration(user)
+                        userRepository.deregisterUser(user.serviceUserId, accessToken)
                         isAnyUnauthorised = true
                         logger.warn(
                             "invalid_user: {}", "The user $k does not seem to be authorized."
                         )
                         return@filter false
                     }
-                    if (userRepository.getAccessToken(user) != v[0][USER_ACCESS_TOKEN_KEY].asText()
-                    ) {
+                    if (userRepository.getAccessToken(user) != accessToken) {
                         isAnyUnauthorised = true
-                        // TODO: Change to deregister user when available
-                        userRepository.reportDeregistration(user)
+                        userRepository.deregisterUser(user.serviceUserId, accessToken)
                         logger.warn(
                             "invalid_token: {}", "The token for user $k does not" +
                                 " match with the records on the system."

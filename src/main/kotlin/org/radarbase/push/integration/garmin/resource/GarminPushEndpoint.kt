@@ -123,14 +123,6 @@ class GarminPushEndpoint(
         })
     }
 
-    @POST
-    @Path("deregister")
-    fun deregisterUser(): Response {
-        return processResponses(function = { _: JsonNode, user: User ->
-            healthApiService.handleDeregistration(user)
-        })
-    }
-
     /**
      * Processes responses for all users
      * @param function: The function to use to process data
