@@ -8,10 +8,13 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.confluent.common.config.ConfigException
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
+import org.radarbase.jersey.exception.HttpBadRequestException
+import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
 import org.radarcns.exception.TokenException
@@ -28,7 +31,7 @@ import javax.ws.rs.NotAuthorizedException
 import javax.ws.rs.core.Context
 
 class GarminServiceUserRepository(
-        @Context private val config: Config
+    @Context private val config: Config
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
     private val client: OkHttpClient = OkHttpClient()
@@ -38,8 +41,7 @@ class GarminServiceUserRepository(
     private var baseUrl: HttpUrl
     private var timedCachedUsers: List<User> = ArrayList<User>()
 
-    private lateinit var repositoryClient: OAuth2Client
-    private var basicCredentials: String? = null
+    private val repositoryClient: OAuth2Client
     private var tokenUrl: URL
     private var clientId: String
     private var clientSecret: String
@@ -50,21 +52,15 @@ class GarminServiceUserRepository(
         clientId = garminConfig.userRepositoryClientId
         clientSecret = garminConfig.userRepositoryClientSecret
 
-        if (tokenUrl != null && clientId.isEmpty())
+        if (clientId.isEmpty())
             throw ConfigException("Client ID for user repository is not set.")
 
-        repositoryClient = if (tokenUrl != null) {
-            OAuth2Client.Builder()
-                .credentials(clientId, clientSecret)
-                .endpoint(tokenUrl)
-                .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE")
-                .httpClient(client)
-                .build()
-        } else OAuth2Client.Builder().build()
-
-        basicCredentials = if (tokenUrl == null && clientId != null) {
-            Credentials.basic(clientId, clientSecret)
-        } else null
+        repositoryClient = OAuth2Client.Builder()
+            .credentials(clientId, clientSecret)
+            .endpoint(tokenUrl)
+            .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE", "MEASUREMENT.CREATE")
+            .httpClient(client)
+            .build()
     }
 
     @Throws(IOException::class)
@@ -84,7 +80,7 @@ class GarminServiceUserRepository(
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
         val request = requestFor("users/" + user.id + "/token").build()
         val credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
-        cachedCredentials?.set(user.id, credentials)
+        cachedCredentials.set(user.id, credentials)
         return credentials
     }
 
@@ -96,8 +92,14 @@ class GarminServiceUserRepository(
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getUserAccessTokenSecret(user: User): String {
-        // To be removed once signing implementation added
-        return ""
+        throw HttpBadRequestException("", "Not available for source type")
+    }
+
+    override fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams {
+        val body = JSONObject(payload).toString().toRequestBody(JSON_MEDIA_TYPE)
+        val request = requestFor("users/" + user.id + "/token/sign").method("POST", body).build()
+
+        return makeRequest(request, SIGNED_REQUEST_READER)
     }
 
     @Throws(IOException::class)
@@ -127,29 +129,22 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     private fun requestFor(relativeUrl: String): Request.Builder {
         val url: HttpUrl = baseUrl.resolve(relativeUrl)
-                ?: throw IllegalArgumentException("Relative URL is invalid")
+            ?: throw IllegalArgumentException("Relative URL is invalid")
         val builder: Request.Builder = Request.Builder().url(url)
         val authorization = requestAuthorization()
-        if (authorization != null) {
-            builder.addHeader("Authorization", authorization)
-        }
+        builder.addHeader("Authorization", authorization)
 
         return builder
     }
 
     @Throws(IOException::class)
-    private fun requestAuthorization(): String? {
-        return when {
-            repositoryClient != null -> {
-                try {
-                    "Bearer " + repositoryClient.validToken.accessToken
-                } catch (ex: TokenException) {
-                    throw IOException(ex)
-                }
-            }
-            basicCredentials != null -> basicCredentials
-            else -> null
+    private fun requestAuthorization(): String {
+        return try {
+            "Bearer " + repositoryClient.validToken.accessToken
+        } catch (ex: TokenException) {
+            throw IOException(ex)
         }
+
     }
 
     @Throws(IOException::class)
@@ -182,7 +177,7 @@ class GarminServiceUserRepository(
         if (urlString[urlString.length - 1] != '/') urlString += '/'
 
         return urlString.toHttpUrlOrNull()
-                ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
+            ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
     }
 
     companion object {
@@ -191,9 +186,11 @@ class GarminServiceUserRepository(
         private val USER_LIST_READER: ObjectReader = JSON_READER.forType(Users::class.java)
         private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
         private val OAUTH_READER: ObjectReader = JSON_READER.forType(OAuth1UserCredentials::class.java)
-        private val EMPTY_BODY: RequestBody = "".toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        private val SIGNED_REQUEST_READER: ObjectReader = JSON_READER.forType(SignRequestParams::class.java)
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
-        var MIN_INSTANT = Instant.EPOCH
+        val MIN_INSTANT = Instant.EPOCH
 
 
         private val logger = LoggerFactory.getLogger(GarminServiceUserRepository::class.java)

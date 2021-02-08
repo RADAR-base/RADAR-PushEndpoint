@@ -17,6 +17,7 @@
 package org.radarbase.push.integration.garmin.user
 
 import org.radarbase.gateway.Config
+import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.UserRepository
 import java.io.IOException
@@ -53,8 +54,10 @@ abstract class GarminUserRepository(private val config: Config) : UserRepository
             it.userId == user.versionedId
         }?.endDate?.takeIf { it <= user.endDate }
             ?: config.pushIntegration.garmin.backfill.defaultEndDate.takeIf { it < user.endDate }
-            ?: user.endDate
+            ?: user.createdAt
     }
+
+    abstract fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams
 
     /**
      * This is to report any deregistrations of the users.
