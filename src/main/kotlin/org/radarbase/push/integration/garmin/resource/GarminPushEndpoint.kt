@@ -30,97 +30,97 @@ class GarminPushEndpoint(
     @POST
     @Path("dailies")
     fun addDalies(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processDailies(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("activities")
     fun addActivities(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processActivities(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("activityDetails")
     fun addActivityDetails(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processActivityDetails(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("manualActivities")
     fun addManualActivities(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processManualActivities(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("epochs")
     fun addEpochSummaries(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processEpochs(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("sleeps")
     fun addSleeps(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processSleeps(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("bodyCompositions")
     fun addBodyCompositions(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processBodyCompositions(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("stress")
     fun addStress(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processStress(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("userMetrics")
     fun addUserMetrics(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processUserMetrics(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("moveIQ")
     fun addMoveIQ(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processMoveIQ(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("pulseOx")
     fun addPluseOX(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processPulseOx(tree, user)
-        })
+        }
     }
 
     @POST
     @Path("respiration")
     fun addRespiration(): Response {
-        return processResponses(function = { tree: JsonNode, user: User ->
+        return processResponses { tree: JsonNode, user: User ->
             healthApiService.processRespiration(tree, user)
-        })
+        }
     }
 
     /**

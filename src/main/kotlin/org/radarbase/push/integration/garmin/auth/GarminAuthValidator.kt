@@ -34,43 +34,19 @@ class GarminAuthValidator(
                 // group by user ID since request can contain data from multiple users
                 tree[tree.fieldNames().next()].groupBy { node ->
                     node[USER_ID_KEY].asText()
-                }.filter { (k, v) ->
-                    val accessToken = v[0][USER_ACCESS_TOKEN_KEY].asText()
-                    val user = try {
-                        userRepository.findByExternalId(k)
-                    } catch (exc: NoSuchElementException) {
+                }.filter { (userId, userData) ->
+                    val accessToken = userData[0][USER_ACCESS_TOKEN_KEY].asText()
+                    if (checkIsAuthorised(userId, accessToken)) true else {
                         isAnyUnauthorised = true
-                        userRepository.deregisterUser(k, accessToken)
-                        logger.warn(
-                            "no_user: {}", "The user $k could not be found in the " +
-                                "user repository."
-                        )
-                        return@filter false
+                        userRepository.deregisterUser(userId, accessToken)
+                        false
                     }
-                    if (!user.isAuthorized) {
-                        userRepository.deregisterUser(user.serviceUserId, accessToken)
-                        isAnyUnauthorised = true
-                        logger.warn(
-                            "invalid_user: {}", "The user $k does not seem to be authorized."
-                        )
-                        return@filter false
-                    }
-                    if (userRepository.getAccessToken(user) != accessToken) {
-                        isAnyUnauthorised = true
-                        userRepository.deregisterUser(user.serviceUserId, accessToken)
-                        logger.warn(
-                            "invalid_token: {}", "The token for user $k does not" +
-                                " match with the records on the system."
-                        )
-                        return@filter false
-                    }
-                    true
-                }.entries.associate { (k, v) ->
-                    userRepository.findByExternalId(k) to
+                }.entries.associate { (userId, userData) ->
+                    userRepository.findByExternalId(userId) to
                         // Map the List<JsonNode> back to <data-type>: [ {<data-1>}, {<data-2>} ]
                         // so it can be processed in the services without much refactoring
                         objectMapper.createObjectNode()
-                            .set(tree.fieldNames().next(), objectMapper.valueToTree(v))
+                            .set(tree.fieldNames().next(), objectMapper.valueToTree(userData))
                 }
 
             request.setProperty("user_tree_map", userTreeMap)
@@ -98,6 +74,32 @@ class GarminAuthValidator(
         } else {
             null
         }
+    }
+
+    private fun checkIsAuthorised(userId: String, accessToken: String): Boolean {
+        val user = try {
+            userRepository.findByExternalId(userId)
+        } catch (exc: NoSuchElementException) {
+            logger.warn(
+                "no_user: The user {} could not be found in the " +
+                    "user repository.", userId
+            )
+            return false
+        }
+        if (!user.isAuthorized) {
+            logger.warn(
+                "invalid_user: The user {} does not seem to be authorized.", userId
+            )
+            return false
+        }
+        if (userRepository.getAccessToken(user) != accessToken) {
+            logger.warn(
+                "invalid_token: The token for user {} does not" +
+                    " match with the records on the system.", userId
+            )
+            return false
+        }
+        return true
     }
 
     companion object {
