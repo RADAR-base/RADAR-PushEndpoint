@@ -1,6 +1,7 @@
 package org.radarbase.push.integration
 
 import com.fasterxml.jackson.databind.JsonNode
+import org.glassfish.hk2.api.TypeLiteral
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.process.internal.RequestScoped
 import org.glassfish.jersey.server.ResourceConfig
@@ -10,8 +11,8 @@ import org.radarbase.jersey.config.JerseyResourceEnhancer
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.auth.GarminAuthValidator
-import org.radarbase.push.integration.garmin.factory.GarminJsonNodeFactory
-import org.radarbase.push.integration.garmin.factory.GarminUserFactory
+import org.radarbase.push.integration.garmin.factory.GarminAuthMetadataFactory
+import org.radarbase.push.integration.garmin.factory.GarminUserTreeMapFactory
 import org.radarbase.push.integration.garmin.service.BackfillService
 import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
@@ -50,14 +51,14 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
             .named(GARMIN_QUALIFIER)
             .`in`(Singleton::class.java)
 
-        bindFactory(GarminJsonNodeFactory::class.java)
-            .to(JsonNode::class.java)
+        bindFactory(GarminUserTreeMapFactory::class.java)
+            .to(object : TypeLiteral<MutableMap<User, JsonNode>>() {}.type)
             .proxy(true)
             .named(GARMIN_QUALIFIER)
             .`in`(RequestScoped::class.java)
 
-        bindFactory(GarminUserFactory::class.java)
-            .to(User::class.java)
+        bindFactory(GarminAuthMetadataFactory::class.java)
+            .to(object : TypeLiteral<MutableMap<String, String>>() {}.type)
             .proxy(true)
             .named(GARMIN_QUALIFIER)
             .`in`(RequestScoped::class.java)

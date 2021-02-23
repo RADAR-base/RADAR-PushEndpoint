@@ -20,6 +20,7 @@ dependencyLocking {
 
 repositories {
     jcenter()
+    mavenCentral()
     // Non-jcenter radar releases
     maven(url = "https://dl.bintray.com/radar-cns/org.radarcns")
     maven(url = "https://dl.bintray.com/radar-base/org.radarbase")

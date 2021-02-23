@@ -182,10 +182,4 @@ class GarminHealthApiService(
         producerPool.produce(respirationConverter.topic, records)
         return Response.status(OK).build()
     }
-
-    @Throws(IOException::class, NoSuchElementException::class, BadRequestException::class)
-    fun handleDeregistration(user: User): Response {
-        userRepository.reportDeregistration(user)
-        return Response.status(OK).build()
-    }
 }
