@@ -200,7 +200,6 @@ class GarminServiceUserRepository(
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
         val MIN_INSTANT = Instant.EPOCH
 
-
         private val logger = LoggerFactory.getLogger(GarminServiceUserRepository::class.java)
     }
 }
