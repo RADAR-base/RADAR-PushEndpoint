@@ -30,6 +30,7 @@ import java.util.stream.Stream
 import javax.ws.rs.NotAuthorizedException
 import javax.ws.rs.core.Context
 
+@Suppress("UNCHECKED_CAST")
 class GarminServiceUserRepository(
     @Context private val config: Config
 ) : GarminUserRepository(config) {
