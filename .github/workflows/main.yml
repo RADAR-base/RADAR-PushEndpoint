@@ -43,17 +43,3 @@ jobs:
             # Gradle check
             - name: Check
               run: ./gradlew check
-
-            - name: Comment Output on Failure
-              uses: actions/github-script@v3
-              if: github.event_name == 'pull_request' && failure()
-              with:
-                github-token: ${{ secrets.GITHUB_TOKEN }}
-                script: |
-                    github.issues.createComment({
-                      issue_number: context.issue.number,
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      body: '❌ ${{ github.workflow }} failed: ${{ toJSON(needs.build.outputs) }}'
-                    })
-
