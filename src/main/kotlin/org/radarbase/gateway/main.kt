@@ -1,17 +1,27 @@
 package org.radarbase.gateway
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.radarbase.jersey.GrizzlyServer
 import org.radarbase.jersey.config.ConfigLoader
 import org.slf4j.LoggerFactory
-import java.lang.IllegalStateException
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     val config = try {
-        ConfigLoader.loadConfig<Config>(listOf(
+        ConfigLoader.loadConfig<Config>(
+            listOf(
                 "gateway.yml",
-                "/etc/radar-gateway/gateway.yml"), args)
-                .withDefaults()
+                "/etc/radar-gateway/gateway.yml"
+            ),
+            args,
+            ObjectMapper(YAMLFactory())
+                .registerModule(KotlinModule())
+                .registerModule(JavaTimeModule())
+        )
+            .withDefaults()
     } catch (ex: IllegalArgumentException) {
         logger.error("No configuration file was found.")
         logger.error("Usage: radar-gateway <config-file>")

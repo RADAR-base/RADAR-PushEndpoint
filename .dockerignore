@@ -4,3 +4,4 @@
 /out
 /.git
 /.gradle
+/gradle/wrapper

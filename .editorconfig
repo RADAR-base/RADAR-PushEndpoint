@@ -12,5 +12,9 @@ indent_style = space
 indent_size = 4
 continuation_indent_size = 8
 
+[*.kt]
+continuation_indent_size = 4
+disabled_rules=no-wildcard-imports
+
 [*.gradle]
 indent_size = 4

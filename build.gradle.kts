@@ -11,11 +11,16 @@ plugins {
 }
 
 group = "org.radarbase"
-version = "0.5.3"
-description = "RADAR Gateway to handle secured data flow to backend."
+version = "0.1.0"
+description = "RADAR Push API Gateway to handle secured data flow to backend."
+
+dependencyLocking {
+    lockAllConfigurations()
+}
 
 repositories {
     jcenter()
+    mavenCentral()
     // Non-jcenter radar releases
     maven(url = "https://dl.bintray.com/radar-cns/org.radarcns")
     maven(url = "https://dl.bintray.com/radar-base/org.radarbase")
@@ -39,8 +44,15 @@ dependencies {
     implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}")
     implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
 
+    implementation("org.radarcns:oauth-client-util:${project.property("radarOauthClientVersion")}")
+
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
-    implementation("com.fasterxml.jackson.core:jackson-databind:${project.property("jacksonVersion")}")
+
+    val jacksonVersion: String by project
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
 
     val grizzlyVersion: String by project
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
@@ -48,11 +60,16 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
     runtimeOnly("ch.qos.logback:logback-classic:${project.property("logbackVersion")}")
 
+    val jedisVersion: String by project
+    implementation("redis.clients:jedis:$jedisVersion")
+
     val junitVersion: String by project
     val okhttp3Version: String by project
     val radarSchemasVersion: String by project
+    implementation("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0")
+    testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 
@@ -67,8 +84,8 @@ val kotlinApiVersion: String by project
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         jvmTarget = "11"
-        apiVersion = kotlinApiVersion
-        languageVersion = kotlinApiVersion
+        apiVersion = "1.4"
+        languageVersion = "1.4"
     }
 }
 

@@ -3,7 +3,7 @@
 
 server:
     # URI to serve data to
-    baseUri: http://0.0.0.0:8090/radar-gateway/
+    baseUri: http://0.0.0.0:8090/push/integrations/
     # Maximum number of simultaneous requests to Kafka.
     #maxRequests: 200
     # Maximum request content length, also when decompressed.
@@ -52,3 +52,16 @@ auth:
         #ecdsa: []
         # RSA public keys
         #rsa: []
+
+# Push Service specific configuration
+pushIntegration:
+    garmin:
+        enabled: true
+        backfill:
+            defaultEndDate: "1590844126"
+            # Redis configuration
+            redis:
+                # Redis URI
+                uri: redis://localhost:6379
+                # Key prefix for locks
+                lockPrefix: radar-push-garmin/lock/
