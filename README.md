@@ -1,4 +1,4 @@
-# RADAR-Gateway
+# RADAR-PushEndpoint
 
 [![Build Status](https://github.com/RADAR-base/RADAR-PushEndpoint/workflows/CI/badge.svg)](https://github.com/RADAR-base/RADAR-PushEndpoint/actions?query=workflow%3ACI+branch%3Adev+)
 [![Docker Build](https://img.shields.io/docker/cloud/build/radarbase/radar-push-endpoint)](https://hub.docker.com/repository/docker/radarbase/radar-push-endpoint)

@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "org.radarbase"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0"
 description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 dependencyLocking {
