@@ -118,7 +118,7 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     override fun applyPendingUpdates() {
         logger.info("Requesting user information from webservice")
-        val request = requestFor("users?source-type=Garmin").build()
+        val request = requestFor("users?source-type=Garmin&page=1&size=" + Integer.MAX_VALUE).build()
         timedCachedUsers = makeRequest<Users>(request, USER_LIST_READER).users
 
         nextFetch = Instant.now().plus(FETCH_THRESHOLD)
