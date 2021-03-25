@@ -48,6 +48,6 @@ class StressBodyBatteryGarminAvroConverter(
 
     companion object {
         const val ROOT = "stressDetails"
-        const val SUB_NODE = "timeOffsetBodyBatteryDetails"
+        const val SUB_NODE = "timeOffsetBodyBatteryValues"
     }
 }
