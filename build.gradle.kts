@@ -1,29 +1,41 @@
 import java.time.Duration
 import org.jetbrains.kotlin.cli.common.toBooleanLenient
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 
 plugins {
     id("idea")
     id("application")
     kotlin("jvm")
     id("org.unbroken-dome.test-sets") version "3.0.1"
-    id("com.avast.gradle.docker-compose") version "0.13.4"
+    id("com.avast.gradle.docker-compose") version "0.14.1"
+    id("com.github.ben-manes.versions") version "0.38.0"
 }
 
 group = "org.radarbase"
 version = "0.1.0"
 description = "RADAR Push API Gateway to handle secured data flow to backend."
 
-dependencyLocking {
-    lockAllConfigurations()
+allprojects {
+    apply(plugin = "com.github.ben-manes.versions")
+
+    fun isNonStable(version: String): Boolean {
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val regex = "^[0-9,.v-]+(-r)?$".toRegex()
+        val isStable = stableKeyword || regex.matches(version)
+        return isStable.not()
+    }
+
+    tasks.named<DependencyUpdatesTask>("dependencyUpdates").configure {
+        rejectVersionIf {
+            isNonStable(candidate.version)
+        }
+    }
 }
 
 repositories {
     mavenCentral()
     maven(url = "https://packages.confluent.io/maven/")
-    // For working with dev-branches
-    maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
-    maven(url = "https://oss.jfrog.org/artifactory/libs-snapshot/")
 }
 
 val integrationTest = testSets.create("integrationTest")
