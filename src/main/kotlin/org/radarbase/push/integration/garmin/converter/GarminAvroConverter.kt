@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.converter.AvroConverter
 import org.radarbase.push.integration.common.user.User
-import javax.ws.rs.BadRequestException
+import jakarta.ws.rs.BadRequestException
 
 abstract class GarminAvroConverter(override val topic: String) : AvroConverter {
 

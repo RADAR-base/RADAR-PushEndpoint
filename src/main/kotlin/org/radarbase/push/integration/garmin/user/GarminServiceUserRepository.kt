@@ -17,8 +17,8 @@ import org.radarbase.jersey.exception.HttpBadRequestException
 import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
-import org.radarcns.exception.TokenException
-import org.radarcns.oauth.OAuth2Client
+import org.radarbase.exception.TokenException
+import org.radarbase.oauth.OAuth2Client
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.URL
@@ -27,8 +27,8 @@ import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Stream
-import javax.ws.rs.NotAuthorizedException
-import javax.ws.rs.core.Context
+import jakarta.ws.rs.NotAuthorizedException
+import jakarta.ws.rs.core.Context
 
 @Suppress("UNCHECKED_CAST")
 class GarminServiceUserRepository(

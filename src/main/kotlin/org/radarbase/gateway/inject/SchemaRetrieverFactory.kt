@@ -11,7 +11,7 @@ import org.radarbase.producer.rest.RestClient
 import org.radarbase.producer.rest.SchemaRetriever
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
-import javax.ws.rs.core.Context
+import jakarta.ws.rs.core.Context
 
 /** Creates a Schema Retriever based on the current schema registry configuration. */
 class SchemaRetrieverFactory(

@@ -31,8 +31,8 @@ import org.radarcns.passive.phone.PhoneAcceleration
 import java.net.URL
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder
-import javax.ws.rs.core.MediaType.APPLICATION_JSON
-import javax.ws.rs.core.Response.Status
+import jakarta.ws.rs.core.MediaType.APPLICATION_JSON
+import jakarta.ws.rs.core.Response.Status
 
 class KafkaTopicsTest {
     private fun requestAccessToken(): String {

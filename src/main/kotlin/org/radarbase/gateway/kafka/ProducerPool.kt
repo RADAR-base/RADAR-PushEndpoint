@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Semaphore
-import javax.ws.rs.core.Context
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.Response
 
 class ProducerPool(
         @Context private val config: Config

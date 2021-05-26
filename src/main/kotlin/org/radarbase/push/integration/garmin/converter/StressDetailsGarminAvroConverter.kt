@@ -5,8 +5,8 @@ import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminStressDetailSummary
 import java.time.Instant
-import javax.ws.rs.BadRequestException
-import javax.ws.rs.container.ContainerRequestContext
+import jakarta.ws.rs.BadRequestException
+import jakarta.ws.rs.container.ContainerRequestContext
 
 class StressDetailsGarminAvroConverter(topic: String = "push_integration_garmin_stress") :
     GarminAvroConverter(topic) {

@@ -21,7 +21,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
-import javax.ws.rs.core.Context
+import jakarta.ws.rs.core.Context
 
 /**
  * The backfill service should be used to collect historic data. This will send requests to garmin's

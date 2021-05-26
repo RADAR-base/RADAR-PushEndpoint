@@ -6,7 +6,7 @@ import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminDailySummary
 import java.io.IOException
 import java.time.Instant
-import javax.ws.rs.BadRequestException
+import jakarta.ws.rs.BadRequestException
 
 class DailiesGarminAvroConverter(topic: String = "push_integration_garmin_daily") :
     GarminAvroConverter(topic) {

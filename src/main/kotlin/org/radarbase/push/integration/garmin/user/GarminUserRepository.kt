@@ -22,7 +22,7 @@ import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.UserRepository
 import java.io.IOException
 import java.time.Instant
-import javax.ws.rs.NotAuthorizedException
+import jakarta.ws.rs.NotAuthorizedException
 
 /**
  * User repository for Garmin users.

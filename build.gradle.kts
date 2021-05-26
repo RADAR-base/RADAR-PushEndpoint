@@ -19,15 +19,11 @@ dependencyLocking {
 }
 
 repositories {
-    jcenter()
     mavenCentral()
-    // Non-jcenter radar releases
-    maven(url = "https://dl.bintray.com/radar-cns/org.radarcns")
-    maven(url = "https://dl.bintray.com/radar-base/org.radarbase")
-    // For working with dev-branches
-    maven(url = "https://repo.thehyve.nl/content/repositories/snapshots")
-    maven(url = "https://oss.jfrog.org/artifactory/libs-snapshot/")
     maven(url = "https://packages.confluent.io/maven/")
+    // For working with dev-branches
+    maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
+    maven(url = "https://oss.jfrog.org/artifactory/libs-snapshot/")
 }
 
 val integrationTest = testSets.create("integrationTest")
@@ -44,7 +40,7 @@ dependencies {
     implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}")
     implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
 
-    implementation("org.radarcns:oauth-client-util:${project.property("radarOauthClientVersion")}")
+    implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
@@ -66,16 +62,16 @@ dependencies {
     val junitVersion: String by project
     val okhttp3Version: String by project
     val radarSchemasVersion: String by project
-    implementation("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+    implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 
-    testImplementation("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+    testImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTest.implementationConfigurationName("com.squareup.okhttp3:okhttp:$okhttp3Version")
-    integrationTest.implementationConfigurationName("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+    integrationTest.implementationConfigurationName("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTest.implementationConfigurationName("org.radarbase:radar-commons-testing:$radarCommonsVersion")
 }
 

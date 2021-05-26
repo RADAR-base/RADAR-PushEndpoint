@@ -1,7 +1,7 @@
 package org.radarbase.gateway.kafka
 
 import org.radarbase.jersey.service.HealthService
-import javax.ws.rs.core.Context
+import jakarta.ws.rs.core.Context
 
 class KafkaHealthMetric(
         @Context private val kafkaAdminService: KafkaAdminService

@@ -6,7 +6,7 @@ import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminRespiration
 import java.time.Instant
-import javax.ws.rs.BadRequestException
+import jakarta.ws.rs.BadRequestException
 
 class RespirationGarminAvroConverter(topic: String = "push_integration_garmin_respiration") :
     GarminAvroConverter(topic) {
