@@ -47,7 +47,6 @@ dependencies {
     val radarCommonsVersion: String by project
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     implementation("org.radarbase:radar-jersey:${project.property("radarJerseyVersion")}")
-    implementation("org.radarbase:lzfse-decode:${project.property("lzfseVersion")}")
 
     implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}")
     implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
