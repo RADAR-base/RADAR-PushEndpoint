@@ -5,7 +5,7 @@ import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminActivitySummary
 import java.time.Instant
-import javax.ws.rs.BadRequestException
+import jakarta.ws.rs.BadRequestException
 
 class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_activity") :
     GarminAvroConverter(topic) {

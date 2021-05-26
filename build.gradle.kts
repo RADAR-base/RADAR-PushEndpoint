@@ -1,32 +1,40 @@
 import java.time.Duration
 import org.jetbrains.kotlin.cli.common.toBooleanLenient
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 
 plugins {
     id("idea")
     id("application")
     kotlin("jvm")
     id("org.unbroken-dome.test-sets") version "3.0.1"
-    id("com.avast.gradle.docker-compose") version "0.13.4"
+    id("com.avast.gradle.docker-compose") version "0.14.1"
+    id("com.github.ben-manes.versions") version "0.38.0"
 }
 
 group = "org.radarbase"
 version = "0.1.0"
 description = "RADAR Push API Gateway to handle secured data flow to backend."
 
-dependencyLocking {
-    lockAllConfigurations()
+allprojects {
+    apply(plugin = "com.github.ben-manes.versions")
+
+    fun isNonStable(version: String): Boolean {
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val regex = "^[0-9,.v-]+(-r)?$".toRegex()
+        val isStable = stableKeyword || regex.matches(version)
+        return isStable.not()
+    }
+
+    tasks.named<DependencyUpdatesTask>("dependencyUpdates").configure {
+        rejectVersionIf {
+            isNonStable(candidate.version)
+        }
+    }
 }
 
 repositories {
-    jcenter()
     mavenCentral()
-    // Non-jcenter radar releases
-    maven(url = "https://dl.bintray.com/radar-cns/org.radarcns")
-    maven(url = "https://dl.bintray.com/radar-base/org.radarbase")
-    // For working with dev-branches
-    maven(url = "https://repo.thehyve.nl/content/repositories/snapshots")
-    maven(url = "https://oss.jfrog.org/artifactory/libs-snapshot/")
     maven(url = "https://packages.confluent.io/maven/")
 }
 
@@ -39,12 +47,11 @@ dependencies {
     val radarCommonsVersion: String by project
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     implementation("org.radarbase:radar-jersey:${project.property("radarJerseyVersion")}")
-    implementation("org.radarbase:lzfse-decode:${project.property("lzfseVersion")}")
 
     implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}")
     implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
 
-    implementation("org.radarcns:oauth-client-util:${project.property("radarOauthClientVersion")}")
+    implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
@@ -66,16 +73,16 @@ dependencies {
     val junitVersion: String by project
     val okhttp3Version: String by project
     val radarSchemasVersion: String by project
-    implementation("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+    implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 
-    testImplementation("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+    testImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTest.implementationConfigurationName("com.squareup.okhttp3:okhttp:$okhttp3Version")
-    integrationTest.implementationConfigurationName("org.radarcns:radar-schemas-commons:$radarSchemasVersion")
+    integrationTest.implementationConfigurationName("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTest.implementationConfigurationName("org.radarbase:radar-commons-testing:$radarCommonsVersion")
 }
 

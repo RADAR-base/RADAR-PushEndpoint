@@ -5,7 +5,7 @@ import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminSleepSummary
 import java.time.Instant
-import javax.ws.rs.BadRequestException
+import jakarta.ws.rs.BadRequestException
 
 class SleepsGarminAvroConverter(topic: String = "push_integration_garmin_sleep") :
     GarminAvroConverter(topic) {

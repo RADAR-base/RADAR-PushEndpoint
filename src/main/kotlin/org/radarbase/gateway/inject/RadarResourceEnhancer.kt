@@ -13,7 +13,7 @@ import org.radarbase.jersey.auth.filter.AuthenticationFilter
 import org.radarbase.jersey.auth.filter.AuthorizationFeature
 import org.radarbase.jersey.config.JerseyResourceEnhancer
 import java.util.concurrent.TimeUnit
-import javax.ws.rs.ext.ContextResolver
+import jakarta.ws.rs.ext.ContextResolver
 
 class RadarResourceEnhancer: JerseyResourceEnhancer {
 

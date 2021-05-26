@@ -10,10 +10,10 @@ import org.radarbase.push.integration.garmin.converter.*
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.io.IOException
 import javax.inject.Named
-import javax.ws.rs.BadRequestException
-import javax.ws.rs.core.Context
-import javax.ws.rs.core.Response
-import javax.ws.rs.core.Response.Status.OK
+import jakarta.ws.rs.BadRequestException
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.Response.Status.OK
 
 class GarminHealthApiService(
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository,

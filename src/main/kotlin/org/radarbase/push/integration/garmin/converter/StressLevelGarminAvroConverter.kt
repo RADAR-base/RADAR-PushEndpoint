@@ -6,7 +6,7 @@ import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminStressLevelSample
 import java.time.Instant
-import javax.ws.rs.container.ContainerRequestContext
+import jakarta.ws.rs.container.ContainerRequestContext
 
 class StressLevelGarminAvroConverter(
     topic: String = "push_integration_garmin_stress_level"

@@ -11,8 +11,8 @@ import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.slf4j.LoggerFactory
 import javax.inject.Named
-import javax.ws.rs.container.ContainerRequestContext
-import javax.ws.rs.core.Context
+import jakarta.ws.rs.container.ContainerRequestContext
+import jakarta.ws.rs.core.Context
 
 
 class GarminAuthValidator(
