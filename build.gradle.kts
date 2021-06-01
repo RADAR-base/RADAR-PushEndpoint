@@ -84,9 +84,6 @@ dependencies {
     val radarSchemasVersion: String by project
     implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 
-    val firebaseAdminSDKVersion: String by project
-    implementation("com.google.firebase:firebase-admin:$firebaseAdminSDKVersion")
-
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
