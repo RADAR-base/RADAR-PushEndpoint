@@ -56,14 +56,6 @@ dependencies {
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     implementation("org.radarbase:radar-jersey:${project.property("radarJerseyVersion")}")
 
-//    implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}"){
-//        isTransitive = true
-//        exclude(group = "org.slf4j", module = "slf4j-api")
-//    }
-//    implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}"){
-//        isTransitive = false
-//    }
-
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
     runtimeOnly("javax.ws.rs:javax.ws.rs-api:2.1.1")

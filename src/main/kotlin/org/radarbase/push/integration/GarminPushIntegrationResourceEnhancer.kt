@@ -1,6 +1,7 @@
 package org.radarbase.push.integration
 
 import com.fasterxml.jackson.databind.JsonNode
+import jakarta.inject.Singleton
 import org.glassfish.hk2.api.TypeLiteral
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.process.internal.RequestScoped
@@ -16,7 +17,7 @@ import org.radarbase.push.integration.garmin.factory.GarminUserTreeMapFactory
 import org.radarbase.push.integration.garmin.service.BackfillService
 import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
-import javax.inject.Singleton
+
 
 class GarminPushIntegrationResourceEnhancer(private val config: Config) :
     JerseyResourceEnhancer {
