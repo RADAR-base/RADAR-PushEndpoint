@@ -1,14 +1,14 @@
-import java.time.Duration
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import org.jetbrains.kotlin.cli.common.toBooleanLenient
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
+import java.time.Duration
 
 plugins {
     id("idea")
     id("application")
     kotlin("jvm")
     id("org.unbroken-dome.test-sets") version "3.0.1"
-    id("com.avast.gradle.docker-compose") version "0.14.1"
+    id("com.avast.gradle.docker-compose") version "0.14.3"
     id("com.github.ben-manes.versions") version "0.38.0"
 }
 
@@ -20,7 +20,8 @@ allprojects {
     apply(plugin = "com.github.ben-manes.versions")
 
     fun isNonStable(version: String): Boolean {
-        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val stableKeyword =
+            listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
         val regex = "^[0-9,.v-]+(-r)?$".toRegex()
         val isStable = stableKeyword || regex.matches(version)
         return isStable.not()
@@ -38,7 +39,14 @@ repositories {
     maven(url = "https://packages.confluent.io/maven/")
 }
 
-val integrationTest = testSets.create("integrationTest")
+val integrationTestSourceSet = sourceSets.create("integrationTest") {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+val integrationTestImplementation: Configuration by configurations.getting {
+    extendsFrom(configurations.testImplementation.get())
+}
+configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -48,8 +56,9 @@ dependencies {
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     implementation("org.radarbase:radar-jersey:${project.property("radarJerseyVersion")}")
 
-    implementation("org.apache.kafka:kafka-clients:${project.property("kafkaVersion")}")
-    implementation("io.confluent:kafka-avro-serializer:${project.property("confluentVersion")}")
+    implementation(project(path = ":deprecated-javax", configuration = "shadow"))
+
+    runtimeOnly("javax.ws.rs:javax.ws.rs-api:2.1.1")
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
@@ -65,7 +74,7 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
-    runtimeOnly("ch.qos.logback:logback-classic:${project.property("logbackVersion")}")
+    implementation("ch.qos.logback:logback-classic:${project.property("logbackVersion")}")
 
     val jedisVersion: String by project
     implementation("redis.clients:jedis:$jedisVersion")
@@ -75,15 +84,18 @@ dependencies {
     val radarSchemasVersion: String by project
     implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 
+    val firebaseAdminSDKVersion: String by project
+    implementation("com.google.firebase:firebase-admin:$firebaseAdminSDKVersion")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 
     testImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
-    integrationTest.implementationConfigurationName("com.squareup.okhttp3:okhttp:$okhttp3Version")
-    integrationTest.implementationConfigurationName("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
-    integrationTest.implementationConfigurationName("org.radarbase:radar-commons-testing:$radarCommonsVersion")
+    integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
+    integrationTestImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
+    integrationTestImplementation("org.radarbase:radar-commons-testing:$radarCommonsVersion")
 }
 
 val kotlinApiVersion: String by project
@@ -94,6 +106,14 @@ tasks.withType<KotlinCompile> {
         apiVersion = "1.4"
         languageVersion = "1.4"
     }
+}
+
+val integrationTest by tasks.registering(Test::class) {
+    description = "Runs integration tests."
+    group = "verification"
+    testClassesDirs = integrationTestSourceSet.output.classesDirs
+    classpath = integrationTestSourceSet.runtimeClasspath
+    shouldRunAfter("test")
 }
 
 tasks.withType<Test> {
@@ -113,22 +133,27 @@ application {
     mainClassName = "org.radarbase.gateway.MainKt"
 
     applicationDefaultJvmArgs = listOf(
-            "-Dcom.sun.management.jmxremote",
-            "-Dcom.sun.management.jmxremote.local.only=false",
-            "-Dcom.sun.management.jmxremote.port=9010",
-            "-Dcom.sun.management.jmxremote.authenticate=false",
-            "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote",
+        "-Dcom.sun.management.jmxremote.local.only=false",
+        "-Dcom.sun.management.jmxremote.port=9010",
+        "-Dcom.sun.management.jmxremote.authenticate=false",
+        "-Dcom.sun.management.jmxremote.ssl=false"
     )
 }
 
 dockerCompose {
     useComposeFiles = listOf("src/integrationTest/docker/docker-compose.yml")
+    val dockerComposeBuild: String? by project
+    val doBuild = dockerComposeBuild?.toBooleanLenient() ?: true
+    buildBeforeUp = doBuild
+    buildBeforePull = doBuild
     buildAdditionalArgs = emptyList<String>()
     val dockerComposeStopContainers: String? by project
     stopContainers = dockerComposeStopContainers?.toBooleanLenient() ?: true
     waitForTcpPortsTimeout = Duration.ofMinutes(3)
     environment["SERVICES_HOST"] = "localhost"
-    isRequiredBy(tasks["integrationTest"])
+    captureContainersOutputToFiles = project.file("build/container-logs")
+    isRequiredBy(integrationTest)
 }
 
 idea {
@@ -137,19 +162,19 @@ idea {
     }
 }
 
-
-tasks.register("downloadDockerDependencies") {
-    doFirst {
-        configurations["compileClasspath"].files
-        configurations["runtimeClasspath"].files
-        println("Downloaded all dependencies")
+allprojects {
+    tasks.register("downloadDockerDependencies") {
+        doFirst {
+            configurations["compileClasspath"].files
+            configurations["runtimeClasspath"].files
+            println("Downloaded all dependencies")
+        }
+        outputs.upToDateWhen { false }
     }
-    outputs.upToDateWhen { false }
-}
 
-tasks.register("downloadDependencies") {
-    doFirst {
-        configurations.asMap
+    tasks.register("downloadDependencies") {
+        doFirst {
+            configurations.asMap
                 .filterValues { it.isCanBeResolved }
                 .forEach { (name, config) ->
                     try {
@@ -158,11 +183,12 @@ tasks.register("downloadDependencies") {
                         project.logger.warn("Cannot find dependency for configuration {}", name, ex)
                     }
                 }
-        println("Downloaded all dependencies")
+            println("Downloaded all dependencies")
+        }
+        outputs.upToDateWhen { false }
     }
-    outputs.upToDateWhen { false }
 }
 
 tasks.wrapper {
-    gradleVersion = "6.6.1"
+    gradleVersion = "7.0.2"
 }
