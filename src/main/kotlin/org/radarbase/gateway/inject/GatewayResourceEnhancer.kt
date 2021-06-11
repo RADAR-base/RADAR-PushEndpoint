@@ -1,5 +1,6 @@
 package org.radarbase.gateway.inject
 
+import jakarta.inject.Singleton
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.message.DeflateEncoder
 import org.glassfish.jersey.message.GZipEncoder
@@ -10,7 +11,6 @@ import org.radarbase.jersey.config.ConfigLoader
 import org.radarbase.jersey.config.JerseyResourceEnhancer
 import org.radarbase.jersey.service.HealthService
 import org.radarbase.producer.rest.SchemaRetriever
-import javax.inject.Singleton
 
 class GatewayResourceEnhancer(private val config: Config): JerseyResourceEnhancer {
 
