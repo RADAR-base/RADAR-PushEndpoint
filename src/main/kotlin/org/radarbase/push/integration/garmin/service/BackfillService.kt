@@ -1,5 +1,6 @@
 package org.radarbase.push.integration.garmin.service
 
+import jakarta.inject.Named
 import okhttp3.OkHttpClient
 import org.glassfish.jersey.server.monitoring.ApplicationEvent
 import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.DESTROY_FINISHED
@@ -20,7 +21,6 @@ import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
-import javax.inject.Named
 import jakarta.ws.rs.core.Context
 
 /**
