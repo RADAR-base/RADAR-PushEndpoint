@@ -1,6 +1,7 @@
 package org.radarbase.push.integration.garmin.service
 
 import jakarta.inject.Named
+import jakarta.ws.rs.core.Context
 import okhttp3.OkHttpClient
 import org.glassfish.jersey.server.monitoring.ApplicationEvent
 import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.DESTROY_FINISHED
@@ -21,7 +22,6 @@ import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
-import jakarta.ws.rs.core.Context
 
 /**
  * The backfill service should be used to collect historic data. This will send requests to garmin's
@@ -43,7 +43,10 @@ class BackfillService(
         redisHolder,
         config.pushIntegration.garmin.backfill.redis.lockPrefix
     )
-    private val httpClient = OkHttpClient()
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
     private val requestsPerUserPerIteration: Int
         get() = 40
 
