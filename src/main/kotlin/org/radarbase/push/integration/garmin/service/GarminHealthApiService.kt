@@ -2,6 +2,10 @@ package org.radarbase.push.integration.garmin.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import jakarta.inject.Named
+import jakarta.ws.rs.BadRequestException
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.Response.Status.OK
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool
@@ -10,10 +14,6 @@ import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.converter.*
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.io.IOException
-import jakarta.ws.rs.BadRequestException
-import jakarta.ws.rs.core.Context
-import jakarta.ws.rs.core.Response
-import jakarta.ws.rs.core.Response.Status.OK
 
 class GarminHealthApiService(
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository,
@@ -27,6 +27,8 @@ class GarminHealthApiService(
 
     private val activitiesConverter =
         ActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
+
+    private val manualActivitiesConverter = ManualActivitiesGarminAvroConverter()
 
     private val activityDetailsConverter =
         ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
@@ -107,7 +109,9 @@ class GarminHealthApiService(
 
     @Throws(IOException::class, BadRequestException::class)
     fun processManualActivities(tree: JsonNode, user: User): Response {
-        return this.processActivities(tree, user)
+        val records = manualActivitiesConverter.validateAndConvert(tree, user)
+        producerPool.produce(manualActivitiesConverter.topic, records)
+        return Response.status(OK).build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
