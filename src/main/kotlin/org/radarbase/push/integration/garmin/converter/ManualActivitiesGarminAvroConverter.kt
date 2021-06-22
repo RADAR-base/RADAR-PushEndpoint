@@ -5,7 +5,7 @@ import jakarta.ws.rs.BadRequestException
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 
-class ManualActivitiesGarminAvroConverter : ActivitiesGarminAvroConverter() {
+class ManualActivitiesGarminAvroConverter(topic: String) : ActivitiesGarminAvroConverter(topic) {
     override fun validate(tree: JsonNode) {
         val activities = tree[ROOT]
         if (activities == null || !activities.isArray) {

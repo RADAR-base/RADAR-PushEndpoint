@@ -28,7 +28,8 @@ class GarminHealthApiService(
     private val activitiesConverter =
         ActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
 
-    private val manualActivitiesConverter = ManualActivitiesGarminAvroConverter()
+    private val manualActivitiesConverter =
+        ManualActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
 
     private val activityDetailsConverter =
         ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
