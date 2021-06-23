@@ -103,7 +103,6 @@ class BackfillService(
         }
     }
 
-    @Throws(TooManyRequestsException::class)
     private fun makeRequest(req: RestRequest) {
         logger.debug("Making Request: {}", req.request)
         try {
@@ -124,5 +123,3 @@ class BackfillService(
         private const val WAIT_TIME_MS = 10_000L
     }
 }
-
-class TooManyRequestsException : RuntimeException()
