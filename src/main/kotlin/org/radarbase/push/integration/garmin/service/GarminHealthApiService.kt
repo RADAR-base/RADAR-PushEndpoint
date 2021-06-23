@@ -87,14 +87,14 @@ class GarminHealthApiService(
         val samples = heartRateSampleConverter.validateAndConvert(tree, user)
         producerPool.produce(heartRateSampleConverter.topic, samples)
 
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processActivities(tree: JsonNode, user: User): Response {
         val records = activitiesConverter.validateAndConvert(tree, user)
         producerPool.produce(activitiesConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
@@ -105,21 +105,21 @@ class GarminHealthApiService(
         val samples = activityDetailsSampleConverter.validateAndConvert(tree, user)
         producerPool.produce(activityDetailsSampleConverter.topic, samples)
 
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processManualActivities(tree: JsonNode, user: User): Response {
         val records = manualActivitiesConverter.validateAndConvert(tree, user)
         producerPool.produce(manualActivitiesConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processEpochs(tree: JsonNode, user: User): Response {
         val records = epochsConverter.validateAndConvert(tree, user)
         producerPool.produce(epochsConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
@@ -136,14 +136,14 @@ class GarminHealthApiService(
         val respiration = sleepRespirationConverter.validateAndConvert(tree, user)
         producerPool.produce(sleepRespirationConverter.topic, respiration)
 
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processBodyCompositions(tree: JsonNode, user: User): Response {
         val records = bodyCompsConverter.validateAndConvert(tree, user)
         producerPool.produce(bodyCompsConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
@@ -157,34 +157,34 @@ class GarminHealthApiService(
         val bodyBattery = stressBodyBatteryConverter.validateAndConvert(tree, user)
         producerPool.produce(stressBodyBatteryConverter.topic, bodyBattery)
 
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processUserMetrics(tree: JsonNode, user: User): Response {
         val records = userMetricsConverter.validateAndConvert(tree, user)
         producerPool.produce(userMetricsConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processMoveIQ(tree: JsonNode, user: User): Response {
         val records = moveIQConverter.validateAndConvert(tree, user)
         producerPool.produce(moveIQConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processPulseOx(tree: JsonNode, user: User): Response {
         val records = pulseOxConverter.validateAndConvert(tree, user)
         producerPool.produce(pulseOxConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 
     @Throws(IOException::class, BadRequestException::class)
     fun processRespiration(tree: JsonNode, user: User): Response {
         val records = respirationConverter.validateAndConvert(tree, user)
         producerPool.produce(respirationConverter.topic, records)
-        return Response.status(OK).build()
+        return Response.ok().build()
     }
 }
