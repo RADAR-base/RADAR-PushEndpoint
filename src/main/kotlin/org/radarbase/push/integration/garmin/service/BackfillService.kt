@@ -95,9 +95,6 @@ class BackfillService(
                         }
                     })
                 }
-            } catch (ex: TooManyRequestsException) {
-                logger.info("Stopping current iteration...")
-                return
             } catch (exc: IOException) {
                 logger.warn("I/O Exception while making Backfill requests.", exc)
             }
@@ -111,26 +108,12 @@ class BackfillService(
         logger.debug("Making Request: {}", req.request)
         try {
             httpClient.newCall(req.request).execute().use { response ->
-                when {
-                    response.isSuccessful -> requestGenerator.requestSuccessful(req, response)
-                    response.code == 429 -> {
-                        requestGenerator.requestFailed(req, response)
-                        logger.info(
-                            "Too many requests for user ${req.user.id}."
-                        )
-                        throw TooManyRequestsException()
-                    }
-                    response.code == 409 -> {
-                        logger.info(
-                            "A duplicate request was made. Marking successful..."
-                        )
-                        requestGenerator.requestSuccessful(req, response)
-                    }
-                    else -> requestGenerator.requestFailed(req, response)
+                if (response.isSuccessful) {
+                    requestGenerator.requestSuccessful(req, response)
+                } else {
+                    requestGenerator.requestFailed(req, response)
                 }
             }
-        } catch (ex: TooManyRequestsException) {
-            throw ex
         } catch (ex: Throwable) {
             logger.warn("Error making request ${req.request.url}.", ex)
         }

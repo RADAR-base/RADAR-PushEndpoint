@@ -6,7 +6,7 @@ import org.radarbase.push.integration.common.user.User
 
 interface RequestGenerator {
 
-    fun requests(user: User, max: Int): List<RestRequest>
+    fun requests(user: User, max: Int): Sequence<RestRequest>
 
     fun requestSuccessful(request: RestRequest, response: Response)
 
