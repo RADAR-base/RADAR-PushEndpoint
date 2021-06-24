@@ -26,33 +26,6 @@ kafka:
     serialization:
         schema.registry.url: http://schema-registry-1:8081
 
-# Authorization settings
-auth:
-    # ManagementPortal URL. If available, this is used to read the public key from
-    # ManagementPortal directly. This is the recommended method of getting public key.
-    managementPortalUrl: http://managementportal-app:8080
-    # Whether to check that the user that submits data has the reported source ID registered
-    # in the ManagementPortal.
-    #checkSourceId: true
-    # OAuth 2.0 resource name.
-    #resourceName: res_gateway
-    # OAuth 2.0 token issuer. If null, this is not checked.
-    #issuer: null
-    # Key store for checking the digital signature of OAuth 2.0 JWTs.
-    #keyStore:
-        # Path to the p12 key store.
-        #path: null
-        # Alias in the key store to use
-        #alias: null
-        # Password of the key store
-        #password: null
-    # Plain-text PEM public keys
-    #publicKeys:
-        # ECDSA public keys
-        #ecdsa: []
-        # RSA public keys
-        #rsa: []
-
 # Push Service specific configuration
 pushIntegration:
     garmin:

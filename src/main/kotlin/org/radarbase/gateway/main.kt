@@ -3,7 +3,7 @@ package org.radarbase.gateway
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.kotlinModule
 import org.radarbase.jersey.GrizzlyServer
 import org.radarbase.jersey.config.ConfigLoader
 import org.slf4j.LoggerFactory
@@ -18,7 +18,7 @@ fun main(args: Array<String>) {
             ),
             args,
             ObjectMapper(YAMLFactory())
-                .registerModule(KotlinModule())
+                .registerModule(kotlinModule())
                 .registerModule(JavaTimeModule())
         )
             .withDefaults()

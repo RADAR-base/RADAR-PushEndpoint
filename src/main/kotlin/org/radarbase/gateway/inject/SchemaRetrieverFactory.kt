@@ -3,6 +3,7 @@ package org.radarbase.gateway.inject
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig.USER_INFO_CONFIG
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_USER_INFO_CONFIG
+import jakarta.ws.rs.core.Context
 import okhttp3.Credentials
 import okhttp3.Headers.Companion.headersOf
 import org.radarbase.config.ServerConfig
@@ -11,7 +12,6 @@ import org.radarbase.producer.rest.RestClient
 import org.radarbase.producer.rest.SchemaRetriever
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
-import javax.ws.rs.core.Context
 
 /** Creates a Schema Retriever based on the current schema registry configuration. */
 class SchemaRetrieverFactory(

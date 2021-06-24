@@ -1,53 +1,55 @@
 package org.radarbase.push.integration.garmin.user
 
-import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import io.confluent.common.config.ConfigException
+import jakarta.ws.rs.NotAuthorizedException
+import jakarta.ws.rs.core.Context
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.apache.kafka.common.config.ConfigException
 import org.json.JSONObject
+import org.radarbase.exception.TokenException
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.jersey.exception.HttpBadRequestException
+import org.radarbase.oauth.OAuth2Client
 import org.radarbase.push.integration.common.auth.SignRequestParams
+import org.radarbase.push.integration.common.inject.ObjectReaderFactory
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
-import org.radarcns.exception.TokenException
-import org.radarcns.oauth.OAuth2Client
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.URL
 import java.time.Duration
 import java.time.Instant
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.stream.Stream
-import javax.ws.rs.NotAuthorizedException
-import javax.ws.rs.core.Context
 
 @Suppress("UNCHECKED_CAST")
 class GarminServiceUserRepository(
-    @Context private val config: Config
+    @Context private val config: Config,
+    @Context private val client: OkHttpClient,
+    @Context private val objectReaderFactory: ObjectReaderFactory,
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
-    private val client: OkHttpClient = OkHttpClient()
     private val cachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> =
         ConcurrentHashMap<String, OAuth1UserCredentials>()
     private var nextFetch = MIN_INSTANT
 
     private val baseUrl: HttpUrl
 
-    private var timedCachedUsers: List<User> = ArrayList<User>()
+    private var timedCachedUsers: List<User> = ArrayList()
 
     private val repositoryClient: OAuth2Client
     private val tokenUrl: URL
     private val clientId: String
     private val clientSecret: String
+
+    private val userListReader: ObjectReader by lazy { objectReaderFactory.readerFor(Users::class) }
+    private val userReader: ObjectReader by lazy { objectReaderFactory.readerFor(GarminUser::class) }
+    private val oauthReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth1UserCredentials::class) }
+    private val signedRequestReader: ObjectReader by lazy { objectReaderFactory.readerFor(SignRequestParams::class) }
 
     init {
         baseUrl = garminConfig.userRepositoryUrl.toHttpUrl()
@@ -69,27 +71,28 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     override fun get(key: String): User? {
         val request: Request = requestFor("users/$key").build()
-        return makeRequest(request, USER_READER)
+        return makeRequest(request, userReader)
     }
 
     @Throws(IOException::class)
-    override fun stream(): Stream<User> {
+    override fun stream(): Sequence<User> {
         if (hasPendingUpdates()) {
             applyPendingUpdates()
         }
-        return timedCachedUsers.stream()
+        return timedCachedUsers.asSequence()
     }
 
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
         val request = requestFor("users/" + user.id + "/token").build()
-        val credentials = makeRequest(request, OAUTH_READER) as OAuth1UserCredentials
+        val credentials = makeRequest(request, oauthReader) as OAuth1UserCredentials
         cachedCredentials[user.id] = credentials
         return credentials
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getAccessToken(user: User): String {
-        val credentials: OAuth1UserCredentials = cachedCredentials[user.id] ?: requestUserCredentials(user)
+        val credentials: OAuth1UserCredentials =
+            cachedCredentials[user.id] ?: requestUserCredentials(user)
         return credentials.accessToken
     }
 
@@ -102,12 +105,12 @@ class GarminServiceUserRepository(
         val body = JSONObject(payload).toString().toRequestBody(JSON_MEDIA_TYPE)
         val request = requestFor("users/" + user.id + "/token/sign").method("POST", body).build()
 
-        return makeRequest(request, SIGNED_REQUEST_READER)
+        return makeRequest(request, signedRequestReader)
     }
 
     override fun deregisterUser(serviceUserId: String, userAccessToken: String) {
         val request =
-            requestFor("source-clients/garmin/authorization/$serviceUserId?accessToken=$userAccessToken")
+            requestFor("source-clients/$GARMIN_SOURCE/authorization/$serviceUserId?accessToken=$userAccessToken")
                 .method("DELETE", EMPTY_BODY).build()
         return makeRequest(request, null)
     }
@@ -124,8 +127,8 @@ class GarminServiceUserRepository(
     @Throws(IOException::class)
     override fun applyPendingUpdates() {
         logger.info("Requesting user information from webservice")
-        val request = requestFor("users?source-type=Garmin").build()
-        timedCachedUsers = makeRequest<Users>(request, USER_LIST_READER).users
+        val request = requestFor("users?source-type=$GARMIN_SOURCE").build()
+        timedCachedUsers = makeRequest<Users>(request, userListReader).users
 
         nextFetch = Instant.now().plus(FETCH_THRESHOLD)
     }
@@ -185,21 +188,12 @@ class GarminServiceUserRepository(
     }
 
     companion object {
-        private val JSON_FACTORY = JsonFactory()
-        private val JSON_READER: ObjectReader =
-            ObjectMapper(JSON_FACTORY).registerModule(JavaTimeModule()).reader()
-        private val USER_LIST_READER: ObjectReader = JSON_READER.forType(Users::class.java)
-        private val USER_READER: ObjectReader = JSON_READER.forType(GarminUser::class.java)
-
-        private val OAUTH_READER: ObjectReader =
-            JSON_READER.forType(OAuth1UserCredentials::class.java)
-        private val SIGNED_REQUEST_READER: ObjectReader =
-            JSON_READER.forType(SignRequestParams::class.java)
+        private const val GARMIN_SOURCE = "Garmin"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
 
         private val FETCH_THRESHOLD: Duration = Duration.ofMinutes(1L)
-        val MIN_INSTANT = Instant.EPOCH
+        private val MIN_INSTANT: Instant = Instant.EPOCH
 
         private val logger = LoggerFactory.getLogger(GarminServiceUserRepository::class.java)
     }

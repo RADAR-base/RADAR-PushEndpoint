@@ -5,7 +5,8 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.rest.RestService
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG
-import org.apache.avro.generic.GenericRecord
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.Response
 import org.apache.avro.generic.IndexedRecord
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.*
@@ -18,8 +19,6 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Semaphore
-import javax.ws.rs.core.Context
-import javax.ws.rs.core.Response
 
 class ProducerPool(
         @Context private val config: Config

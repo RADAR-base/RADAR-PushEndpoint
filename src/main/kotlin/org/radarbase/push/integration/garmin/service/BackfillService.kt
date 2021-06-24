@@ -1,5 +1,7 @@
 package org.radarbase.push.integration.garmin.service
 
+import jakarta.inject.Named
+import jakarta.ws.rs.core.Context
 import okhttp3.OkHttpClient
 import org.glassfish.jersey.server.monitoring.ApplicationEvent
 import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.DESTROY_FINISHED
@@ -11,6 +13,7 @@ import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.garmin.backfill.GarminRequestGenerator
 import org.radarbase.push.integration.garmin.backfill.RestRequest
+import org.radarbase.push.integration.garmin.backfill.TooManyRequestsException
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
@@ -20,8 +23,6 @@ import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
-import javax.inject.Named
-import javax.ws.rs.core.Context
 
 /**
  * The backfill service should be used to collect historic data. This will send requests to garmin's
@@ -29,6 +30,7 @@ import javax.ws.rs.core.Context
  */
 class BackfillService(
     @Context private val config: Config,
+    @Context private val httpClient: OkHttpClient,
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository
 ) : ApplicationEventListener {
 
@@ -43,7 +45,7 @@ class BackfillService(
         redisHolder,
         config.pushIntegration.garmin.backfill.redis.lockPrefix
     )
-    private val httpClient = OkHttpClient()
+
     private val requestsPerUserPerIteration: Int
         get() = 40
 
@@ -76,25 +78,25 @@ class BackfillService(
     }
 
     private fun iterateUsers() {
+        if (!futures.all { it.isDone }) {
+            logger.info("The previous task is already running. Waiting for next iteration")
+            // wait for the next iteration
+            return
+        }
+        futures.clear()
+        logger.info("Making Garmin Backfill requests...")
         try {
-            while (futures.any { !it.isDone }) {
-                logger.info("The previous task is already running. Waiting ${WAIT_TIME_MS / 1000}s...")
-                Thread.sleep(WAIT_TIME_MS)
-            }
-            futures.clear()
-            logger.info("Making Garmin Backfill requests...")
-            try {
-                userRepository.stream().forEach { user ->
-                    futures.add(requestExecutorService.submit {
+            futures += userRepository.stream()
+                .map { user ->
+                    requestExecutorService.submit {
                         remoteLockManager.tryRunLocked(user.versionedId) {
                             requestGenerator.requests(user, requestsPerUserPerIteration)
                                 .forEach { req -> makeRequest(req) }
                         }
-                    })
+                    }
                 }
-            } catch (exc: IOException) {
-                logger.warn("I/O Exception while making Backfill requests.", exc)
-            }
+        } catch (exc: IOException) {
+            logger.warn("I/O Exception while making Backfill requests.", exc)
         } catch (ex: Throwable) {
             logger.warn("Error Making Garmin Backfill requests.", ex)
         }
@@ -107,7 +109,12 @@ class BackfillService(
                 if (response.isSuccessful) {
                     requestGenerator.requestSuccessful(req, response)
                 } else {
-                    requestGenerator.requestFailed(req, response)
+                    try {
+                        requestGenerator.requestFailed(req, response)
+                    } catch (ex: TooManyRequestsException) {
+                        futures.forEach { it.cancel(true) }
+                        futures.clear()
+                    }
                 }
             }
         } catch (ex: Throwable) {
@@ -117,6 +124,6 @@ class BackfillService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(BackfillService::class.java)
-        private const val WAIT_TIME_MS = 10000L
+        private const val WAIT_TIME_MS = 10_000L
     }
 }

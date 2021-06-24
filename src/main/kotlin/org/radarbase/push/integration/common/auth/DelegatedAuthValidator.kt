@@ -1,11 +1,11 @@
 package org.radarbase.push.integration.common.auth
 
+import jakarta.ws.rs.container.ContainerRequestContext
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.UriInfo
 import org.glassfish.hk2.api.IterableProvider
 import org.radarbase.jersey.auth.Auth
 import org.radarbase.jersey.auth.AuthValidator
-import javax.ws.rs.container.ContainerRequestContext
-import javax.ws.rs.core.Context
-import javax.ws.rs.core.UriInfo
 
 class DelegatedAuthValidator(
     @Context private val uriInfo: UriInfo,

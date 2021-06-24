@@ -1,13 +1,13 @@
 package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
+import jakarta.ws.rs.BadRequestException
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminActivitySummary
 import java.time.Instant
-import javax.ws.rs.BadRequestException
 
-class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_activity") :
+open class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_activity") :
     GarminAvroConverter(topic) {
 
     override fun validate(tree: JsonNode) {
@@ -22,7 +22,7 @@ class ActivitiesGarminAvroConverter(topic: String = "push_integration_garmin_act
             .map { node -> Pair(user.observationKey, getRecord(node)) }
     }
 
-    private fun getRecord(node: JsonNode): GarminActivitySummary {
+    protected fun getRecord(node: JsonNode): GarminActivitySummary {
         return GarminActivitySummary.newBuilder().apply {
             summaryId = node["summaryId"]?.asText()
             time = node["startTimeInSeconds"].asDouble()

@@ -1,11 +1,11 @@
 package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
+import jakarta.ws.rs.BadRequestException
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminBodyComposition
 import java.time.Instant
-import javax.ws.rs.BadRequestException
 
 class BodyCompGarminAvroConverter(topic: String = "push_integration_garmin_body_composition") :
     GarminAvroConverter(topic) {

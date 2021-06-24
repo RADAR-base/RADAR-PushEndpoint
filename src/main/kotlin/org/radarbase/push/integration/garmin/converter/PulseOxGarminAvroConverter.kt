@@ -1,12 +1,12 @@
 package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
+import jakarta.ws.rs.BadRequestException
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminPulseOx
 import java.time.Instant
-import javax.ws.rs.BadRequestException
 
 class PulseOxGarminAvroConverter(topic: String = "push_integration_garmin_pulse_ox") :
     GarminAvroConverter(topic) {

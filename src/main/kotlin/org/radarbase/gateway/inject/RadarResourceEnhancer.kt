@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import jakarta.ws.rs.ext.ContextResolver
 import okhttp3.OkHttpClient
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.server.ResourceConfig
@@ -13,7 +14,6 @@ import org.radarbase.jersey.auth.filter.AuthenticationFilter
 import org.radarbase.jersey.auth.filter.AuthorizationFeature
 import org.radarbase.jersey.config.JerseyResourceEnhancer
 import java.util.concurrent.TimeUnit
-import javax.ws.rs.ext.ContextResolver
 
 class RadarResourceEnhancer: JerseyResourceEnhancer {
 

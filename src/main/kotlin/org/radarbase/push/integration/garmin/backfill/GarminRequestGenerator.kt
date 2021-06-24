@@ -21,8 +21,7 @@ class GarminRequestGenerator(
     private val offsetPersistenceFactory: OffsetPersistenceFactory =
         OffsetRedisPersistence(redisHolder),
     private val defaultQueryRange: Duration = Duration.ofDays(15),
-) :
-    RequestGenerator {
+) : RequestGenerator {
 
     private val routes: List<Route> = listOf(
         GarminActivitiesRoute(
@@ -68,30 +67,34 @@ class GarminRequestGenerator(
         GarminUserMetricsRoute(
             config.pushIntegration.garmin.consumerKey,
             userRepository
-        )
+        ),
     )
 
-    override fun requests(user: User, max: Int): List<RestRequest> {
-        return routes.map { route ->
-            val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
-            val startDate = userRepository.getBackfillStartDate(user)
-            val startOffset: Instant = if (offsets == null) {
-                logger.debug("No offsets found for $user, using the start date.")
-                startDate
-            } else {
-                logger.debug("Offsets found in persistence.")
-                offsets.offsetsMap.getOrDefault(
-                    UserRoute(user.versionedId, route.toString()), startDate
-                ).takeIf { it >= startDate } ?: startDate
+    private var nextRequestTime: Instant = Instant.MIN
+
+    private val shouldBackoff: Boolean
+        get() = Instant.now() < nextRequestTime
+
+    override fun requests(user: User, max: Int): Sequence<RestRequest> {
+        return routes.asSequence()
+            .flatMap { route ->
+                val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
+                val startDate = userRepository.getBackfillStartDate(user)
+                val startOffset: Instant = if (offsets == null) {
+                    logger.debug("No offsets found for $user, using the start date.")
+                    startDate
+                } else {
+                    logger.debug("Offsets found in persistence.")
+                    offsets.offsetsMap.getOrDefault(
+                        UserRoute(user.versionedId, route.toString()), startDate
+                    ).coerceAtLeast(startDate)
+                }
+                val endDate = userRepository.getBackfillEndDate(user)
+                if (endDate <= startOffset) return@flatMap emptySequence()
+                val endTime = (startOffset + defaultQueryRange).coerceAtMost(endDate)
+                route.generateRequests(user, startOffset, endTime, max / routes.size)
             }
-            val endDate = userRepository.getBackfillEndDate(user)
-            val endTime = when {
-                endDate <= startOffset -> return@map emptyList() // Already at end. No further requests
-                endDate < startOffset.plus(defaultQueryRange) -> endDate
-                else -> startOffset.plus(defaultQueryRange)
-            }
-            route.generateRequests(user, startOffset, endTime, max / routes.size)
-        }.flatten()
+            .takeWhile { !shouldBackoff }
     }
 
     override fun requestSuccessful(request: RestRequest, response: Response) {
@@ -106,10 +109,22 @@ class GarminRequestGenerator(
     }
 
     override fun requestFailed(request: RestRequest, response: Response) {
-        logger.warn("Request Failed: {}, {}", request, response)
+        when (response.code) {
+            429 -> {
+                logger.info("Too many requests, rate limit reached. Backing off...")
+                nextRequestTime = Instant.now() + BACK_OFF_TIME
+                throw TooManyRequestsException()
+            }
+            409 -> {
+                logger.info("A duplicate request was made. Marking successful...")
+                requestSuccessful(request, response)
+            }
+            else -> logger.warn("Request Failed: {}, {}", request, response)
+        }
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(GarminRequestGenerator::class.java)
+        private val BACK_OFF_TIME = Duration.ofMinutes(1L)
     }
 }

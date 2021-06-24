@@ -16,9 +16,8 @@
  */
 package org.radarbase.push.integration.common.user
 
+import jakarta.ws.rs.NotAuthorizedException
 import java.io.IOException
-import java.util.stream.Stream
-import javax.ws.rs.NotAuthorizedException
 
 /**
  * User repository for Garmin users.
@@ -38,7 +37,7 @@ interface UserRepository {
      * @throws IOException if the list cannot be retrieved from the repository.
      */
     @Throws(IOException::class)
-    fun stream(): Stream<User>
+    fun stream(): Sequence<User>
 
     /**
      * Get the current access token of given user.
@@ -69,12 +68,9 @@ interface UserRepository {
      * @throws NoSuchElementException if the user does not exists in this repository.
      */
     @Throws(NoSuchElementException::class, IOException::class)
-    fun findByExternalId(externalId: String): User {
-        return stream()
-                .filter { user -> user.serviceUserId == externalId }
-                .findFirst()
-                .orElseGet { throw NoSuchElementException("User not found in the User repository") }
-    }
+    fun findByExternalId(externalId: String): User = stream()
+        .firstOrNull { it.serviceUserId == externalId }
+        ?: throw NoSuchElementException("User not found in the User repository")
 
     /**
      * The functions allows the repository to supply when there are pending updates.

@@ -1,12 +1,12 @@
 package org.radarbase.push.integration.garmin.converter
 
 import com.fasterxml.jackson.databind.JsonNode
+import jakarta.ws.rs.BadRequestException
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.push.garmin.GarminDailySummary
 import java.io.IOException
 import java.time.Instant
-import javax.ws.rs.BadRequestException
 
 class DailiesGarminAvroConverter(topic: String = "push_integration_garmin_daily") :
     GarminAvroConverter(topic) {
