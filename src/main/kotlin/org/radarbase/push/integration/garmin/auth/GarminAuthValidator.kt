@@ -3,6 +3,8 @@ package org.radarbase.push.integration.garmin.auth
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.inject.Named
+import jakarta.ws.rs.container.ContainerRequestContext
+import jakarta.ws.rs.core.Context
 import org.radarbase.jersey.auth.Auth
 import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.auth.disabled.DisabledAuth
@@ -11,8 +13,7 @@ import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Compani
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.slf4j.LoggerFactory
-import jakarta.ws.rs.container.ContainerRequestContext
-import jakarta.ws.rs.core.Context
+import java.time.Instant
 
 
 class GarminAuthValidator(
@@ -20,6 +21,8 @@ class GarminAuthValidator(
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository
 ) :
     AuthValidator {
+
+    private var nextRetry: Instant = Instant.MIN
 
     override fun verify(token: String, request: ContainerRequestContext): Auth {
         return if (token.isBlank()) {
@@ -76,15 +79,22 @@ class GarminAuthValidator(
         }
     }
 
-    private fun checkIsAuthorised(userId: String, accessToken: String): Boolean {
+    private fun checkIsAuthorised(userId: String, accessToken: String, retry: Boolean = true):
+        Boolean {
         val user = try {
             userRepository.findByExternalId(userId)
         } catch (exc: NoSuchElementException) {
-            logger.warn(
-                "no_user: The user {} could not be found in the " +
-                    "user repository.", userId
-            )
-            return false
+            return if (retry && Instant.now() > nextRetry) {
+                userRepository.applyPendingUpdates()
+                nextRetry = Instant.now().plusSeconds(REFRESH_TIMEOUT_S)
+                checkIsAuthorised(userId, accessToken, retry = false)
+            } else {
+                logger.warn(
+                    "no_user: The user {} could not be found in the " +
+                        "user repository.", userId
+                )
+                false
+            }
         }
         if (!user.isAuthorized) {
             logger.warn(
@@ -105,6 +115,7 @@ class GarminAuthValidator(
     companion object {
         const val USER_ID_KEY = "userId"
         const val USER_ACCESS_TOKEN_KEY = "userAccessToken"
+        const val REFRESH_TIMEOUT_S = 5L
 
         private val logger = LoggerFactory.getLogger(GarminAuthValidator::class.java)
     }
