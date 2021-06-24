@@ -120,6 +120,6 @@ class BackfillService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(BackfillService::class.java)
-        private const val WAIT_TIME_MS = 10000L
+        private const val WAIT_TIME_MS = 10_000L
     }
 }
