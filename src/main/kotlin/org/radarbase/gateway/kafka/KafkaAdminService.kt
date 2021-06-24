@@ -1,5 +1,7 @@
 package org.radarbase.gateway.kafka
 
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.Response
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.TopicDescription
 import org.radarbase.gateway.Config
@@ -14,8 +16,6 @@ import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.TimeUnit
-import jakarta.ws.rs.core.Context
-import jakarta.ws.rs.core.Response
 
 class KafkaAdminService(@Context private val config: Config): Closeable {
     private val adminClient: AdminClient = AdminClient.create(config.kafka.admin)

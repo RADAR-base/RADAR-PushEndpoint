@@ -1,10 +1,10 @@
 package org.radarbase.push.integration.garmin.factory
 
 import com.fasterxml.jackson.databind.JsonNode
-import org.radarbase.push.integration.common.user.User
-import java.util.function.Supplier
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.core.Context
+import org.radarbase.push.integration.common.user.User
+import java.util.function.Supplier
 
 @Suppress("UNCHECKED_CAST")
 class GarminUserTreeMapFactory(

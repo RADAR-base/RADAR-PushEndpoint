@@ -5,7 +5,6 @@ plugins {
 }
 
 repositories {
-    mavenCentral()
     maven(url = "https://packages.confluent.io/maven/")
 }
 

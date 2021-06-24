@@ -13,6 +13,7 @@ import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.garmin.backfill.GarminRequestGenerator
 import org.radarbase.push.integration.garmin.backfill.RestRequest
+import org.radarbase.push.integration.garmin.backfill.TooManyRequestsException
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
@@ -79,25 +80,25 @@ class BackfillService(
     }
 
     private fun iterateUsers() {
+        if (!futures.all { it.isDone }) {
+            logger.info("The previous task is already running. Waiting for next iteration")
+            // wait for the next iteration
+            return
+        }
+        futures.clear()
+        logger.info("Making Garmin Backfill requests...")
         try {
-            while (futures.any { !it.isDone }) {
-                logger.info("The previous task is already running. Waiting ${WAIT_TIME_MS / 1000}s...")
-                Thread.sleep(WAIT_TIME_MS)
-            }
-            futures.clear()
-            logger.info("Making Garmin Backfill requests...")
-            try {
-                userRepository.stream().forEach { user ->
-                    futures.add(requestExecutorService.submit {
+            futures += userRepository.stream()
+                .map { user ->
+                    requestExecutorService.submit {
                         remoteLockManager.tryRunLocked(user.versionedId) {
                             requestGenerator.requests(user, requestsPerUserPerIteration)
                                 .forEach { req -> makeRequest(req) }
                         }
-                    })
+                    }
                 }
-            } catch (exc: IOException) {
-                logger.warn("I/O Exception while making Backfill requests.", exc)
-            }
+        } catch (exc: IOException) {
+            logger.warn("I/O Exception while making Backfill requests.", exc)
         } catch (ex: Throwable) {
             logger.warn("Error Making Garmin Backfill requests.", ex)
         }
@@ -110,7 +111,12 @@ class BackfillService(
                 if (response.isSuccessful) {
                     requestGenerator.requestSuccessful(req, response)
                 } else {
-                    requestGenerator.requestFailed(req, response)
+                    try {
+                        requestGenerator.requestFailed(req, response)
+                    } catch (ex: TooManyRequestsException) {
+                        futures.forEach { it.cancel(true) }
+                        futures.clear()
+                    }
                 }
             }
         } catch (ex: Throwable) {

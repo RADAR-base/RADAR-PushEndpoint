@@ -5,7 +5,6 @@ import jakarta.inject.Named
 import jakarta.ws.rs.BadRequestException
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.Response
-import jakarta.ws.rs.core.Response.Status.OK
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GarminConfig
 import org.radarbase.gateway.kafka.ProducerPool

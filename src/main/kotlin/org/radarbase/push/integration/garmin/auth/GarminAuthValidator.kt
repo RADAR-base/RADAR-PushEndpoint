@@ -35,22 +35,26 @@ class GarminAuthValidator(
 
             val userTreeMap: Map<User, JsonNode> =
                 // group by user ID since request can contain data from multiple users
-                tree[tree.fieldNames().next()].groupBy { node ->
-                    node[USER_ID_KEY].asText()
-                }.filter { (userId, userData) ->
-                    val accessToken = userData[0][USER_ACCESS_TOKEN_KEY].asText()
-                    if (checkIsAuthorised(userId, accessToken)) true else {
-                        isAnyUnauthorised = true
-                        userRepository.deregisterUser(userId, accessToken)
-                        false
+                tree[tree.fieldNames().next()]
+                    .groupBy { node ->
+                        node[USER_ID_KEY].asText()
                     }
-                }.entries.associate { (userId, userData) ->
-                    userRepository.findByExternalId(userId) to
-                        // Map the List<JsonNode> back to <data-type>: [ {<data-1>}, {<data-2>} ]
-                        // so it can be processed in the services without much refactoring
-                        objectMapper.createObjectNode()
-                            .set(tree.fieldNames().next(), objectMapper.valueToTree(userData))
-                }
+                    .filter { (userId, userData) ->
+                        val accessToken = userData[0][USER_ACCESS_TOKEN_KEY].asText()
+                        if (checkIsAuthorised(userId, accessToken)) true else {
+                            isAnyUnauthorised = true
+                            userRepository.deregisterUser(userId, accessToken)
+                            false
+                        }
+                    }
+                    .entries
+                    .associate { (userId, userData) ->
+                        userRepository.findByExternalId(userId) to
+                            // Map the List<JsonNode> back to <data-type>: [ {<data-1>}, {<data-2>} ]
+                            // so it can be processed in the services without much refactoring
+                            objectMapper.createObjectNode()
+                                .set(tree.fieldNames().next(), objectMapper.valueToTree(userData))
+                    }
 
             request.setProperty("user_tree_map", userTreeMap)
             request.setProperty(

@@ -90,7 +90,7 @@ data class BackfillConfig(
 )
 
 data class RedisConfig(
-    val uri: String = "redis://localhost:6379",
+    val uri: URI = URI("redis://localhost:6379"),
     val lockPrefix: String = "radar-push-garmin/lock"
 )
 
