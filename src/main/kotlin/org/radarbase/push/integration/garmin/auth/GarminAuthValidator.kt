@@ -13,6 +13,7 @@ import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Compani
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.slf4j.LoggerFactory
+import java.time.Instant
 
 
 class GarminAuthValidator(
@@ -20,6 +21,8 @@ class GarminAuthValidator(
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository
 ) :
     AuthValidator {
+
+    private var nextRetry: Instant = Instant.MIN
 
     override fun verify(token: String, request: ContainerRequestContext): Auth {
         return if (token.isBlank()) {
@@ -81,8 +84,9 @@ class GarminAuthValidator(
         val user = try {
             userRepository.findByExternalId(userId)
         } catch (exc: NoSuchElementException) {
-            return if (retry) {
+            return if (retry && Instant.now() > nextRetry) {
                 userRepository.applyPendingUpdates()
+                nextRetry = Instant.now().plusSeconds(REFRESH_TIMEOUT_S)
                 checkIsAuthorised(userId, accessToken, retry = false)
             } else {
                 logger.warn(
@@ -111,6 +115,7 @@ class GarminAuthValidator(
     companion object {
         const val USER_ID_KEY = "userId"
         const val USER_ACCESS_TOKEN_KEY = "userAccessToken"
+        const val REFRESH_TIMEOUT_S = 5L
 
         private val logger = LoggerFactory.getLogger(GarminAuthValidator::class.java)
     }
