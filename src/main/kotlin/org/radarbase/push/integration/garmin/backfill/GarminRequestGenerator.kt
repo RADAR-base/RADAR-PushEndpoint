@@ -88,16 +88,13 @@ class GarminRequestGenerator(
                     logger.debug("Offsets found in persistence.")
                     offsets.offsetsMap.getOrDefault(
                         UserRoute(user.versionedId, route.toString()), startDate
-                    ).takeIf { it >= startDate } ?: startDate
+                    ).coerceAtLeast(startDate)
                 }
                 val endDate = userRepository.getBackfillEndDate(user)
-                val endTime = when {
-                    endDate <= startOffset -> return@map emptyList() // Already at end. No further requests
-                    endDate < startOffset.plus(defaultQueryRange) -> endDate
-                    else -> startOffset.plus(defaultQueryRange)
-                }
+                if (endDate <= startOffset) return@map emptyList()
+                val endTime = (startOffset + defaultQueryRange).coerceAtMost(endDate)
                 route.generateRequests(user, startOffset, endTime, max / routes.size)
-            }.flatten().asSequence().takeWhile { !shouldBackoff }
+            }.asSequence().flatten().takeWhile { !shouldBackoff }
         } else emptySequence()
     }
 
