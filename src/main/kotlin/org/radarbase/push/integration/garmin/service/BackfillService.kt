@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit
  */
 class BackfillService(
     @Context private val config: Config,
+    @Context private val httpClient: OkHttpClient,
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository
 ) : ApplicationEventListener {
 
@@ -44,10 +45,7 @@ class BackfillService(
         redisHolder,
         config.pushIntegration.garmin.backfill.redis.lockPrefix
     )
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+
     private val requestsPerUserPerIteration: Int
         get() = 40
 
