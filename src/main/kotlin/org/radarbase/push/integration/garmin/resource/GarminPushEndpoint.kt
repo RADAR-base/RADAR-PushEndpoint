@@ -3,18 +3,18 @@ package org.radarbase.push.integration.garmin.resource
 import com.fasterxml.jackson.databind.JsonNode
 import jakarta.inject.Named
 import jakarta.inject.Singleton
-import org.radarbase.jersey.auth.Authenticated
-import org.radarbase.jersey.exception.HttpInternalServerException
-import org.radarbase.jersey.exception.HttpUnauthorizedException
-import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
-import org.radarbase.push.integration.common.user.User
-import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
+import org.radarbase.jersey.auth.Authenticated
+import org.radarbase.jersey.exception.HttpInternalServerException
+import org.radarbase.jersey.exception.HttpUnauthorizedException
+import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
+import org.radarbase.push.integration.common.user.User
+import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Singleton

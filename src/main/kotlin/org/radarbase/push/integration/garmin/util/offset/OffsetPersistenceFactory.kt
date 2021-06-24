@@ -1,7 +1,5 @@
 package org.radarbase.push.integration.garmin.util.offset
 
-import java.io.Closeable
-import java.io.Flushable
 import java.nio.file.Path
 
 /**

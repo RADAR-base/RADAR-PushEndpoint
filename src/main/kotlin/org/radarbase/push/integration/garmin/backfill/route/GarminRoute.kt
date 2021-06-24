@@ -4,10 +4,10 @@ import okhttp3.HttpUrl
 import okhttp3.Request
 import org.radarbase.push.integration.common.auth.Oauth1Signing
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_CONSUMER_KEY
-import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION
-import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION_VALUE
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_NONCE
 import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_TIMESTAMP
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION
+import org.radarbase.push.integration.common.auth.Oauth1Signing.Companion.OAUTH_VERSION_VALUE
 import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.backfill.RestRequest
@@ -21,7 +21,7 @@ abstract class GarminRoute(
     private val userRepository: GarminUserRepository
 ) : Route {
     override val maxIntervalPerRequest: Duration
-        get() = fiveDays
+        get() = DEFAULT_INTERVAL_PER_REQUEST
 
     fun createRequest(user: User, baseUrl: String, queryParams: String): Request {
         val request = Request.Builder()
@@ -75,6 +75,6 @@ abstract class GarminRoute(
         const val GARMIN_BACKFILL_BASE_URL =
             "https://healthapi.garmin.com/wellness-api/rest/backfill"
         const val ROUTE_METHOD = "GET"
-        private val fiveDays = Duration.ofDays(5L)
+        private val DEFAULT_INTERVAL_PER_REQUEST = Duration.ofDays(5L)
     }
 }

@@ -1,6 +1,5 @@
 package org.radarbase.push.integration.garmin.backfill
 
-import okhttp3.Request
 import okhttp3.Response
 import org.radarbase.push.integration.common.user.User
 

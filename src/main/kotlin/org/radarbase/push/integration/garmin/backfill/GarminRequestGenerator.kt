@@ -9,7 +9,6 @@ import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.radarbase.push.integration.garmin.util.offset.*
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPool
-import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
@@ -113,7 +112,7 @@ class GarminRequestGenerator(
         when (response.code) {
             429 -> {
                 logger.info("Too many requests, rate limit reached. Backing off...")
-                nextRequestTime = Instant.now().plusMillis(BACK_OFF_TIME_MS)
+                nextRequestTime = Instant.now() + BACK_OFF_TIME
                 throw TooManyRequestsException()
             }
             409 -> {
@@ -126,6 +125,6 @@ class GarminRequestGenerator(
 
     companion object {
         private val logger = LoggerFactory.getLogger(GarminRequestGenerator::class.java)
-        private const val BACK_OFF_TIME_MS = 60_000L
+        private val BACK_OFF_TIME = Duration.ofMinutes(1L)
     }
 }

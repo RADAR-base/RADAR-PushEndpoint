@@ -25,7 +25,6 @@ import java.net.URL
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import java.util.stream.Stream
 
 @Suppress("UNCHECKED_CAST")
 class GarminServiceUserRepository(

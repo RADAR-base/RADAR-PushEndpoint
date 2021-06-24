@@ -16,8 +16,8 @@
  */
 package org.radarbase.push.integration.common.user
 
-import java.io.IOException
 import jakarta.ws.rs.NotAuthorizedException
+import java.io.IOException
 
 /**
  * User repository for Garmin users.
