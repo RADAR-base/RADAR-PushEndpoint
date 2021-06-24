@@ -20,8 +20,8 @@ abstract class GarminRoute(
     private val consumerKey: String,
     private val userRepository: GarminUserRepository
 ) : Route {
-    override val maxDaysPerRequest: Int
-        get() = 5
+    override val maxIntervalPerRequest: Duration
+        get() = fiveDays
 
     fun createRequest(user: User, baseUrl: String, queryParams: String): Request {
         val request = Request.Builder()
@@ -54,29 +54,27 @@ abstract class GarminRoute(
         start: Instant,
         end: Instant,
         max: Int
-    ): List<RestRequest> {
-        var startRange = Instant.from(start)
-        val requests = mutableListOf<RestRequest>()
-
-        while (startRange < end && requests.size < max) {
-            val endRange = startRange.plus(Duration.ofDays(maxDaysPerRequest.toLong()))
-            val request = createRequest(
-                user, "$GARMIN_BACKFILL_BASE_URL/${subPath()}",
-                        "?summaryStartTimeInSeconds=${startRange.epochSecond}" +
-                        "&summaryEndTimeInSeconds=${endRange.epochSecond}"
-            )
-            requests.add(RestRequest(request, user, this, startRange, endRange))
-            startRange = endRange
-        }
-        return requests.toMutableList()
+    ): Sequence<RestRequest> {
+        return generateSequence(start) { it + maxIntervalPerRequest }
+            .takeWhile { it < end }
+            .take(max)
+            .map { startRange ->
+                val endRange = (startRange + maxIntervalPerRequest).coerceAtMost(end)
+                val request = createRequest(
+                    user, "$GARMIN_BACKFILL_BASE_URL/${subPath()}",
+                    "?summaryStartTimeInSeconds=${startRange.epochSecond}" +
+                            "&summaryEndTimeInSeconds=${endRange.epochSecond}"
+                )
+                RestRequest(request, user, this, startRange, endRange)
+            }
     }
 
     abstract fun subPath(): String
 
     companion object {
-
         const val GARMIN_BACKFILL_BASE_URL =
             "https://healthapi.garmin.com/wellness-api/rest/backfill"
         const val ROUTE_METHOD = "GET"
+        private val fiveDays = Duration.ofDays(5L)
     }
 }

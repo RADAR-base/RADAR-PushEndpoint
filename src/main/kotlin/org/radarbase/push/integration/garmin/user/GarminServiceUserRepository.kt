@@ -40,7 +40,7 @@ class GarminServiceUserRepository(
 
     private val baseUrl: HttpUrl
 
-    private var timedCachedUsers: List<User> = ArrayList<User>()
+    private var timedCachedUsers: List<User> = ArrayList()
 
     private val repositoryClient: OAuth2Client
     private val tokenUrl: URL
@@ -76,11 +76,11 @@ class GarminServiceUserRepository(
     }
 
     @Throws(IOException::class)
-    override fun stream(): Stream<User> {
+    override fun stream(): Sequence<User> {
         if (hasPendingUpdates()) {
             applyPendingUpdates()
         }
-        return timedCachedUsers.stream()
+        return timedCachedUsers.asSequence()
     }
 
     fun requestUserCredentials(user: User): OAuth1UserCredentials {

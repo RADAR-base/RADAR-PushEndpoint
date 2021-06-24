@@ -9,6 +9,7 @@ import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.radarbase.push.integration.garmin.util.offset.*
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPool
+import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
@@ -21,8 +22,7 @@ class GarminRequestGenerator(
     private val offsetPersistenceFactory: OffsetPersistenceFactory =
         OffsetRedisPersistence(redisHolder),
     private val defaultQueryRange: Duration = Duration.ofDays(15),
-) :
-    RequestGenerator {
+) : RequestGenerator {
 
     private val routes: List<Route> = listOf(
         GarminActivitiesRoute(
@@ -68,7 +68,7 @@ class GarminRequestGenerator(
         GarminUserMetricsRoute(
             config.pushIntegration.garmin.consumerKey,
             userRepository
-        )
+        ),
     )
 
     private var nextRequestTime: Instant = Instant.MIN
@@ -77,8 +77,8 @@ class GarminRequestGenerator(
         get() = Instant.now() < nextRequestTime
 
     override fun requests(user: User, max: Int): Sequence<RestRequest> {
-        return if (!shouldBackoff) {
-            routes.map { route ->
+        return routes.asSequence()
+            .flatMap { route ->
                 val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
                 val startDate = userRepository.getBackfillStartDate(user)
                 val startOffset: Instant = if (offsets == null) {
@@ -91,11 +91,11 @@ class GarminRequestGenerator(
                     ).coerceAtLeast(startDate)
                 }
                 val endDate = userRepository.getBackfillEndDate(user)
-                if (endDate <= startOffset) return@map emptyList()
+                if (endDate <= startOffset) return@flatMap emptySequence()
                 val endTime = (startOffset + defaultQueryRange).coerceAtMost(endDate)
                 route.generateRequests(user, startOffset, endTime, max / routes.size)
-            }.asSequence().flatten().takeWhile { !shouldBackoff }
-        } else emptySequence()
+            }
+            .takeWhile { !shouldBackoff }
     }
 
     override fun requestSuccessful(request: RestRequest, response: Response) {
@@ -114,6 +114,7 @@ class GarminRequestGenerator(
             429 -> {
                 logger.info("Too many requests, rate limit reached. Backing off...")
                 nextRequestTime = Instant.now().plusMillis(BACK_OFF_TIME_MS)
+                throw TooManyRequestsException()
             }
             409 -> {
                 logger.info("A duplicate request was made. Marking successful...")
