@@ -7,45 +7,30 @@ plugins {
     id("idea")
     id("application")
     kotlin("jvm")
-    id("org.unbroken-dome.test-sets") version "3.0.1"
     id("com.avast.gradle.docker-compose") version "0.14.3"
-    id("com.github.ben-manes.versions") version "0.38.0"
+    id("com.github.ben-manes.versions") version "0.39.0"
 }
 
-group = "org.radarbase"
-version = "0.1.0"
 description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
-    apply(plugin = "com.github.ben-manes.versions")
+    group = "org.radarbase"
+    version = "0.1.0"
 
-    fun isNonStable(version: String): Boolean {
-        val stableKeyword =
-            listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
-        val regex = "^[0-9,.v-]+(-r)?$".toRegex()
-        val isStable = stableKeyword || regex.matches(version)
-        return isStable.not()
+    repositories {
+        mavenCentral()
     }
-
-    tasks.named<DependencyUpdatesTask>("dependencyUpdates").configure {
-        rejectVersionIf {
-            isNonStable(candidate.version)
-        }
-    }
-}
-
-repositories {
-    mavenCentral()
-    maven(url = "https://packages.confluent.io/maven/")
 }
 
 val integrationTestSourceSet = sourceSets.create("integrationTest") {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().output
 }
+
 val integrationTestImplementation: Configuration by configurations.getting {
     extendsFrom(configurations.testImplementation.get())
 }
+
 configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 
 dependencies {
@@ -54,7 +39,8 @@ dependencies {
 
     val radarCommonsVersion: String by project
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
-    implementation("org.radarbase:radar-jersey:${project.property("radarJerseyVersion")}")
+    val radarJerseyVersion: String by project
+    implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
@@ -72,7 +58,11 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
-    runtimeOnly("ch.qos.logback:logback-classic:${project.property("logbackVersion")}")
+
+    val log4j2Version: String by project
+    runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version")
+    runtimeOnly("org.apache.logging.log4j:log4j-api:$log4j2Version")
+    runtimeOnly("org.apache.logging.log4j:log4j-jul:$log4j2Version")
 
     val jedisVersion: String by project
     implementation("redis.clients:jedis:$jedisVersion")
@@ -93,13 +83,11 @@ dependencies {
     integrationTestImplementation("org.radarbase:radar-commons-testing:$radarCommonsVersion")
 }
 
-val kotlinApiVersion: String by project
-
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         jvmTarget = "11"
-        apiVersion = "1.4"
-        languageVersion = "1.4"
+        apiVersion = "1.5"
+        languageVersion = "1.5"
     }
 }
 
@@ -125,7 +113,7 @@ tasks.withType<Tar> {
 }
 
 application {
-    mainClassName = "org.radarbase.gateway.MainKt"
+    mainClass.set("org.radarbase.gateway.MainKt")
 
     applicationDefaultJvmArgs = listOf(
         "-Dcom.sun.management.jmxremote",
@@ -184,6 +172,19 @@ allprojects {
     }
 }
 
+fun isNonStable(version: String): Boolean {
+    val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+    val regex = "^[0-9,.v-]+(-r)?$".toRegex()
+    val isStable = stableKeyword || regex.matches(version)
+    return isStable.not()
+}
+
+tasks.withType<DependencyUpdatesTask> {
+    rejectVersionIf {
+        isNonStable(candidate.version)
+    }
+}
+
 tasks.wrapper {
-    gradleVersion = "7.0.2"
+    gradleVersion = "7.1"
 }
