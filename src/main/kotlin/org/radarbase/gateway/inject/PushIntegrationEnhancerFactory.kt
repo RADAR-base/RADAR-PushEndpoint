@@ -3,8 +3,9 @@ package org.radarbase.gateway.inject
 import okhttp3.internal.toImmutableList
 import org.radarbase.gateway.Config
 import org.radarbase.jersey.config.ConfigLoader
-import org.radarbase.jersey.config.EnhancerFactory
-import org.radarbase.jersey.config.JerseyResourceEnhancer
+import org.radarbase.jersey.enhancer.Enhancers
+import org.radarbase.jersey.enhancer.EnhancerFactory
+import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.push.integration.GarminPushIntegrationResourceEnhancer
 import org.radarbase.push.integration.common.inject.PushIntegrationResourceEnhancer
 
@@ -14,9 +15,8 @@ class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFacto
 
         val enhancersList = mutableListOf(
             GatewayResourceEnhancer(config),
-            ConfigLoader.Enhancers.health,
-            ConfigLoader.Enhancers.httpException,
-            ConfigLoader.Enhancers.generalException,
+            Enhancers.health,
+            Enhancers.exception,
             RadarResourceEnhancer(),
             PushIntegrationResourceEnhancer()
         )

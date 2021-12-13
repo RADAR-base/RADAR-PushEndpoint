@@ -8,7 +8,7 @@ import org.glassfish.jersey.process.internal.RequestScoped
 import org.glassfish.jersey.server.ResourceConfig
 import org.radarbase.gateway.Config
 import org.radarbase.jersey.auth.AuthValidator
-import org.radarbase.jersey.config.JerseyResourceEnhancer
+import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.auth.GarminAuthValidator
