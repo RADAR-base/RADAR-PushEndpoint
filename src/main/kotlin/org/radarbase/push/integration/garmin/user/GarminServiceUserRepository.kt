@@ -29,10 +29,10 @@ import java.util.concurrent.ConcurrentHashMap
 @Suppress("UNCHECKED_CAST")
 class GarminServiceUserRepository(
     @Context private val config: Config,
+    @Context private val client: OkHttpClient,
     @Context private val objectReaderFactory: ObjectReaderFactory,
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
-    private val client: OkHttpClient = OkHttpClient()
     private val cachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> =
         ConcurrentHashMap<String, OAuth1UserCredentials>()
     private var nextFetch = MIN_INSTANT

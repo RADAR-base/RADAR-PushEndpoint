@@ -8,7 +8,8 @@ import org.glassfish.jersey.server.filter.EncodingFilter
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.*
 import org.radarbase.jersey.config.ConfigLoader
-import org.radarbase.jersey.config.JerseyResourceEnhancer
+import org.radarbase.jersey.filter.Filters
+import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.jersey.service.HealthService
 import org.radarbase.producer.rest.SchemaRetriever
 
@@ -18,7 +19,7 @@ class GatewayResourceEnhancer(private val config: Config): JerseyResourceEnhance
             EncodingFilter::class.java,
             GZipEncoder::class.java,
             DeflateEncoder::class.java,
-            ConfigLoader.Filters.logResponse)
+            Filters.logResponse)
 
     override fun AbstractBinder.enhance() {
         bind(config)

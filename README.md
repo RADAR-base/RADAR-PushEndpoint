@@ -23,6 +23,32 @@ Currently, Garmin is integrated. For adding more services, see the [Extending se
 
 For Garmin, you will need to configure the endpoints in the [Garmin Developer Portal](https://healthapi.garmin.com/tools/updateEndpoints)
 
+If you are using the `org.radarbase.push.integration.garmin.user.GarminServiceUserRepository` 
+make sure to create the oauth client in management portal with following properties -
+
+```
+client_id: your_client_id
+client_secret: your_client_secret
+grant_type: client_credentials
+resources: res_restAuthorizer
+scope: "SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE", "MEASUREMENT.CREATE"
+```
+
+then configure the following properties-
+
+```yaml
+    pushIntegration:
+      garmin:
+        enabled: true
+        userRepositoryClass: org.radarbase.push.integration.garmin.user.GarminServiceUserRepository
+        userRepositoryUrl: "http://radar-rest-sources-backend:8090/rest-sources/backend/"
+        userRepositoryClientId: "your_client_id"
+        userRepositoryClientSecret: "your_client_secret"
+        userRepositoryTokenUrl: "http://managementportal-app:8080/oauth/token/"
+```
+Modify the URLs according to your deployment.
+
+
 ## Usage
 
 Start the Service with

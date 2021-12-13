@@ -15,7 +15,7 @@ description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
     group = "org.radarbase"
-    version = "0.1.0"
+    version = "0.2.0"
 
     repositories {
         mavenCentral()
