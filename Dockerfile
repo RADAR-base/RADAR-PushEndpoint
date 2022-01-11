@@ -35,6 +35,10 @@ MAINTAINER @yatharthranjan
 
 LABEL description="RADAR-base Push Api Gateway docker container"
 
+RUN apt-get update && apt-get install -y \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /code/build/distributions/radar-push-endpoint-*/bin/* /usr/bin/
 COPY --from=builder /code/build/distributions/radar-push-endpoint-*/lib/* /usr/lib/
 COPY --from=builder /code/build/libs/radar-push-endpoint-*.jar /usr/lib/
