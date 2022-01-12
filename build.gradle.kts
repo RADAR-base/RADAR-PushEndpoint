@@ -19,6 +19,7 @@ allprojects {
 
     repositories {
         mavenCentral()
+        maven(url = "https://packages.confluent.io/maven/")
     }
 }
 
@@ -44,6 +45,7 @@ dependencies {
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
+
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
@@ -58,6 +60,9 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
+
+    val avroVersion: String by project
+    runtimeOnly("org.apache.avro:avro:$avroVersion")
 
     val log4j2Version: String by project
     runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version")
