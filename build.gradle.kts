@@ -61,9 +61,6 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
 
-    val avroVersion: String by project
-    runtimeOnly("org.apache.avro:avro:$avroVersion")
-
     val log4j2Version: String by project
     runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version")
     runtimeOnly("org.apache.logging.log4j:log4j-api:$log4j2Version")
