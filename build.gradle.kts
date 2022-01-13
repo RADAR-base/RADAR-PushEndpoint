@@ -19,6 +19,7 @@ allprojects {
 
     repositories {
         mavenCentral()
+        maven(url = "https://packages.confluent.io/maven/")
     }
 }
 
@@ -43,6 +44,7 @@ dependencies {
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
+
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
