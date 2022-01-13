@@ -15,10 +15,11 @@ description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
     group = "org.radarbase"
-    version = "0.2.1.1"
+    version = "0.2.2"
 
     repositories {
         mavenCentral()
+        maven(url = "https://packages.confluent.io/maven/")
     }
 }
 
@@ -43,6 +44,7 @@ dependencies {
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
+
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
