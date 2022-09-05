@@ -38,3 +38,10 @@ pushIntegration:
                 uri: redis://localhost:6379
                 # Key prefix for locks
                 lockPrefix: radar-push-garmin/lock/
+    fitbit:
+        enabled: true
+        verificationCode:
+        userRepositoryUrl:
+        userRepositoryClientId:
+        userRepositoryClientSecret:
+        userRepositoryTokenUrl:

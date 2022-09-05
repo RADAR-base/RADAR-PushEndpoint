@@ -5,6 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGI
 import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
+import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.net.URI
 import java.time.Instant
@@ -33,10 +34,12 @@ data class Config(
 }
 
 data class PushIntegrationConfig(
-    val garmin: GarminConfig = GarminConfig()
+    val garmin: GarminConfig = GarminConfig(),
+    val fitbit: FitbitConfig = FitbitConfig()
 ) {
     fun validate() {
         garmin.validate()
+        fitbit.validate()
         // Add more validations as services are added
     }
 }
@@ -80,6 +83,34 @@ data class GarminConfig(
         }
     }
 }
+
+data class FitbitConfig(
+    val enabled: Boolean = false,
+    val verificationCode: String = "",
+    val subscriptionConfig: SubscriptionConfig = SubscriptionConfig(),
+    val userRepositoryClass: String =
+        "org.radarbase.push.integration.fitbit.user.FitbitUserRepository",
+    val userRepositoryUrl: String = "http://localhost:8080/",
+    val userRepositoryClientId: String = "radar_pushendpoint",
+    val userRepositoryClientSecret: String = "",
+    val userRepositoryTokenUrl: String = "http://localhost:8080/token/",
+) {
+    val userRepository: Class<*> = Class.forName(userRepositoryClass)
+
+    fun validate() {
+        if (enabled) {
+            check(FitbitUserRepository::class.java.isAssignableFrom(userRepository)) {
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
+                        " `org.radarbase.push.integration.fitbit.user.FitbitUserRepository`"
+            }
+        }
+    }
+}
+
+data class SubscriptionConfig(
+    val maxThreads: Int = 4,
+    val subscriberID: String = "1",
+)
 
 data class BackfillConfig(
     val enabled: Boolean = false,
