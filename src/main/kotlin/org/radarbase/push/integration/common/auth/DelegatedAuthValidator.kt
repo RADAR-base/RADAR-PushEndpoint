@@ -17,6 +17,7 @@ class DelegatedAuthValidator(
     fun delegate(): AuthValidator {
         return when {
             uriInfo.matches(GARMIN_QUALIFIER) -> namedValidators.named(GARMIN_QUALIFIER).get()
+            uriInfo.matches(FITBIT_QUALIFIER) -> namedValidators.named(FITBIT_QUALIFIER).get()
             // Add support for more as integrations are added
             else -> throw IllegalStateException()
         }
@@ -27,6 +28,7 @@ class DelegatedAuthValidator(
 
     companion object {
         const val GARMIN_QUALIFIER = "garmin"
+        const val FITBIT_QUALIFIER = "fitbit"
     }
 
     override fun verify(token: String, request: ContainerRequestContext): Auth? =

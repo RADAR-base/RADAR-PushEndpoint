@@ -16,7 +16,7 @@ class CorsFilter : ContainerResponseFilter {
         cres.headers
             .add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
         cres.headers.add("Access-Control-Allow-Credentials", "true")
-        cres.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        cres.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         cres.headers.add("Access-Control-Max-Age", "1209600")
     }
 }
