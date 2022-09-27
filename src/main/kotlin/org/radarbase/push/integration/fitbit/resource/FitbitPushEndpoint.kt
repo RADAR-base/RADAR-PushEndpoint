@@ -19,20 +19,20 @@ import org.radarbase.push.integration.fitbit.service.FitbitApiService
 @Produces(MediaType.APPLICATION_JSON)
 @Path("/fitbit")
 class FitbitPushEndpoint(
-    @Context private val fitbitApiService : FitbitApiService,
-    @Context @Named(DelegatedAuthValidator.FITBIT_QUALIFIER) private val userTreeMap: MutableMap<User, JsonNode>,
+    @Context private val fitbitApiService: FitbitApiService
 ) {
     @GET
-    @Path("")
     @ClientDomainVerification("fitbit.com")
     fun verify(@QueryParam("verify") verificationCode: String): Response {
-        return fitbitApiService.verifySubscriber(verificationCode)
+            return fitbitApiService.verifySubscriber(verificationCode)
     }
 
     @POST
     @Authenticated
     @ClientDomainVerification("fitbit.com")
-    fun submitNotification(): Response {
+    fun submitNotification(
+        @Context @Named(DelegatedAuthValidator.FITBIT_QUALIFIER) userTreeMap: MutableMap<User, JsonNode>
+    ): Response {
         val responses = userTreeMap.map { (user, tree) ->
             fitbitApiService.addNotifications(user, tree)
         }
@@ -44,6 +44,5 @@ class FitbitPushEndpoint(
         }
 
         return Response.noContent().build()
-
     }
 }

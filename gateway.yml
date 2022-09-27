@@ -40,8 +40,10 @@ pushIntegration:
                 lockPrefix: radar-push-garmin/lock/
     fitbit:
         enabled: true
-        verificationCode:
-        userRepositoryUrl:
-        userRepositoryClientId:
-        userRepositoryClientSecret:
-        userRepositoryTokenUrl:
+        verificationCode: ""
+        clientId: ""
+        clientSecret: ""
+        userRepositoryUrl: ""
+        userRepositoryClientId: ""
+        userRepositoryClientSecret: ""
+        userRepositoryTokenUrl: ""
