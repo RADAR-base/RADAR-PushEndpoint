@@ -87,6 +87,8 @@ data class GarminConfig(
 data class FitbitConfig(
     val enabled: Boolean = false,
     val verificationCode: String = "",
+    val clientSecret: String = "",
+    val clientId: String = "",
     val subscriptionConfig: SubscriptionConfig = SubscriptionConfig(),
     val userRepositoryClass: String =
         "org.radarbase.push.integration.fitbit.user.FitbitUserRepository",

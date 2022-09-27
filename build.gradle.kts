@@ -57,6 +57,7 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
 
     val grizzlyVersion: String by project
+    implementation("org.glassfish.grizzly:grizzly-http-server:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
