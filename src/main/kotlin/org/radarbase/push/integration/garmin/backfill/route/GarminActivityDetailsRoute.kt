@@ -1,6 +1,7 @@
 package org.radarbase.push.integration.garmin.backfill.route
 
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
+import java.time.Duration
 
 class GarminActivityDetailsRoute(
     consumerKey: String,
@@ -10,4 +11,9 @@ class GarminActivityDetailsRoute(
     override fun subPath(): String = "activityDetails"
 
     override fun toString(): String = "garmin_activity_details"
+
+    override fun maxBackfillPeriod(): Duration {
+        // 2 years default. Activity API  routes will override this with 5 years
+        return Duration.ofDays(365 * 5)
+    }
 }
