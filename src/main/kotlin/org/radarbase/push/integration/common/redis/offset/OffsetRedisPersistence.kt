@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.garmin.util.offset
+package org.radarbase.push.integration.common.redis.offset
 
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
