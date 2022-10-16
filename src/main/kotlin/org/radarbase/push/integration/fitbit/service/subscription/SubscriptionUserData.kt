@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.fitbit.subscription
+package org.radarbase.push.integration.fitbit.service.subscription
 
 import java.time.Instant
 

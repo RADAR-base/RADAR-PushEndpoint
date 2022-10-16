@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.fitbit.subscription
+package org.radarbase.push.integration.fitbit.service.subscription
 
 import okhttp3.Request
 import okhttp3.Response
@@ -83,6 +83,8 @@ class SubscriptionRequestGenerator(
     fun subscriptionDeletionRequestFailed(request: SubscriptionRequest, response: Response) {
         logger.info("Request failed, {} {}", request, response)
     }
+
+
 
     companion object {
         private val logger = LoggerFactory.getLogger(SubscriptionRequestGenerator::class.java)

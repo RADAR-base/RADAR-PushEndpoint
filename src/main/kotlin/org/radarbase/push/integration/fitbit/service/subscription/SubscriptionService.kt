@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.fitbit.service
+package org.radarbase.push.integration.fitbit.service.subscription
 
 import jakarta.inject.Named
 import jakarta.ws.rs.core.Context
@@ -12,8 +12,6 @@ import org.glassfish.jersey.server.monitoring.RequestEvent
 import org.glassfish.jersey.server.monitoring.RequestEventListener
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.FITBIT_QUALIFIER
-import org.radarbase.push.integration.fitbit.subscription.SubscriptionRequest
-import org.radarbase.push.integration.fitbit.subscription.SubscriptionRequestGenerator
 import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
