@@ -6,7 +6,7 @@ import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.backfill.route.*
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.radarbase.push.integration.common.redis.RedisHolder
-import org.radarbase.push.integration.common.redis.offset.*
+import org.radarbase.push.integration.garmin.util.offset.*
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPool
 import java.nio.file.Path

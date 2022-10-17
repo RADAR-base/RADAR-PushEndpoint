@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.common.redis.offset
+package org.radarbase.push.integration.garmin.util.offset
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import java.time.Instant

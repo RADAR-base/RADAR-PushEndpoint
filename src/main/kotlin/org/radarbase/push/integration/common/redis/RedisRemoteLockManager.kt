@@ -1,6 +1,5 @@
-package org.radarbase.push.integration.garmin.util
+package org.radarbase.push.integration.common.redis
 
-import org.radarbase.push.integration.common.redis.RedisHolder
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.params.SetParams
 import java.time.Duration
