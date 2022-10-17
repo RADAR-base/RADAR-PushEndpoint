@@ -13,7 +13,7 @@ import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Compani
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.fitbit.auth.FitbitAuthValidator
 import org.radarbase.push.integration.fitbit.factory.FitbitUserTreeMapFactory
-import org.radarbase.push.integration.fitbit.service.FitbitApiService
+import org.radarbase.push.integration.fitbit.service.fitbitapi.FitbitApiService
 import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 
 class FitbitPushIntegrationResourceEnhancer(private val config: Config) : JerseyResourceEnhancer {
