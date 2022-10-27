@@ -14,6 +14,6 @@ class GarminMoveIQRoute(
 
     override fun maxBackfillPeriod(): Duration {
         // 2 years default. Activity API  routes will override this with 5 years
-        return Duration.ofDays(365 * 5)
+        return Duration.ofDays(365 * 2)
     }
 }
