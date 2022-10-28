@@ -70,31 +70,46 @@ class GarminRequestGenerator(
         ),
     )
 
+    private val userNextRequest: MutableMap<String, Instant> = mutableMapOf()
+
     private var nextRequestTime: Instant = Instant.MIN
 
     private val shouldBackoff: Boolean
         get() = Instant.now() < nextRequestTime
 
     override fun requests(user: User, max: Int): Sequence<RestRequest> {
-        return routes.asSequence()
-            .flatMap { route ->
-                val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
-                val startDate = userRepository.getBackfillStartDate(user)
-                val startOffset: Instant = if (offsets == null) {
-                    logger.debug("No offsets found for $user, using the start date.")
-                    startDate
-                } else {
-                    logger.debug("Offsets found in persistence.")
-                    offsets.offsetsMap.getOrDefault(
-                        UserRoute(user.versionedId, route.toString()), startDate
-                    ).coerceAtLeast(startDate)
+        return if (user.ready()) {
+            routes.asSequence()
+                .flatMap { route ->
+                    val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
+                    val backfillLimit = Instant.now().minus(route.maxBackfillPeriod())
+                    val startDate = userRepository.getBackfillStartDate(user)
+                    var startOffset: Instant = if (offsets == null) {
+                        logger.debug("No offsets found for $user, using the start date.")
+                        startDate
+                    } else {
+                        logger.debug("Offsets found in persistence.")
+                        offsets.offsetsMap.getOrDefault(
+                            UserRoute(user.versionedId, route.toString()), startDate
+                        ).coerceAtLeast(startDate)
+                    }
+
+                    if (startOffset <= backfillLimit) {
+                        // the start date is before the backfill limits
+                        logger.warn(
+                            "Backfill limit exceeded for $user and $route. " +
+                                "Resetting to earliest allowed start offset."
+                        )
+                        startOffset = backfillLimit.plus(Duration.ofDays(2))
+                    }
+
+                    val endDate = userRepository.getBackfillEndDate(user)
+                    if (endDate <= startOffset) return@flatMap emptySequence()
+                    val endTime = (startOffset + defaultQueryRange).coerceAtMost(endDate)
+                    route.generateRequests(user, startOffset, endTime, max / routes.size)
                 }
-                val endDate = userRepository.getBackfillEndDate(user)
-                if (endDate <= startOffset) return@flatMap emptySequence()
-                val endTime = (startOffset + defaultQueryRange).coerceAtMost(endDate)
-                route.generateRequests(user, startOffset, endTime, max / routes.size)
-            }
-            .takeWhile { !shouldBackoff }
+                .takeWhile { !shouldBackoff }
+        } else emptySequence()
     }
 
     override fun requestSuccessful(request: RestRequest, response: Response) {
@@ -119,12 +134,28 @@ class GarminRequestGenerator(
                 logger.info("A duplicate request was made. Marking successful...")
                 requestSuccessful(request, response)
             }
+            412 -> {
+                logger.warn(
+                    "User ${request.user} does not have correct permissions/scopes enabled. " +
+                        "Please enable in garmin connect. User backing off for $USER_BACK_OFF_TIME..."
+                )
+                userNextRequest[request.user.versionedId] = Instant.now().plus(USER_BACK_OFF_TIME)
+            }
             else -> logger.warn("Request Failed: {}, {}", request, response)
+        }
+    }
+
+    private fun User.ready(): Boolean {
+        return if (versionedId in userNextRequest) {
+            Instant.now() > userNextRequest[versionedId]
+        } else {
+            true
         }
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(GarminRequestGenerator::class.java)
         private val BACK_OFF_TIME = Duration.ofMinutes(1L)
+        private val USER_BACK_OFF_TIME = Duration.ofDays(1L)
     }
 }

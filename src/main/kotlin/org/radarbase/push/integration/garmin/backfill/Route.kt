@@ -17,4 +17,6 @@ interface Route {
      * This is how it would appear in the offsets
      */
     override fun toString(): String
+
+    fun maxBackfillPeriod(): Duration
 }
