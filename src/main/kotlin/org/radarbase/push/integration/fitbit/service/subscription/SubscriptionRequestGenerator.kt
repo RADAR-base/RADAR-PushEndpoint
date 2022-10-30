@@ -71,26 +71,6 @@ class SubscriptionRequestGenerator(
 
     fun subscriptionCreationRequestSuccessful(request: SubscriptionRequest, response: Response) {
         userDataMap[request.user.userId]?.subscriptionStatus = true
-
-        request.user.externalId?.let {
-            offsetPersistenceFactory.add(
-                Path.of(it),
-                UserRouteOffset(it, "activities", Instant.now(), Instant.now())
-            )
-            offsetPersistenceFactory.add(
-                Path.of(it),
-                UserRouteOffset(it, "body", Instant.now(), Instant.now())
-            )
-            offsetPersistenceFactory.add(
-                Path.of(it),
-                UserRouteOffset(it, "foods", Instant.now(), Instant.now())
-            )
-            offsetPersistenceFactory.add(
-                Path.of(it),
-                UserRouteOffset(it, "sleep", Instant.now(), Instant.now())
-            )
-        }
-
         logger.info("Request successful: {}. Response: {}", request.request, response)
     }
 
