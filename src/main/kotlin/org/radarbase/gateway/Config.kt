@@ -96,6 +96,7 @@ data class FitbitConfig(
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
     val userRepositoryTokenUrl: String = "http://localhost:8080/token/",
+    val redis: FitbitRedisConfig = FitbitRedisConfig(),
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
 
@@ -125,6 +126,11 @@ data class BackfillConfig(
 data class RedisConfig(
     val uri: URI = URI("redis://localhost:6379"),
     val lockPrefix: String = "radar-push-garmin/lock"
+)
+
+data class FitbitRedisConfig(
+    val uri: URI = URI("redis://localhost:6379"),
+    val lockPrefix: String = "radar-push-fitbit/lock"
 )
 
 data class UserBackfillConfig(

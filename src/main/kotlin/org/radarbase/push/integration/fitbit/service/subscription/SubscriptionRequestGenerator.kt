@@ -4,9 +4,15 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.internal.EMPTY_REQUEST
 import org.radarbase.gateway.Config
+import org.radarbase.push.integration.common.redis.RedisHolder
 import org.radarbase.push.integration.common.user.User
+import org.radarbase.push.integration.fitbit.redis.OffsetPersistenceFactory
+import org.radarbase.push.integration.fitbit.redis.OffsetRedisPersistence
+import org.radarbase.push.integration.fitbit.redis.UserRouteOffset
 import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 import org.slf4j.LoggerFactory
+import redis.clients.jedis.JedisPool
+import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -18,6 +24,10 @@ class SubscriptionRequestGenerator(
     private val userDataMap: ConcurrentHashMap<String, SubscriptionUserData> =
         ConcurrentHashMap<String, SubscriptionUserData>()
     private val subscriptionID: AtomicInteger = AtomicInteger(0)
+    private val redisHolder: RedisHolder =
+        RedisHolder(JedisPool(config.pushIntegration.fitbit.redis.uri))
+    private val offsetPersistenceFactory: OffsetPersistenceFactory =
+        OffsetRedisPersistence(redisHolder)
 
     private fun subscriptionUrl(user: User, subscriptionID: String): String {
         return "https://api.fitbit.com/1/user/" + user.serviceUserId + "/apiSubscriptions/" + subscriptionID + ".json"
@@ -61,6 +71,26 @@ class SubscriptionRequestGenerator(
 
     fun subscriptionCreationRequestSuccessful(request: SubscriptionRequest, response: Response) {
         userDataMap[request.user.userId]?.subscriptionStatus = true
+
+        request.user.externalId?.let {
+            offsetPersistenceFactory.add(
+                Path.of(it),
+                UserRouteOffset(it, "activities", Instant.now(), Instant.now())
+            )
+            offsetPersistenceFactory.add(
+                Path.of(it),
+                UserRouteOffset(it, "body", Instant.now(), Instant.now())
+            )
+            offsetPersistenceFactory.add(
+                Path.of(it),
+                UserRouteOffset(it, "foods", Instant.now(), Instant.now())
+            )
+            offsetPersistenceFactory.add(
+                Path.of(it),
+                UserRouteOffset(it, "sleep", Instant.now(), Instant.now())
+            )
+        }
+
         logger.info("Request successful: {}. Response: {}", request.request, response)
     }
 
@@ -83,7 +113,6 @@ class SubscriptionRequestGenerator(
     fun subscriptionDeletionRequestFailed(request: SubscriptionRequest, response: Response) {
         logger.info("Request failed, {} {}", request, response)
     }
-
 
 
     companion object {
