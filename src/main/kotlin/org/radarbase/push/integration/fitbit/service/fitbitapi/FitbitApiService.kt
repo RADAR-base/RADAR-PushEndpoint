@@ -17,6 +17,10 @@ import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPool
 import java.io.IOException
 import java.nio.file.Path
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class FitbitApiService(
     @Context private val config: Config,
@@ -26,8 +30,10 @@ class FitbitApiService(
     private val contentReader =
         objectMapper.readerFor(object : TypeReference<List<FitbitNotification>>() {})
 
-    private val redisHolder : RedisHolder = RedisHolder(JedisPool(config.pushIntegration.fitbit.redis.uri))
-    private val offsetPersistenceFactory: OffsetPersistenceFactory = OffsetRedisPersistence(redisHolder)
+    private val redisHolder: RedisHolder =
+        RedisHolder(JedisPool(config.pushIntegration.fitbit.redis.uri))
+    private val offsetPersistenceFactory: OffsetPersistenceFactory =
+        OffsetRedisPersistence(redisHolder)
 
     @Throws(IOException::class, BadRequestException::class)
     fun verifySubscriber(verificationCode: String): Response {
@@ -42,14 +48,10 @@ class FitbitApiService(
         val notifications = contentReader.readValue<List<FitbitNotification>>(contents)
 
         notifications.forEach {
-            val offsets: Offsets? = offsetPersistenceFactory.read(it.ownerId)
 
             when (it.collectionType) {
                 "userRevokedAccess", "deleteUser" -> logger.warn("The user has restricted to send data.")
-                "activities" -> processActivity(it)
-                "body" -> processBody(it)
-                "foods" -> processNutrition(it)
-                "sleep" -> processSleep(it)
+                "activities","body","foods","sleep" -> processNotification(it, user)
                 else -> logger.info("Unsupported collectionType {} is received.", it.collectionType)
             }
         }
@@ -57,20 +59,24 @@ class FitbitApiService(
         return Response.noContent().build()
     }
 
-    fun processActivity(activity: FitbitNotification) {
-        val offsets: Offsets? = offsetPersistenceFactory.read(activity.ownerId)
-        if (offsets != null) {
-            val fitbitOffsets = offsets.offsetsMap[UserRoute(activity.ownerId, "activities")]
-        }
+    fun processNotification(notification: FitbitNotification, user: User){
+        val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
+        offsetPersistenceFactory.add(
+            Path.of(user.versionedId),
+            UserRouteOffset(
+                user.versionedId,
+                notification.collectionType,
+                offsets?.offsetsMap?.get(UserRoute(user.versionedId, notification.collectionType))?.lastSuccessOffset
+                    ?: user.startDate,
+                convertStringToInstant(notification.date)
+            )
+        )
     }
 
-    fun processBody(body: FitbitNotification) {}
-
-    fun processNutrition(nutrition: FitbitNotification) {}
-
-    fun processSleep(sleep: FitbitNotification) {}
-
-
+    private fun convertStringToInstant(date: String): Instant {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        return LocalDateTime.parse(date, formatter).toInstant(ZoneOffset.UTC)
+    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(FitbitApiService::class.java)
