@@ -19,28 +19,24 @@ package org.radarbase.push.integration.fitbit.request
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import jakarta.inject.Named
-import jakarta.ws.rs.core.Context
 import okhttp3.OkHttpClient
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.ProducerPool
-import org.radarbase.push.integration.common.auth.DelegatedAuthValidator
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.fitbit.request.route.FitbitActivityLogRoute
 import org.radarbase.push.integration.fitbit.request.route.FitbitSleepRoute
 import org.radarbase.push.integration.fitbit.request.route.RequestRoute
 import org.slf4j.LoggerFactory
-import java.util.stream.Stream
 
 /**
  * Generate all requests for Fitbit API.
  */
 class FitbitRequestGenerator(
-    @Context @Named(DelegatedAuthValidator.FITBIT_QUALIFIER) private val userRepository: UserRepository,
-    @Context private val config: Config,
-    @Context private val producerPool: ProducerPool
-    ) : RequestGeneratorRouter() {
+    private val userRepository: UserRepository,
+    config: Config,
+    producerPool: ProducerPool
+) : RequestGeneratorRouter() {
     private var baseClient: OkHttpClient? = OkHttpClient()
     private val clients: MutableMap<String, OkHttpClient> = mutableMapOf()
     private var routes: List<RequestRoute> = mutableListOf(
@@ -65,6 +61,5 @@ class FitbitRequestGenerator(
         val JSON_READER = ObjectMapper(JSON_FACTORY)
             .registerModule(JavaTimeModule())
             .reader()
-        private val logger = LoggerFactory.getLogger(FitbitRequestGenerator::class.java)
     }
 }

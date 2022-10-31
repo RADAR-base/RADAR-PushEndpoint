@@ -156,13 +156,15 @@ abstract class FitbitPollingRoute(
      */
     protected abstract fun createRequests(user: User): Sequence<FitbitRestRequest?>
 
-    override fun requests(): Sequence<FitbitRestRequest?> {
+    override fun requests(): Sequence<FitbitRestRequest> {
         tooManyRequestsForUser.clear()
         lastPoll = Instant.now()
         return try {
             userRepository.stream().map { u -> AbstractMap.SimpleImmutableEntry(u, nextPoll(u)) }
-                .filter { u -> lastPoll.isAfter(u.value) }.sortedWith(java.util.Map.Entry.comparingByValue())
-                .flatMap { u -> createRequests(u.key) }.filter { obj: Any? -> Objects.nonNull(obj) }
+                .filter { u -> lastPoll.isAfter(u.value) }
+                .sortedWith(java.util.Map.Entry.comparingByValue())
+                .flatMap { u -> createRequests(u.key) }
+                .filterNotNull()
         } catch (e: IOException) {
             logger.warn("Cannot read users")
             emptySequence()
@@ -212,7 +214,7 @@ abstract class FitbitPollingRoute(
         }
     }
 
-    protected fun getOffset(user: User): Instant {
+    protected fun getLatestOffset(user: User): Instant {
         return offsetPersistenceFactory.read(user.versionedId)?.offsetsMap?.get(
             UserRoute(
                 user.versionedId,
@@ -254,7 +256,7 @@ abstract class FitbitPollingRoute(
      * Next time that given user should be polled.
      */
     protected fun nextPoll(user: User): Instant {
-        val offset = getOffset(user)
+        val offset = getLatestOffset(user)
         return if (offset.isAfter(user.endDate.minus(endDateThreshold))) {
             nearFuture()
         } else {

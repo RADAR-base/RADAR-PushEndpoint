@@ -102,7 +102,8 @@ data class FitbitConfig(
     val activityLogTopic: String = "connect_fitbit_activity_log",
     val routePollIntervalMs: Long = 5000,
     val pollIntervalPerUserSeconds: Long = 150,
-    val redis: FitbitRedisConfig = FitbitRedisConfig(),
+    val requestMaxThreads: Int = 4,
+    val redis: RedisConfig = RedisConfig(lockPrefix = "radar-fitbit-subscription/lock"),
     val baseUrl: String = "https://api.fitbit.com",
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
@@ -136,11 +137,6 @@ data class BackfillConfig(
 data class RedisConfig(
     val uri: URI = URI("redis://localhost:6379"),
     val lockPrefix: String = "radar-push-garmin/lock"
-)
-
-data class FitbitRedisConfig(
-    val uri: URI = URI("redis://localhost:6379"),
-    val lockPrefix: String = "radar-push-fitbit/lock"
 )
 
 data class UserBackfillConfig(

@@ -28,5 +28,5 @@ interface RequestGenerator {
     /**
      * Requests that should be queried next.
      */
-    fun requests(): Sequence<FitbitRestRequest?>?
+    fun requests(): Sequence<FitbitRestRequest>
 }

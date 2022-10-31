@@ -49,6 +49,10 @@ class FitbitRestRequest(
         return dateRange
     }
 
+    fun getRequest(): Request {
+        return request
+    }
+
     val isStillValid: Boolean
         get() = isValid.test(this)
 

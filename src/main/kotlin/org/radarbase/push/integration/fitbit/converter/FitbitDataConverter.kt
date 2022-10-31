@@ -33,7 +33,6 @@ interface FitbitDataConverter: PayloadToSourceRecordConverter {
         timeReceived: Double
     ): Sequence<Result<TopicData>>
 
-
     override fun convert(request: FitbitRestRequest, headers: Headers, data: ByteArray): Sequence<Result<TopicData>> {
         val node = JSON_READER.readTree(data)
 

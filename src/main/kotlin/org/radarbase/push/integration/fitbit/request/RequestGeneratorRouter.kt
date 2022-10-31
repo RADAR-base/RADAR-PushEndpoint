@@ -21,9 +21,9 @@ import org.radarbase.push.integration.fitbit.request.route.RequestRoute
 import java.time.Instant
 
 abstract class RequestGeneratorRouter : RequestGenerator {
-    override fun requests(): Sequence<FitbitRestRequest?> {
+    override fun requests(): Sequence<FitbitRestRequest> {
         return routes()
-            .flatMap { obj: RequestRoute -> obj.requests() ?: emptySequence() }
+            .flatMap { obj: RequestRoute -> obj.requests() }
     }
 
     override val timeOfNextRequest: Instant?
