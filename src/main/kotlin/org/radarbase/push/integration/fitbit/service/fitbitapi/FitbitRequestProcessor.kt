@@ -12,10 +12,10 @@ import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator
 import org.radarbase.push.integration.common.redis.RedisHolder
 import org.radarbase.push.integration.common.redis.RedisRemoteLockManager
-import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.fitbit.converter.TopicData
 import org.radarbase.push.integration.fitbit.request.FitbitRequestGenerator
 import org.radarbase.push.integration.fitbit.request.FitbitRestRequest
+import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPool
 import java.io.IOException
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 
 class FitbitRequestProcessor(
     @Context private val config: Config,
-    @Context @Named(DelegatedAuthValidator.FITBIT_QUALIFIER) private val userRepository: UserRepository,
+    @Context @Named(DelegatedAuthValidator.FITBIT_QUALIFIER) private val userRepository: FitbitUserRepository,
     @Context private val producerPool: ProducerPool
 ) : ApplicationEventListener {
     private val executorService = Executors.newSingleThreadScheduledExecutor()
