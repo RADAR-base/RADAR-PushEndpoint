@@ -8,6 +8,7 @@ import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import java.net.URI
+import java.time.Duration
 import java.time.Instant
 
 data class Config(
@@ -96,9 +97,18 @@ data class FitbitConfig(
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
     val userRepositoryTokenUrl: String = "http://localhost:8080/token/",
+    val sleepStagesTopic: String = "connect_fitbit_sleep_stages",
+    val sleepClassicTopic: String = "connect_fitbit_sleep_classic",
+    val activityLogTopic: String = "connect_fitbit_activity_log",
+    val routePollIntervalMs: Long = 5000,
+    val pollIntervalPerUserSeconds: Long = 150,
     val redis: FitbitRedisConfig = FitbitRedisConfig(),
+    val baseUrl: String = "https://api.fitbit.com",
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
+    val routePollInterval: Duration = Duration.ofMillis(routePollIntervalMs)
+    val pollIntervalPerUser: Duration = Duration.ofSeconds(pollIntervalPerUserSeconds)
+    val tooManyRequestsCooldown: Duration = Duration.ofHours(1)
 
     fun validate() {
         if (enabled) {
