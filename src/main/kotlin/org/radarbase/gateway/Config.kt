@@ -100,6 +100,7 @@ data class FitbitConfig(
     val sleepStagesTopic: String = "connect_fitbit_sleep_stages",
     val sleepClassicTopic: String = "connect_fitbit_sleep_classic",
     val activityLogTopic: String = "connect_fitbit_activity_log",
+    val foodLogTopic: String = "connect_fitbit_food_log",
     val routePollIntervalMs: Long = 5000,
     val pollIntervalPerUserSeconds: Long = 150,
     val requestMaxThreads: Int = 4,
