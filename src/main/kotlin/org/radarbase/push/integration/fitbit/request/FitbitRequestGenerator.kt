@@ -25,6 +25,7 @@ import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.UserRepository
 import org.radarbase.push.integration.fitbit.request.route.FitbitActivityLogRoute
+import org.radarbase.push.integration.fitbit.request.route.FitbitFoodLogRoute
 import org.radarbase.push.integration.fitbit.request.route.FitbitSleepRoute
 import org.radarbase.push.integration.fitbit.request.route.RequestRoute
 import org.slf4j.LoggerFactory
@@ -41,7 +42,8 @@ class FitbitRequestGenerator(
     private val clients: MutableMap<String, OkHttpClient> = mutableMapOf()
     private var routes: List<RequestRoute> = mutableListOf(
         FitbitSleepRoute(this, userRepository, config, producerPool),
-        FitbitActivityLogRoute(this, userRepository, config, producerPool)
+        FitbitActivityLogRoute(this, userRepository, config, producerPool),
+        FitbitFoodLogRoute(this, userRepository, config, producerPool)
     )
 
     override fun routes(): Sequence<RequestRoute> {
