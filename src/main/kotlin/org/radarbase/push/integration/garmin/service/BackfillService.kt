@@ -15,8 +15,8 @@ import org.radarbase.push.integration.garmin.backfill.GarminRequestGenerator
 import org.radarbase.push.integration.garmin.backfill.RestRequest
 import org.radarbase.push.integration.garmin.backfill.TooManyRequestsException
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
-import org.radarbase.push.integration.garmin.util.RedisHolder
-import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
+import org.radarbase.push.integration.common.redis.RedisHolder
+import org.radarbase.push.integration.common.redis.RedisRemoteLockManager
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.JedisPool
 import java.io.IOException

@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.garmin.util
+package org.radarbase.push.integration.common.redis
 
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.params.SetParams
@@ -6,8 +6,8 @@ import java.time.Duration
 import java.util.*
 
 class RedisRemoteLockManager(
-        private val redisHolder: RedisHolder,
-        private val keyPrefix: String
+    private val redisHolder: RedisHolder,
+    private val keyPrefix: String
 ) : RemoteLockManager {
     private val uuid: String = UUID.randomUUID().toString()
 

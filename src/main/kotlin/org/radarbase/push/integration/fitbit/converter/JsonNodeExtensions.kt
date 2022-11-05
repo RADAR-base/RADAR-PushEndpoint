@@ -40,8 +40,13 @@ internal fun JsonNode.getRecordInterval(defaultValue: Int): Int {
         "millisecond" -> TimeUnit.MILLISECONDS
         "nanosecond" -> TimeUnit.NANOSECONDS
         "microsecond" -> TimeUnit.MICROSECONDS
-        else ->  {
-            logger.warn("Failed to parse dataset interval type {} for {}; using {} seconds instead", type.asText(), interval.asLong(), defaultValue)
+        else -> {
+            logger.warn(
+                "Failed to parse dataset interval type {} for {}; using {} seconds instead",
+                type.asText(),
+                interval.asLong(),
+                defaultValue
+            )
             return defaultValue
         }
     }.toSeconds(interval.asLong()).toInt()
@@ -54,6 +59,10 @@ internal fun JsonNode.optLong(fieldName: String): Long? = this[fieldName]
 internal fun JsonNode.optDouble(fieldName: String): Double? = this[fieldName]
     ?.takeIf { it.isNumber }
     ?.doubleValue()
+
+internal fun JsonNode.optFloat(fieldName: String): Float? = this[fieldName]
+    ?.takeIf { it.isNumber }
+    ?.floatValue()
 
 internal fun JsonNode.optInt(fieldName: String): Int? = this[fieldName]
     ?.takeIf { it.canConvertToInt() }

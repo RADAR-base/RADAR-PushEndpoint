@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.garmin.util.offset
+package org.radarbase.push.integration.fitbit.redis
 
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
@@ -24,9 +24,18 @@ class OffsetRedisPersistence(
                 redis[path]?.let { value ->
                     redisOffsetReader.readValue<RedisOffsets>(value)
                         .offsets
-                        .fold(Offsets(), { set, (userId, route, offset) ->
-                            set.apply { add(UserRouteOffset(userId, route, offset)) }
-                        })
+                        .fold(Offsets()) { set, (userId, route, lastSuccessOffset, latestOffset) ->
+                            set.apply {
+                                add(
+                                    UserRouteOffset(
+                                        userId,
+                                        route,
+                                        lastSuccessOffset,
+                                        latestOffset
+                                    )
+                                )
+                            }
+                        }
                 }
             }
         } catch (ex: IOException) {
@@ -42,12 +51,13 @@ class OffsetRedisPersistence(
      * Read the specified Path in Redis and adds the given UserRouteOffset to the offsets.
      */
     override fun add(path: Path, offset: UserRouteOffset) {
-        val offsets: Offsets = (read(path.toString()) ?: Offsets()).apply { add(offset) }
-        val redisOffsets = RedisOffsets(offsets.offsetsMap.map { (userRoute, offset) ->
+        val offsets: Offsets = (read(path.toString()) ?: Offsets()).apply { add(offset)}
+        val redisOffsets = RedisOffsets(offsets.offsetsMap.map { (userRoute, fitbitOffsets) ->
             RedisOffset(
                 userRoute.userId,
                 userRoute.route,
-                offset
+                fitbitOffsets.lastSuccessOffset,
+                fitbitOffsets.latestOffset
             )
         })
         try {
@@ -67,7 +77,8 @@ class OffsetRedisPersistence(
         data class RedisOffset(
             val userId: String,
             val route: String,
-            val offset: Instant
+            val lastSuccessOffset: Instant,
+            val latestOffset: Instant
         )
 
         private val logger = LoggerFactory.getLogger(OffsetRedisPersistence::class.java)

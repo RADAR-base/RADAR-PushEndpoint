@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.garmin.util
+package org.radarbase.push.integration.common.redis
 
 import java.io.Closeable
 

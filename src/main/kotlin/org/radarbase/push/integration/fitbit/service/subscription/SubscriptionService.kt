@@ -1,4 +1,4 @@
-package org.radarbase.push.integration.fitbit.service
+package org.radarbase.push.integration.fitbit.service.subscription
 
 import jakarta.inject.Named
 import jakarta.ws.rs.core.Context
@@ -12,16 +12,11 @@ import org.glassfish.jersey.server.monitoring.RequestEvent
 import org.glassfish.jersey.server.monitoring.RequestEventListener
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.FITBIT_QUALIFIER
-import org.radarbase.push.integration.fitbit.subscription.NullSubscriptionIDException
-import org.radarbase.push.integration.fitbit.subscription.SubscriptionRequest
-import org.radarbase.push.integration.fitbit.subscription.SubscriptionRequestGenerator
 import org.radarbase.push.integration.fitbit.user.FitbitUserRepository
 import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 
 class SubscriptionService(
     @Context private val config: Config,
@@ -31,15 +26,7 @@ class SubscriptionService(
 
     private val requestGenerator = SubscriptionRequestGenerator(config, userRepository)
     private val userExecutorService = Executors.newSingleThreadScheduledExecutor()
-
     private val requestExecutorService = Executors.newSingleThreadExecutor()
-
-    private val userSubscriptionStatusMap: ConcurrentHashMap<String, Boolean> =
-        ConcurrentHashMap<String, Boolean>()
-    private val userSubscriptionIDMap: ConcurrentHashMap<String, String> =
-        ConcurrentHashMap<String, String>()
-    private val subscriptionID: AtomicInteger = AtomicInteger(0)
-
     private val futures: MutableList<Future<*>> = mutableListOf()
 
     override fun onEvent(event: ApplicationEvent?) {
@@ -65,13 +52,7 @@ class SubscriptionService(
         userRepository.stream()
             .map { user ->
                 requestExecutorService.submit {
-                    if (userSubscriptionIDMap[user.id] != null)
-                        makeDeletionRequest(
-                            requestGenerator.subscriptionDeletionRequest(
-                                user,
-                                userSubscriptionIDMap[user.id]
-                            )
-                        )
+                    makeDeletionRequest(requestGenerator.subscriptionDeletionRequest(user))
                 }
             }
     }
@@ -88,46 +69,27 @@ class SubscriptionService(
             futures += userRepository.stream()
                 .map { user ->
                     requestExecutorService.submit {
-                        if (userSubscriptionStatusMap[user.id] == null) {
-                            logger.info("Creating subscription for newly added user[$user]...")
-                            userSubscriptionIDMap[user.id] = userSubscriptionIDMap[user.id]
-                                ?: subscriptionID.getAndIncrement().toString()
-                            makeCreationRequest(
-                                requestGenerator.subscriptionCreationRequest(
-                                    user,
-                                    userSubscriptionIDMap[user.id]
-                                )
-                            )
-                        }
+                        makeCreationRequest(requestGenerator.subscriptionCreationRequest(user))
                     }
                 }
         } catch (exc: IOException) {
             logger.warn("I/O Exception while iterating Fitbit users.", exc)
-        } catch (exc: NullSubscriptionIDException) {
-            logger.warn("Subscription id generation failed.", exc)
         } catch (exc: Throwable) {
             logger.warn("Error while iterating Fitbit users.", exc)
         }
     }
 
-    private fun makeCreationRequest(request: SubscriptionRequest) {
+    private fun makeCreationRequest(request: SubscriptionRequest?) {
+        if (request == null) {
+            return
+        }
         logger.debug("Making Request: {}", request.request)
         try {
             httpClient.newCall(request.request).execute().use { response ->
                 if (response.isSuccessful) {
-                    userSubscriptionStatusMap[request.user.id] = true
-                    logger.info("Request successful: {}. Response: {}", request.request, response)
+                    requestGenerator.subscriptionCreationRequestSuccessful(request, response)
                 } else {
-                    when (response.code) {
-                        429 -> {
-                            logger.info("Too many requests reach rate limit.")
-                            futures.forEach { it.cancel(true) }
-                            futures.clear()
-                        }
-
-                        409 -> logger.info("The given user is already subscribed to this stream using a different subscription ID or the given subscription ID is already used to identify a subscription to a different stream.")
-                        else -> logger.info("Request failed, {} {}", request, response)
-                    }
+                    requestGenerator.subscriptionCreationRequestFailed(request, response)
                 }
             }
         } catch (ex: Throwable) {
@@ -135,18 +97,17 @@ class SubscriptionService(
         }
     }
 
-    private fun makeDeletionRequest(request: SubscriptionRequest) {
+    private fun makeDeletionRequest(request: SubscriptionRequest?) {
+        if (request == null) {
+            return
+        }
         logger.debug("Making Request: {}", request.request)
         try {
             httpClient.newCall(request.request).execute().use { response ->
                 if (response.isSuccessful) {
-                    logger.info("Request successful: {}. Response: {}", request.request, response)
+                    requestGenerator.subscriptionDeletionRequestSuccessful(request, response)
                 } else {
-                    when (response.code) {
-                        429 -> {
-                            logger.info("Too many requests reach rate limit.")
-                        }
-                    }
+                    requestGenerator.subscriptionDeletionRequestFailed(request, response)
                 }
             }
         } catch (exc: Throwable) {

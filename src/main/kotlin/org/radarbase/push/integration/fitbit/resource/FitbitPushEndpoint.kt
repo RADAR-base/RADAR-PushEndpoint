@@ -12,7 +12,7 @@ import org.radarbase.jersey.exception.HttpInternalServerException
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.fitbit.filter.ClientDomainVerification
-import org.radarbase.push.integration.fitbit.service.FitbitApiService
+import org.radarbase.push.integration.fitbit.service.fitbitapi.FitbitApiService
 
 @Singleton
 @Consumes(MediaType.APPLICATION_JSON)

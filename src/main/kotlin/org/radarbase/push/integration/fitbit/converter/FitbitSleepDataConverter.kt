@@ -58,6 +58,7 @@ class FitbitSleepDataConverter(
                         val dateTime: String = d.get("dateTime").asText()
                         val duration: Int = d.get("seconds").asInt()
                         val level: String = d.get("level").asText()
+                        val efficiency = d["efficiency"].asInt()
                         if (isStages) {
                             TopicData(
                                 sourceOffset = intermediateOffset,
@@ -66,7 +67,8 @@ class FitbitSleepDataConverter(
                                     dateTime,
                                     timeReceived,
                                     duration,
-                                    level.toStagesLevel()
+                                    level.toStagesLevel(),
+                                    efficiency,
                                 ),
                             )
                         } else {
@@ -78,6 +80,7 @@ class FitbitSleepDataConverter(
                                     timeReceived,
                                     duration,
                                     level.toClassicLevel(),
+                                    efficiency,
                                 )
                             )
                         }
