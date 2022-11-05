@@ -84,7 +84,6 @@ abstract class FitbitPollingRoute(
     private val redisHolder: RedisHolder = RedisHolder(JedisPool(config.pushIntegration.garmin.backfill.redis.uri)),
     private val offsetPersistenceFactory: OffsetPersistenceFactory = OffsetRedisPersistence(redisHolder),
 ) : PollingRequestRoute {
-    /** Committed offsets.  */
     private val lastPollPerUser: MutableMap<String, Instant> = HashMap()
     final override val pollInterval: Duration = config.pushIntegration.fitbit.routePollInterval
     final override var lastPoll: Instant = MIN_INSTANT
@@ -160,7 +159,8 @@ abstract class FitbitPollingRoute(
         tooManyRequestsForUser.clear()
         lastPoll = Instant.now()
         return try {
-            userRepository.stream().map { u -> AbstractMap.SimpleImmutableEntry(u, nextPoll(u)) }
+            userRepository.stream()
+                .map { u -> AbstractMap.SimpleImmutableEntry(u, nextPoll(u)) }
                 .filter { u -> lastPoll.isAfter(u.value) }
                 .sortedWith(java.util.Map.Entry.comparingByValue())
                 .flatMap { u -> createRequests(u.key) }

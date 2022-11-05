@@ -35,7 +35,7 @@ open class FitbitActivityLogRoute(
     userRepository: UserRepository,
     config: Config,
     producerPool: ProducerPool
-) : FitbitPollingRoute(generator, userRepository, "activity_log", config, producerPool) {
+) : FitbitPollingRoute(generator, userRepository, "activities", config, producerPool) {
     private val converter: FitbitActivityLogDataConverter
 
     init {
@@ -74,7 +74,7 @@ open class FitbitActivityLogRoute(
     }
 
     override var pollIntervalPerUser: Duration
-        protected get() = ACTIVITY_LOG_POLL_INTERVAL
+        get() = ACTIVITY_LOG_POLL_INTERVAL
         set(pollIntervalPerUser) {
             super.pollIntervalPerUser = pollIntervalPerUser
         }
