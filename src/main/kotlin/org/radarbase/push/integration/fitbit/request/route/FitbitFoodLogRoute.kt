@@ -20,7 +20,7 @@ class FitbitFoodLogRoute(
     userRepository: UserRepository,
     config: Config,
     producerPool: ProducerPool
-) : FitbitPollingRoute(generator, userRepository, "food_log", config, producerPool) {
+) : FitbitPollingRoute(generator, userRepository, "foods", config, producerPool) {
     private val converter: FitbitFoodLogConverter
 
     init {
