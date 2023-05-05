@@ -61,7 +61,7 @@ class GarminHealthApiService(
     )
 
     private val heartRateSampleConverter = HeartRateSampleGarminAvroConverter(
-        garminConfig.heartRateSampleConverter
+        garminConfig.heartRateSampleTopicName
     )
 
     private val sleepLevelConverter = SleepLevelGarminAvroConverter(
@@ -80,7 +80,22 @@ class GarminHealthApiService(
         garminConfig.stressLevelTopicName
     )
 
-    private val bloodPressureConverter = BloodPressureGarminAvroConverter(garminConfig.bloodPressureTopic)
+    private val bloodPressureConverter = BloodPressureGarminAvroConverter(garminConfig.bloodPressureTopicName)
+
+    private val healthSnapshotConverter =
+        HealthSnapshotGarminAvroConverter(garminConfig.healthSnapshotTopicName)
+
+    private val healthSnapshotHeartRateSampleConverter =
+        HealthSnapshotHeartRateSampleGarminAvroConverter(garminConfig.heartRateSampleTopicName)
+
+    private val healthSnapshotRespirationSampleConverter =
+        HealthSnapshotRespirationSampleGarminAvroConverter(garminConfig.respirationTopicName)
+
+    private val healthSnapshotSpO2SampleConverter =
+        HealthSnapshotSpO2SampleGarminAvroConverter(garminConfig.pulseOXTopicName)
+
+    private val healthSnapshotStressSampleConverter =
+        HealthSnapshotStressSampleGarminAvroConverter(garminConfig.stressLevelTopicName)
 
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, user: User): Response {
@@ -198,6 +213,26 @@ class GarminHealthApiService(
     fun processBloodPressure(tree: JsonNode, user: User): Response {
         val records = bloodPressureConverter.validateAndConvert(tree, user)
         producerPool.produce(bloodPressureConverter.topic, records)
+        return Response.ok().build()
+    }
+
+    @Throws(IOException::class, BadRequestException::class)
+    fun processHealthSnapshot(tree: JsonNode, user: User): Response {
+        val records = healthSnapshotConverter.validateAndConvert(tree, user)
+        producerPool.produce(healthSnapshotConverter.topic, records)
+
+        val heartRate = healthSnapshotHeartRateSampleConverter.validateAndConvert(tree, user)
+        producerPool.produce(healthSnapshotHeartRateSampleConverter.topic, heartRate)
+
+        val respiration = healthSnapshotRespirationSampleConverter.validateAndConvert(tree, user)
+        producerPool.produce(healthSnapshotRespirationSampleConverter.topic, respiration)
+
+        val spo2 = healthSnapshotSpO2SampleConverter.validateAndConvert(tree, user)
+        producerPool.produce(healthSnapshotSpO2SampleConverter.topic, spo2)
+
+        val stress = healthSnapshotStressSampleConverter.validateAndConvert(tree, user)
+        producerPool.produce(healthSnapshotStressSampleConverter.topic, stress)
+
         return Response.ok().build()
     }
 }
