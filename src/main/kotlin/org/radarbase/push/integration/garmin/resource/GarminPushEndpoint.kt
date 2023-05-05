@@ -123,6 +123,14 @@ class GarminPushEndpoint(
         }
     }
 
+    @POST
+    @Path("bloodPressure")
+    fun addBloodPressure(): Response {
+        return processResponses { tree: JsonNode, user: User ->
+            healthApiService.processBloodPressure(tree, user)
+        }
+    }
+
     /**
      * Processes responses for all users
      * @param function: The function to use to process data

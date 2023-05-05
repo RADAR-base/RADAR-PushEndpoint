@@ -80,6 +80,8 @@ class GarminHealthApiService(
         garminConfig.stressLevelTopicName
     )
 
+    private val bloodPressureConverter = BloodPressureGarminAvroConverter(garminConfig.bloodPressureTopic)
+
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, user: User): Response {
         val records = dailiesConverter.validateAndConvert(tree, user)
@@ -189,6 +191,13 @@ class GarminHealthApiService(
     fun processRespiration(tree: JsonNode, user: User): Response {
         val records = respirationConverter.validateAndConvert(tree, user)
         producerPool.produce(respirationConverter.topic, records)
+        return Response.ok().build()
+    }
+
+    @Throws(IOException::class, BadRequestException::class)
+    fun processBloodPressure(tree: JsonNode, user: User): Response {
+        val records = bloodPressureConverter.validateAndConvert(tree, user)
+        producerPool.produce(bloodPressureConverter.topic, records)
         return Response.ok().build()
     }
 }
