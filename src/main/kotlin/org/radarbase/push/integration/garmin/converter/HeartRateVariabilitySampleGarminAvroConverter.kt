@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.garmin.GarminHeartRateSample
+import org.radarcns.push.garmin.GarminHeartRateVariabilitySample
 import java.time.Instant
 
-class HeartRateSampleGarminAvroConverter(
+class HeartRateVariabilitySampleGarminAvroConverter(
     topic: String = "push_integration_garmin_heart_rate_sample"
 ) :
     GarminAvroConverter(topic) {
@@ -27,7 +27,7 @@ class HeartRateSampleGarminAvroConverter(
         summaryId: String,
         observationKey: ObservationKey,
         startTime: Double
-    ): List<Pair<ObservationKey, GarminHeartRateSample>> {
+    ): List<Pair<ObservationKey, GarminHeartRateVariabilitySample>> {
         if (node == null) {
             return emptyList()
         }
@@ -35,18 +35,18 @@ class HeartRateSampleGarminAvroConverter(
         return node.fields().asSequence().map { (key, value) ->
             Pair(
                 observationKey,
-                GarminHeartRateSample.newBuilder().apply {
+                GarminHeartRateVariabilitySample.newBuilder().apply {
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    this.heartRate = value?.floatValue()
+                    this.hrvValue = value?.floatValue()
                 }.build()
             )
         }.toList()
     }
 
     companion object {
-        const val ROOT = DailiesGarminAvroConverter.ROOT
-        const val SUB_NODE = "timeOffsetHeartRateSamples"
+        const val ROOT = HeartRateVariabilityGarminAvroConverter.ROOT
+        const val SUB_NODE = "hrvValues"
     }
 }
