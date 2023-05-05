@@ -139,6 +139,14 @@ class GarminPushEndpoint(
         }
     }
 
+    @POST
+    @Path("hrv")
+    fun addHeartRateVariability(): Response {
+        return processResponses { tree: JsonNode, user: User ->
+            healthApiService.processHeartRateVariability(tree, user)
+        }
+    }
+
     /**
      * Processes responses for all users
      * @param function: The function to use to process data

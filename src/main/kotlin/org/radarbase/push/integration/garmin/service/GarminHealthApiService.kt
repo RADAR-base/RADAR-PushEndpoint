@@ -21,36 +21,29 @@ class GarminHealthApiService(
 ) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
 
-    private val dailiesConverter =
-        DailiesGarminAvroConverter(garminConfig.dailiesTopicName)
+    private val dailiesConverter = DailiesGarminAvroConverter(garminConfig.dailiesTopicName)
 
-    private val activitiesConverter =
-        ActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
+    private val activitiesConverter = ActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
 
-    private val manualActivitiesConverter =
-        ManualActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
+    private val manualActivitiesConverter = ManualActivitiesGarminAvroConverter(garminConfig.activitiesTopicName)
 
-    private val activityDetailsConverter =
-        ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
+    private val activityDetailsConverter = ActivityDetailsGarminAvroConverter(garminConfig.activityDetailsTopicName)
 
     private val epochsConverter = EpochsGarminAvroConverter(garminConfig.epochSummariesTopicName)
 
     private val sleepSummaryConverter = SleepsGarminAvroConverter(garminConfig.sleepsTopicName)
 
-    private val bodyCompsConverter =
-        BodyCompGarminAvroConverter(garminConfig.bodyCompositionsTopicName)
+    private val bodyCompsConverter = BodyCompGarminAvroConverter(garminConfig.bodyCompositionsTopicName)
 
     private val stressConverter = StressDetailsGarminAvroConverter(garminConfig.stressTopicName)
 
-    private val userMetricsConverter =
-        UserMetricsGarminAvroConverter(garminConfig.userMetricsTopicName)
+    private val userMetricsConverter = UserMetricsGarminAvroConverter(garminConfig.userMetricsTopicName)
 
     private val moveIQConverter = MoveIQGarminAvroConverter(garminConfig.moveIQTopicName)
 
     private val pulseOxConverter = PulseOxGarminAvroConverter(garminConfig.pulseOXTopicName)
 
-    private val respirationConverter =
-        RespirationGarminAvroConverter(garminConfig.respirationTopicName)
+    private val respirationConverter = RespirationGarminAvroConverter(garminConfig.respirationTopicName)
 
     private val activityDetailsSampleConverter = ActivityDetailsSampleGarminAvroConverter(
         garminConfig.activityDetailsSampleTopicName
@@ -68,11 +61,9 @@ class GarminHealthApiService(
         garminConfig.sleepLevelTopicName
     )
 
-    private val sleepPulseOxConverter =
-        SleepPulseOxGarminAvroConverter(garminConfig.pulseOXTopicName)
+    private val sleepPulseOxConverter = SleepPulseOxGarminAvroConverter(garminConfig.pulseOXTopicName)
 
-    private val sleepRespirationConverter =
-        SleepRespirationGarminAvroConverter(garminConfig.respirationTopicName)
+    private val sleepRespirationConverter = SleepRespirationGarminAvroConverter(garminConfig.respirationTopicName)
 
     private val sleepScoreConverter = SleepScoreGarminAvroConverter(garminConfig.sleepScoreTopicName)
 
@@ -82,8 +73,7 @@ class GarminHealthApiService(
 
     private val bloodPressureConverter = BloodPressureGarminAvroConverter(garminConfig.bloodPressureTopicName)
 
-    private val healthSnapshotConverter =
-        HealthSnapshotGarminAvroConverter(garminConfig.healthSnapshotTopicName)
+    private val healthSnapshotConverter = HealthSnapshotGarminAvroConverter(garminConfig.healthSnapshotTopicName)
 
     private val healthSnapshotHeartRateSampleConverter =
         HealthSnapshotHeartRateSampleGarminAvroConverter(garminConfig.heartRateSampleTopicName)
@@ -96,6 +86,12 @@ class GarminHealthApiService(
 
     private val healthSnapshotStressSampleConverter =
         HealthSnapshotStressSampleGarminAvroConverter(garminConfig.stressLevelTopicName)
+
+    private val heartRateVariabilityConverter =
+        HeartRateVariabilityGarminAvroConverter(garminConfig.heartRateVariabilityTopicName)
+
+    private val heartRateVariabilitySampleConverter =
+        HeartRateVariabilitySampleGarminAvroConverter(garminConfig.heartRateVariabilitySampleTopicName)
 
     @Throws(IOException::class, BadRequestException::class)
     fun processDailies(tree: JsonNode, user: User): Response {
@@ -232,6 +228,17 @@ class GarminHealthApiService(
 
         val stress = healthSnapshotStressSampleConverter.validateAndConvert(tree, user)
         producerPool.produce(healthSnapshotStressSampleConverter.topic, stress)
+
+        return Response.ok().build()
+    }
+
+    @Throws(IOException::class, BadRequestException::class)
+    fun processHeartRateVariability(tree: JsonNode, user: User): Response {
+        val records = heartRateVariabilityConverter.validateAndConvert(tree, user)
+        producerPool.produce(heartRateVariabilityConverter.topic, records)
+
+        val hrvSample = heartRateVariabilitySampleConverter.validateAndConvert(tree, user)
+        producerPool.produce(heartRateVariabilitySampleConverter.topic, hrvSample)
 
         return Response.ok().build()
     }
