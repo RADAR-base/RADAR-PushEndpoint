@@ -74,6 +74,8 @@ class GarminHealthApiService(
     private val sleepRespirationConverter =
         SleepRespirationGarminAvroConverter(garminConfig.respirationTopicName)
 
+    private val sleepScoreConverter = SleepScoreGarminAvroConverter(garminConfig.sleepScoreTopicName)
+
     private val stressLevelConverter = StressLevelGarminAvroConverter(
         garminConfig.stressLevelTopicName
     )
@@ -134,6 +136,9 @@ class GarminHealthApiService(
 
         val respiration = sleepRespirationConverter.validateAndConvert(tree, user)
         producerPool.produce(sleepRespirationConverter.topic, respiration)
+
+        val sleepScore = sleepScoreConverter.validateAndConvert(tree, user)
+        producerPool.produce(sleepScoreConverter.topic, sleepScore)
 
         return Response.ok().build()
     }
