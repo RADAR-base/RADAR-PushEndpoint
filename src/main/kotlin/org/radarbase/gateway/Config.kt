@@ -65,9 +65,14 @@ data class GarminConfig(
     val respirationTopicName: String = "push_garmin_respiration",
     val activityDetailsSampleTopicName: String = "push_garmin_activity_detail_sample",
     val bodyBatterySampleTopicName: String = "push_garmin_body_battery_sample",
-    val heartRateSampleConverter: String = "push_garmin_heart_rate_sample",
+    val heartRateSampleTopicName: String = "push_garmin_heart_rate_sample",
     val sleepLevelTopicName: String = "push_garmin_sleep_level",
-    val stressLevelTopicName: String = "push_garmin_stress_level"
+    val stressLevelTopicName: String = "push_garmin_stress_level",
+    val sleepScoreTopicName: String = "push_garmin_sleep_score",
+    val bloodPressureTopicName: String = "push_garmin_blood_pressure",
+    val healthSnapshotTopicName: String = "push_garmin_health_snapshot_summary",
+    val heartRateVariabilityTopicName: String = "push_garmin_heart_rate_variability",
+    val heartRateVariabilitySampleTopicName: String = "push_garmin_heart_rate_variability_sample"
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
 

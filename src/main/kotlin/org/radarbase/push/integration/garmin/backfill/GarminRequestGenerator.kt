@@ -68,6 +68,18 @@ class GarminRequestGenerator(
             config.pushIntegration.garmin.consumerKey,
             userRepository
         ),
+        GarminHealthSnapshotRoute(
+            config.pushIntegration.garmin.consumerKey,
+            userRepository
+        ),
+        GarminHrvRoute(
+            config.pushIntegration.garmin.consumerKey,
+            userRepository
+        ),
+        GarminBloodPressureRoute(
+            config.pushIntegration.garmin.consumerKey,
+            userRepository
+        ),
     )
 
     private val userNextRequest: MutableMap<String, Instant> = mutableMapOf()

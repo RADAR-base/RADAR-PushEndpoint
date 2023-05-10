@@ -15,7 +15,7 @@ description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
     group = "org.radarbase"
-    version = "0.2.3"
+    version = "0.3.0"
 
     repositories {
         mavenCentral()
@@ -62,8 +62,8 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
 
     val log4j2Version: String by project
-    runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version")
-    runtimeOnly("org.apache.logging.log4j:log4j-api:$log4j2Version")
+    runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:$log4j2Version")
+    runtimeOnly("org.apache.logging.log4j:log4j-core:$log4j2Version")
     runtimeOnly("org.apache.logging.log4j:log4j-jul:$log4j2Version")
 
     val jedisVersion: String by project
@@ -122,7 +122,8 @@ application {
         "-Dcom.sun.management.jmxremote.local.only=false",
         "-Dcom.sun.management.jmxremote.port=9010",
         "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote.ssl=false",
+        "-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager",
     )
 }
 

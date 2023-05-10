@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.apache.avro.specific.SpecificRecord
 import org.radarbase.push.integration.common.user.User
 import org.radarcns.kafka.ObservationKey
-import org.radarcns.push.garmin.GarminHeartRateSample
+import org.radarcns.push.garmin.GarminRespiration
 import java.time.Instant
 
-class HeartRateSampleGarminAvroConverter(
-    topic: String = "push_integration_garmin_heart_rate_sample"
+class HealthSnapshotRespirationSampleGarminAvroConverter(
+    topic: String = "push_integration_garmin_respiration"
 ) :
     GarminAvroConverter(topic) {
     override fun validate(tree: JsonNode) = Unit
@@ -27,26 +27,27 @@ class HeartRateSampleGarminAvroConverter(
         summaryId: String,
         observationKey: ObservationKey,
         startTime: Double
-    ): List<Pair<ObservationKey, GarminHeartRateSample>> {
+    ): List<Pair<ObservationKey, GarminRespiration>> {
         if (node == null) {
             return emptyList()
         }
+        val summary = node.find { it["summaryType"]?.asText() == "respiration" } ?: return emptyList()
 
-        return node.fields().asSequence().map { (key, value) ->
+        return summary["epochSummaries"].fields().asSequence().map { (key, value) ->
             Pair(
                 observationKey,
-                GarminHeartRateSample.newBuilder().apply {
+                GarminRespiration.newBuilder().apply {
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
-                    this.heartRate = value?.floatValue()
+                    this.respiration = value?.floatValue()
                 }.build()
             )
         }.toList()
     }
 
     companion object {
-        const val ROOT = DailiesGarminAvroConverter.ROOT
-        const val SUB_NODE = "timeOffsetHeartRateSamples"
+        const val ROOT = HealthSnapshotGarminAvroConverter.ROOT
+        const val SUB_NODE = "summaries"
     }
 }
