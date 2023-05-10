@@ -17,7 +17,8 @@ class HealthSnapshotSpO2SampleGarminAvroConverter(
         return tree[ROOT].map { node ->
             getSamples(
                 node[SUB_NODE], node["summaryId"].asText(),
-                user.observationKey, node["startTimeInSeconds"].asDouble()
+                user.observationKey, node["startTimeInSeconds"].asDouble(),
+                node["calendarDate"]?.asText()
             )
         }.flatten()
     }
@@ -26,7 +27,8 @@ class HealthSnapshotSpO2SampleGarminAvroConverter(
         node: JsonNode?,
         summaryId: String,
         observationKey: ObservationKey,
-        startTime: Double
+        startTime: Double,
+        date: String?
     ): List<Pair<ObservationKey, GarminPulseOx>> {
         if (node == null) {
             return emptyList()
@@ -41,7 +43,9 @@ class HealthSnapshotSpO2SampleGarminAvroConverter(
                     this.summaryId = summaryId
                     this.time = startTime + key.toDouble()
                     this.timeReceived = Instant.now().toEpochMilli() / 1000.0
+                    this.date = date
                     this.spo2Value = value?.floatValue()
+                    this.onDemand = true
                 }.build()
             )
         }.toList()

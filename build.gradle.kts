@@ -61,8 +61,10 @@ dependencies {
     runtimeOnly("org.glassfish.grizzly:grizzly-http-monitoring:$grizzlyVersion")
     runtimeOnly("org.glassfish.grizzly:grizzly-http-server-monitoring:$grizzlyVersion")
 
-    val logbackVersion: String by project
-    runtimeOnly("ch.qos.logback:logback-classic:$logbackVersion")
+    val log4j2Version: String by project
+    runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:$log4j2Version")
+    runtimeOnly("org.apache.logging.log4j:log4j-core:$log4j2Version")
+    runtimeOnly("org.apache.logging.log4j:log4j-jul:$log4j2Version")
 
     val jedisVersion: String by project
     implementation("redis.clients:jedis:$jedisVersion")
@@ -120,7 +122,8 @@ application {
         "-Dcom.sun.management.jmxremote.local.only=false",
         "-Dcom.sun.management.jmxremote.port=9010",
         "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote.ssl=false",
+        "-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager",
     )
 }
 
