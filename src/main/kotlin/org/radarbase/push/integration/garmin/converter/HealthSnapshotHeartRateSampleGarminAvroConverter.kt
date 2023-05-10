@@ -7,7 +7,7 @@ import org.radarcns.kafka.ObservationKey
 import org.radarcns.push.garmin.GarminHeartRateSample
 import java.time.Instant
 
-class HeartRateSampleGarminAvroConverter(
+class HealthSnapshotHeartRateSampleGarminAvroConverter(
     topic: String = "push_integration_garmin_heart_rate_sample"
 ) :
     GarminAvroConverter(topic) {
@@ -32,7 +32,9 @@ class HeartRateSampleGarminAvroConverter(
             return emptyList()
         }
 
-        return node.fields().asSequence().map { (key, value) ->
+        val summary = node.find { it["summaryType"]?.asText() == "heart_rate" } ?: return emptyList()
+
+        return summary["epochSummaries"].fields().asSequence().map { (key, value) ->
             Pair(
                 observationKey,
                 GarminHeartRateSample.newBuilder().apply {
@@ -46,7 +48,7 @@ class HeartRateSampleGarminAvroConverter(
     }
 
     companion object {
-        const val ROOT = DailiesGarminAvroConverter.ROOT
-        const val SUB_NODE = "timeOffsetHeartRateSamples"
+        const val ROOT = HealthSnapshotGarminAvroConverter.ROOT
+        const val SUB_NODE = "summaries"
     }
 }

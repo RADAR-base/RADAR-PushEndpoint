@@ -29,6 +29,7 @@ class ActivityDetailsGarminAvroConverter(topic: String = "push_integration_garmi
             timeReceived = Instant.now().toEpochMilli() / 1000.0
             startTimeOffset = summary["startTimeOffsetInSeconds"]?.asInt()
             activityType = summary["activityType"]?.asText()
+            activityId = summary["activityId"]?.asText()
             duration = summary["durationInSeconds"]?.asInt()
             averageBikeCadence = summary["averageBikeCadenceInRoundsPerMinute"]?.floatValue()
             averageHeartRate = summary["averageHeartRateInBeatsPerMinute"]?.asInt()
