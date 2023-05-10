@@ -35,6 +35,6 @@ class BloodPressureGarminAvroConverter(topic: String = "push_integration_garmin_
     }
 
     companion object {
-        const val ROOT = "bloodPressure"
+        const val ROOT = "bloodPressures"
     }
 }
