@@ -80,7 +80,7 @@ data class GarminConfig(
         if (enabled) {
             check(GarminUserRepository::class.java.isAssignableFrom(userRepository)) {
                 "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                        " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
+                    " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
             }
         }
     }
@@ -91,7 +91,9 @@ data class BackfillConfig(
     val redis: RedisConfig = RedisConfig(),
     val maxThreads: Int = 4,
     val defaultEndDate: Instant = Instant.MAX,
-    val userBackfill: List<UserBackfillConfig> = emptyList()
+    val userBackfill: List<UserBackfillConfig> = emptyList(),
+    val requestsPerUserPerIteration: Int = 40,
+    val iterationIntervalMinutes: Long = 5,
 )
 
 data class RedisConfig(
