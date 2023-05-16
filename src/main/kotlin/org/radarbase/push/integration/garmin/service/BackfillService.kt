@@ -47,7 +47,7 @@ class BackfillService(
     )
 
     private val requestsPerUserPerIteration: Int
-        get() = 40
+        get() = config.pushIntegration.garmin.backfill.requestsPerUserPerIteration
 
     private val futures: MutableList<Future<*>> = mutableListOf()
 
@@ -64,7 +64,12 @@ class BackfillService(
     private fun start() {
         logger.info("Application Initialisation completed. Starting Backfill service...")
 
-        executorService.scheduleAtFixedRate(::iterateUsers, 1, 5, TimeUnit.MINUTES)
+        executorService.scheduleAtFixedRate(
+            ::iterateUsers,
+            1,
+            config.pushIntegration.garmin.backfill.iterationIntervalMinutes,
+            TimeUnit.MINUTES
+        )
     }
 
     private fun stop() {
@@ -124,6 +129,5 @@ class BackfillService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(BackfillService::class.java)
-        private const val WAIT_TIME_MS = 10_000L
     }
 }

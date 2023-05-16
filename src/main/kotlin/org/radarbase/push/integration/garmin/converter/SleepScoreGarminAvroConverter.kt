@@ -18,7 +18,7 @@ class SleepScoreGarminAvroConverter(
 
     private fun getRecord(node: JsonNode): SpecificRecord {
         return GarminSleepScoreSample.newBuilder().apply {
-            summaryId = summaryId
+            summaryId = node["summaryId"]?.asText()
             time = node["startTimeInSeconds"].asDouble()
             startTimeOffset = node["startTimeOffsetInSeconds"]?.asInt()
             timeReceived = Instant.now().toEpochMilli() / 1000.0
