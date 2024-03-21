@@ -78,7 +78,7 @@ abstract class GarminRoute(
 
     companion object {
         const val GARMIN_BACKFILL_BASE_URL =
-            "https://healthapi.garmin.com/wellness-api/rest/backfill"
+            "https://apis.garmin.com/wellness-api/rest/backfill"
         const val ROUTE_METHOD = "GET"
         private val DEFAULT_INTERVAL_PER_REQUEST = Duration.ofDays(5L)
     }
