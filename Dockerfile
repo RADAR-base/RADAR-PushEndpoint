@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gradle:7.0.2-jdk11 as builder
+FROM --platform=$BUILDPLATFORM gradle:8.3-jdk17 as builder
 
 RUN mkdir /code
 WORKDIR /code
@@ -29,7 +29,7 @@ RUN gradle distTar --no-watch-fs \
     && tar xzf *.tar.gz \
     && rm *.tar.gz radar-push-endpoint-*/lib/radar-push-endpoint-*.jar
 
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:17-jre
 
 MAINTAINER @yatharthranjan
 
