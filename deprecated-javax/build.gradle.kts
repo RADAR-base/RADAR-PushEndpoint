@@ -24,7 +24,7 @@ dependencies {
     implementation("io.confluent:kafka-schema-registry-client:$confluentVersion") {
         isTransitive = false
     }
-    implementation("org.glassfish.jersey.core:jersey-common:2.31")
+    implementation("org.glassfish.jersey.core:jersey-common:3.1.5")
     implementation("io.swagger:swagger-annotations:1.6.2")
     implementation("io.confluent:common-utils:$confluentVersion") {
         isTransitive = false

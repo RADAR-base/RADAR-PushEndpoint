@@ -15,7 +15,7 @@ description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
     group = "org.radarbase"
-    version = "0.3.1"
+    version = "0.3.2"
 
     repositories {
         mavenCentral()
@@ -87,9 +87,9 @@ dependencies {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        jvmTarget = "11"
-        apiVersion = "1.5"
-        languageVersion = "1.5"
+        jvmTarget = "17"
+        apiVersion = "1.8"
+        languageVersion = "1.8"
     }
 }
 
@@ -189,5 +189,5 @@ tasks.withType<DependencyUpdatesTask> {
 }
 
 tasks.wrapper {
-    gradleVersion = "7.1"
+    gradleVersion = "8.3"
 }
