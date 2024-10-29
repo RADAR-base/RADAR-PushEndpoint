@@ -113,6 +113,8 @@ class GarminRequestGenerator(
 
     private val userNextRequest: MutableMap<String, Instant> = mutableMapOf()
 
+    private val routeNextRequest: MutableMap<Route, Instant> = mutableMapOf()
+
     private var nextRequestTime: Instant = Instant.MIN
 
     private val shouldBackoff: Boolean
@@ -121,6 +123,11 @@ class GarminRequestGenerator(
     override fun requests(user: User, max: Int): Sequence<RestRequest> {
         return if (user.ready()) {
             routes.asSequence()
+                .filter { r->
+                    routeNextRequest[r]?.let {
+                        Instant.now() > it
+                    } ?: true
+                }
                 .flatMap { route ->
                     val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
                     val backfillLimit = Instant.now().minus(route.maxBackfillPeriod())
@@ -182,6 +189,15 @@ class GarminRequestGenerator(
                 )
                 userNextRequest[request.user.versionedId] = Instant.now().plus(USER_BACK_OFF_TIME)
             }
+            400 -> {
+                val msg = response.body?.string() ?: ""
+                if (msg.contains("Endpoint not enabled for summary type")) {
+                    logger.warn("The Route is not enabled in Garmin dev portal, backing off:, {}", msg)
+                    routeNextRequest[request.route] = Instant.now().plus(ROUTE_BACK_OFF_TIME)
+                } else {
+                    logger.warn("Bad request: {}, {}", request, response)
+                }
+            }
             else -> logger.warn("Request Failed: {}, {}", request, response)
         }
     }
@@ -198,5 +214,6 @@ class GarminRequestGenerator(
         private val logger = LoggerFactory.getLogger(GarminRequestGenerator::class.java)
         private val BACK_OFF_TIME = Duration.ofMinutes(1L)
         private val USER_BACK_OFF_TIME = Duration.ofDays(1L)
+        private val ROUTE_BACK_OFF_TIME = Duration.ofDays(5L)
     }
 }
