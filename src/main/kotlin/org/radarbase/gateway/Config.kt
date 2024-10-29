@@ -94,6 +94,20 @@ data class BackfillConfig(
     val userBackfill: List<UserBackfillConfig> = emptyList(),
     val requestsPerUserPerIteration: Int = 40,
     val iterationIntervalMinutes: Long = 5,
+    val activitiesEnabled: Boolean = true,
+    val activityDetailsEnabled: Boolean = true,
+    val bodyCompositionsEnabled: Boolean = true,
+    val dailiesEnabled: Boolean = true,
+    val epochSummariesEnabled: Boolean = true,
+    val pulseOXEnabled: Boolean = true,
+    val sleepsEnabled: Boolean = true,
+    val stressEnabled: Boolean = true,
+    val userMetricsEnabled: Boolean = true,
+    val moveIQEnabled: Boolean = true,
+    val respirationEnabled: Boolean = true,
+    val bloodPressureEnabled: Boolean = true,
+    val healthSnapshotEnabled: Boolean = true,
+    val heartRateVariabilityEnabled: Boolean = true,
 )
 
 data class RedisConfig(
