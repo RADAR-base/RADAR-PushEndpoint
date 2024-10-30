@@ -105,9 +105,9 @@ data class BackfillConfig(
     val userMetricsEnabled: Boolean = true,
     val moveIQEnabled: Boolean = true,
     val respirationEnabled: Boolean = true,
-    val bloodPressureEnabled: Boolean = true,
-    val healthSnapshotEnabled: Boolean = true,
-    val heartRateVariabilityEnabled: Boolean = true,
+    val bloodPressureEnabled: Boolean = false,
+    val healthSnapshotEnabled: Boolean = false,
+    val heartRateVariabilityEnabled: Boolean = false,
 )
 
 data class RedisConfig(
