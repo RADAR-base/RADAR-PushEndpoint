@@ -25,7 +25,10 @@ import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_CONNECT_
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BODY_COMPS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_DAILIES_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_EPOCHS_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_HEALTH_SNAPSHOT_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_HRV_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_PULSE_OX_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_RESPIRATION_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_SLEEPS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_STRESS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_USER_METRICS_PATH
@@ -149,6 +152,32 @@ class GarminPushEndpointTest {
         assertEquals(HttpStatusCode.OK, response.status)
     }
 
+    @Test
+    fun testRespiration() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_RESPIRATION_PATH) {
+            setBody(GarminHealthData.RESPIRATION)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testHealthSnapshot() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_HEALTH_SNAPSHOT_PATH) {
+            setBody(GarminHealthData.HEALTH_SNAPSHOT)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testHRV() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_HRV_PATH) {
+            setBody(GarminHealthData.HRV)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
 
     companion object {
         private lateinit var httpClient: HttpClient

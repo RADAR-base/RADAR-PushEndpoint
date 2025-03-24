@@ -298,36 +298,148 @@ object GarminHealthData {
 """
 
     const val USER_METRICS = """
-{
-    "userMetrics": [
-        {
-            "userId": "sub-1",
-            "userAccessToken": "dummy-access-token",
-            "summaryId": "EXAMPLE 843244",
-            "calendarDate": "2017-03-23",
-            "vo2Max": 48.0,
-            "enhanced": true,
-            "fitnessAge": 32
-        }
-    ]
-}
-"""
+    {
+        "userMetrics": [
+            {
+                "userId": "sub-1",
+                "userAccessToken": "dummy-access-token",
+                "summaryId": "EXAMPLE 843244",
+                "calendarDate": "2017-03-23",
+                "vo2Max": 48.0,
+                "enhanced": true,
+                "fitnessAge": 32
+            }
+        ]
+    }
+    """
 
     const val PULSE_OX = """
+    {
+        "pulseox": [
+            {
+                "userId": "sub-1",
+                "userAccessToken": "dummy-access-token",
+                "summaryId": "example1234-spo2OnDemand",
+                "calendarDate": "2018-08-27",
+                "startTimeInSeconds": 1572303600,
+                "timeOffsetSpo2Values": {
+                    "55740": 93
+                },
+                "durationInSeconds": 0,
+                "startTimeOffsetInSeconds": 3600,
+                "onDemand": true
+            }
+        ]
+    }
+    """
+
+    const val RESPIRATION = """
+        {
+            "allDayRespiration": [
+                {
+                    "userId": "sub-1",
+                    "userAccessToken": "dummy-access-token",
+                    "summaryId": "x15372ea-5d7866b4",
+                    "startTimeInSeconds": 1568171700,   
+                    "durationInSeconds": 900,   
+                    "startTimeOffsetInSeconds": -18000, 
+                    "timeOffsetEpochToBreaths": {
+                     "0": 14.63, 
+                     "60": 14.4, 
+                     "120": 14.38, 
+                     "180": 14.38, 
+                     "300": 17.1, 
+                     "540": 16.61, 
+                     "600": 16.14, 
+                     "660": 14.59, 
+                     "720": 14.65, 
+                     "780": 15.09, 
+                     "840": 14.88 
+                        }
+                }
+            ]
+        }
+    """
+
+    const val HEALTH_SNAPSHOT = """
 {
-    "pulseox": [
+    "healthSnapshot": [
         {
             "userId": "sub-1",
             "userAccessToken": "dummy-access-token",
-            "summaryId": "example1234-spo2OnDemand",
-            "calendarDate": "2018-08-27",
-            "startTimeInSeconds": 1572303600,
-            "timeOffsetSpo2Values": {
-                "55740": 93
-            },
-            "durationInSeconds": 0,
-            "startTimeOffsetInSeconds": 3600,
-            "onDemand": true
+            "summaryId": "x42f72c9-612e11dae53d462a-0b98-4ae8-9fdc-28f392a1cd8078",
+            "calendarDate": "2021-08-31",
+            "startTimeInSeconds": 1630409178,
+            "durationInSeconds": 120,
+            "offsetStartTimeInSeconds": 7200,
+            "summaries": [
+                {
+                    "summaryType": "heart_rate",
+                    "minValue": 78.0,
+                    "maxValue": 87.0,
+                    "avgValue": 83.0,
+                    "epochSummaries": {
+                        "0": 84.0,
+                        "1": 84.0,
+                        "2": 83.0,
+                        "3": 83.0,
+                        "4": 83.0,
+                        "5": 84.0
+                    }
+                },
+                {
+                    "summaryType": "respiration",
+                    "minValue": 13.45,
+                    "maxValue": 15.32,
+                    "avgValue": 14.49,
+                    "epochSummaries": {
+                        "0": 15.32,
+                        "1": 15.32,
+                        "2": 15.32,
+                        "3": 15.32,
+                        "4": 15.09,
+                        "5": 15.09,
+                        "115": 13.86,
+                        "116": 13.86,
+                        "117": 14.30,
+                        "118": 15.23,
+                        "119": 15.23,
+                        "120": 15.32
+                        }
+                    }
+                ]
+            }
+         ]
+        }
+    """
+
+    const val HRV = """
+{
+    "hrv": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "x473db21-6295abc4",
+            "calendarDate": "2022-05-31",
+            "lastNightAvg": 44,
+            "lastNight5MinHigh": 72,
+            "startTimeOffsetInSeconds": -18000,
+            "durationInSeconds": 3820,
+            "startTimeInSeconds": 1653976004,
+            "hrvValues": {
+                "300": 32,
+                "600": 24,
+                "900": 31,
+                "1200": 35,
+                "1500": 39,
+                "1800": 47,
+                "2100": 32,
+                "2400": 24,
+                "2700": 31,
+                "3000": 35,
+                "3300": 39,
+                "3600": 47
+            }
         }
     ]
 }
