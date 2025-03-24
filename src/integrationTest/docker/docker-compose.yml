@@ -80,15 +80,21 @@ services:
     volumes:
       - ./etc/:/mp-includes/
 
-  gateway:
+  push-endpoint:
       build:
-        context: ../../..
-      image: radarbase/radar-gateway:SNAPSHOT
+        context: ../../../..
+      image: radarbase/radar-push-endpoint:SNAPSHOT
       depends_on:
-        - kafka-1
-        - schema-registry-1
-        - managementportal-app
+          - kafka-1
+          - schema-registry-1
       ports:
-        - "127.0.0.1:8092:8092"
+          - "127.0.0.1:8090:8090"
       volumes:
-        - ./etc/gateway.yml:/etc/radar-gateway/gateway.yml
+          - ./etc/gateway.yml:/etc/radar-gateway/gateway.yml
+
+  redis:
+      image: bitnami/redis
+      ports:
+          - "6379:6379"
+      environment:
+          ALLOW_EMPTY_PASSWORD: "yes"
