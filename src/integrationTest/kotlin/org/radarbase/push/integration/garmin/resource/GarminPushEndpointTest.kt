@@ -24,6 +24,7 @@ import org.radarbase.push.integration.garmin.utils.PushTestUtils.DUMMY_ACCESS_TO
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_CONNECT_STUB_USERS_URL
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_DAILIES_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_EPOCHS_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_SLEEPS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.OAUTH_CREDENTIALS_URL
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.OAUTH_CREDENTIALS_URL_SECOND
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.TEST_USERS
@@ -94,6 +95,15 @@ class GarminPushEndpointTest {
     fun testDailies() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_DAILIES_PATH) {
             setBody(GarminHealthData.DAILIES)
+            contentType(ContentType.Application.Any)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testSleeps() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_SLEEPS_PATH) {
+            setBody(GarminHealthData.SLEEPS)
             contentType(ContentType.Application.Any)
         }
         assertEquals(HttpStatusCode.OK, response.status)

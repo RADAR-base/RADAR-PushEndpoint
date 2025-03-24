@@ -122,4 +122,119 @@ object GarminHealthData {
     	}
     """
 
+    const val SLEEPS = """
+    {
+        "sleeps": [
+            {
+            	"userId": "sub-1",
+				"userAccessToken": "dummy-access-token",
+                "summaryId": "EXAMPLE 567890",
+                "calendarDate": "2016-01-10",
+                "durationInSeconds": 15264,
+                "startTimeInSeconds": 1452419581,
+                "startTimeOffsetInSeconds": 7200,
+                "unmeasurableSleepDurationInSeconds": 0,
+                "deepSleepDurationInSeconds": 11231,
+                "lightSleepDurationInSeconds": 3541,
+                "remSleepInSeconds": 0,
+                "awakeDurationInSeconds": 492,
+                "sleepLevelsMap": {
+                    "deep": [
+                        {
+                            "startTimeInSeconds": 1452419581,
+                            "endTimeInSeconds": 1452478724
+                        }
+                    ],
+                    "light": [
+                        {
+                            "startTimeInSeconds": 1452478725,
+                            "endTimeInSeconds": 1452479725
+                        },
+                        {
+                            "startTimeInSeconds": 1452481725,
+                            "endTimeInSeconds": 1452484266
+                        }
+                    ]
+                },
+                "validation": "Device"
+            },
+            {
+            	"userId": "sub-2",
+				"userAccessToken": "dummy-access-token",
+                "summaryId": "EXAMPLE 567891",
+                "durationInSeconds": 11900,
+                "startTimeInSeconds": 1452467493,
+                "startTimeOffsetInSeconds": 7200,
+                "unmeasurableSleepDurationInSeconds": 0,
+                "deepSleepDurationInSeconds": 9446,
+                "lightSleepDurationInSeconds": 0,
+                "remSleepInSeconds": 2142,
+                "awakeDurationInSeconds": 312,
+                "sleepLevelsMap": {
+                    "deep": [
+                        {
+                            "startTimeInSeconds": 1452467493,
+                            "endTimeInSeconds": 1452476939
+                        }
+                    ],
+                    "light": [
+                        {
+                            "startTimeInSeconds": 1452478725,
+                            "endTimeInSeconds": 1452479725
+                        },
+                        {
+                            "startTimeInSeconds": 1452481725,
+                            "endTimeInSeconds": 1452484266
+                        }
+                    ],
+                    "rem": [
+                        {
+                            "startTimeInSeconds": 1452476940,
+                            "endTimeInSeconds": 1452479082
+                        }
+                    ]
+                },
+                "validation": "DEVICE",
+                "timeOffsetSleepRespiration": {
+                    "60": 15.31,
+                    "120": 14.58,
+                    "180": 12.73
+                },
+                "timeOffsetSleepSpo2": {
+                    "0": 95,
+                    "60": 96,
+                    "120": 97,
+                    "180": 93,
+                    "240": 94,
+                    "300": 95,
+                    "360": 96
+                },
+                "overallSleepScore": {
+                    "value": 87,
+                    "qualifierKey": "GOOD"
+                },
+                "sleepScores": {
+                    "totalDuration": {
+                        "qualifierKey": "EXCELLENT"
+                    },
+                    "stress": {
+                        "qualifierKey": "EXCELLENT"
+                    },
+                    "awakeCount": {
+                        "qualifierKey": "FAIR"
+                    },
+                    "remPercentage": {
+                        "qualifierKey": "FAIR"
+                    },
+                    "lightPercentage": {
+                        "qualifierKey": "GOOD"
+                    },
+                    "deepPercentage": {
+                        "qualifierKey": "POOR"
+                    }
+                }
+            }
+        ]
+    }
+"""
 }

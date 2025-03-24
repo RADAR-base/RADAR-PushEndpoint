@@ -12,6 +12,7 @@ object PushTestUtils {
     const val GARMIN_PUSH_BASE_URL = "http://0.0.0.0:8090/push/integrations/garmin"
     const val GARMIN_PUSH_EPOCHS_PATH = "$GARMIN_PUSH_BASE_URL/epochs"
     const val GARMIN_PUSH_DAILIES_PATH = "$GARMIN_PUSH_BASE_URL/dailies"
+    const val GARMIN_PUSH_SLEEPS_PATH = "$GARMIN_PUSH_BASE_URL/sleeps"
     val TEST_USERS = generateUsers()
     val DUMMY_ACCESS_TOKEN = generateAccessToken()
 
