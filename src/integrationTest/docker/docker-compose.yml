@@ -66,14 +66,14 @@ services:
   # Management Portal                                                         #
   #---------------------------------------------------------------------------#
   managementportal-app:
-    image: radarbase/management-portal:0.6.0
+    image: radarbase/management-portal:2.0.0
     ports:
       - "127.0.0.1:8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: dev
       MANAGEMENTPORTAL_FRONTEND_CLIENT_SECRET: ""
-      MANAGEMENTPORTAL_COMMON_BASE_URL: http://localhost:8080
-      MANAGEMENTPORTAL_COMMON_MANAGEMENT_PORTAL_BASE_URL: http://localhost:8080
+      MANAGEMENTPORTAL_COMMON_BASE_URL: http://localhost:8080/managementportal
+      MANAGEMENTPORTAL_COMMON_MANAGEMENT_PORTAL_BASE_URL: http://localhost:8080/managementportal
       MANAGEMENTPORTAL_OAUTH_CLIENTS_FILE: /mp-includes/config/oauth_client_details.csv
       MANAGEMENTPORTAL_CATALOGUE_SERVER_ENABLE_AUTO_IMPORT: 'false'
       JAVA_OPTS: -Xmx256m  # maximum heap size for the JVM running ManagementPortal, increase this as necessary
@@ -83,12 +83,16 @@ services:
   push-endpoint:
       build:
         context: ../../../..
-      image: radarbase/radar-push-endpoint:SNAPSHOT
+      image: radarbase/radar-push-endpoint:${RADAR_PUSH_ENDPOINT_TAG}
       depends_on:
           - kafka-1
           - schema-registry-1
       ports:
           - "127.0.0.1:8090:8090"
+      command:
+          - sh
+          - -c
+          - "sleep 30; exec radar-push-endpoint"
       volumes:
           - ./etc/gateway.yml:/etc/radar-gateway/gateway.yml
 
