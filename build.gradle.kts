@@ -42,6 +42,14 @@ dependencies {
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     val radarJerseyVersion: String by project
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
+    val guavaVersion: String by project
+    implementation("com.google.guava:guava:$guavaVersion")
+    val ktorVersion: String by project
+    integrationTestImplementation("io.ktor:ktor-client-core:$ktorVersion")
+    integrationTestImplementation("io.ktor:ktor-client-cio:$ktorVersion")
+    integrationTestImplementation(platform("io.ktor:ktor-bom:$ktorVersion"))
+    integrationTestImplementation("io.ktor:ktor-client-content-negotiation")
+    integrationTestImplementation("io.ktor:ktor-serialization-kotlinx-json")
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
@@ -83,6 +91,8 @@ dependencies {
     integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
     integrationTestImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTestImplementation("org.radarbase:radar-commons-testing:$radarCommonsVersion")
+    val wiremockVersion: String by project
+    integrationTestImplementation("com.github.tomakehurst:wiremock:$wiremockVersion")
 }
 
 tasks.withType<KotlinCompile> {
