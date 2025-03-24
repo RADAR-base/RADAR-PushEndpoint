@@ -3,7 +3,6 @@ package org.radarbase.push.integration.garmin.utils
 
 object PushTestUtils {
     const val WIREMOCK_PORT = 8085
-    const val GARMIN_CONNECT_STUB_BASE_URL = "http://localhost:8081"
     const val GARMIN_CONNECT_STUB_USERS_URL = "/users?source-type=Garmin&authorized=true"
     const val OAUTH_CREDENTIALS_URL = "/users/1/token"
     const val OAUTH_CREDENTIALS_URL_SECOND = "/users/2/token"
