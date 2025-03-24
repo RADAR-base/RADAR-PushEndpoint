@@ -237,4 +237,35 @@ object GarminHealthData {
         ]
     }
 """
+
+    const val BODY_COMPS = """{
+    "bodyComps": [
+        {
+            "userId": "sub-1",
+			"userAccessToken": "dummy-access-token",
+            "summaryId": "EXAMPLE_678901",
+            "measurementTimeInSeconds": 1439741130,
+            "measurementTimeOffsetInSeconds": 0,
+            "muscleMassInGrams": 25478,
+            "boneMassInGrams": 2437,
+            "bodyWaterInPercent": 59.4,
+            "bodyFatInPercent": 17.1,
+            "bodyMassIndex": 23.2,
+            "weightInGrams": 75450
+        },
+        {
+            "userId": "sub-2",
+			"userAccessToken": "dummy-access-token",
+            "summaryId": "EXAMPLE_678902",
+            "measurementTimeInSeconds": 1439784330,
+            "measurementTimeOffsetInSeconds": 0,
+            "muscleMassInGrams": 25482,
+            "boneMassInGrams": 2434,
+            "bodyWaterInPercent": 59.8,
+            "bodyFatInPercent": 17.3,
+            "bodyMassIndex": 23.1,
+            "weightInGrams": 75173
+        }
+    ]
+}"""
 }

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test
 import org.radarbase.push.integration.garmin.utils.GarminHealthData
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.DUMMY_ACCESS_TOKEN
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_CONNECT_STUB_USERS_URL
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BODY_COMPS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_DAILIES_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_EPOCHS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_SLEEPS_PATH
@@ -104,6 +105,15 @@ class GarminPushEndpointTest {
     fun testSleeps() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_SLEEPS_PATH) {
             setBody(GarminHealthData.SLEEPS)
+            contentType(ContentType.Application.Any)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testBodyComposition() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_BODY_COMPS_PATH) {
+            setBody(GarminHealthData.BODY_COMPS)
             contentType(ContentType.Application.Any)
         }
         assertEquals(HttpStatusCode.OK, response.status)
