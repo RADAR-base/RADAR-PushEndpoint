@@ -25,7 +25,10 @@ import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_CONNECT_
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BODY_COMPS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_DAILIES_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_EPOCHS_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_PULSE_OX_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_SLEEPS_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_STRESS_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_USER_METRICS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.OAUTH_CREDENTIALS_URL
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.OAUTH_CREDENTIALS_URL_SECOND
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.TEST_USERS
@@ -87,7 +90,7 @@ class GarminPushEndpointTest {
     fun testEpoch() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_EPOCHS_PATH) {
             setBody(GarminHealthData.EPOCH)
-            contentType(ContentType.Application.Any)
+            contentType(ContentType.Application.Json)
         }
         assertEquals(HttpStatusCode.OK, response.status)
     }
@@ -96,7 +99,7 @@ class GarminPushEndpointTest {
     fun testDailies() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_DAILIES_PATH) {
             setBody(GarminHealthData.DAILIES)
-            contentType(ContentType.Application.Any)
+            contentType(ContentType.Application.Json)
         }
         assertEquals(HttpStatusCode.OK, response.status)
     }
@@ -105,7 +108,7 @@ class GarminPushEndpointTest {
     fun testSleeps() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_SLEEPS_PATH) {
             setBody(GarminHealthData.SLEEPS)
-            contentType(ContentType.Application.Any)
+            contentType(ContentType.Application.Json)
         }
         assertEquals(HttpStatusCode.OK, response.status)
     }
@@ -114,7 +117,34 @@ class GarminPushEndpointTest {
     fun testBodyComposition() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_BODY_COMPS_PATH) {
             setBody(GarminHealthData.BODY_COMPS)
-            contentType(ContentType.Application.Any)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testStress() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_STRESS_PATH) {
+            setBody(GarminHealthData.STRESS)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testUserMetrics() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_USER_METRICS_PATH) {
+            setBody(GarminHealthData.USER_METRICS)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testPulseOx() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_PULSE_OX_PATH) {
+            setBody(GarminHealthData.PULSE_OX)
+            contentType(ContentType.Application.Json)
         }
         assertEquals(HttpStatusCode.OK, response.status)
     }

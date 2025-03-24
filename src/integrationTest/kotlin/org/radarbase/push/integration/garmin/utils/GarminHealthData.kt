@@ -267,5 +267,69 @@ object GarminHealthData {
             "weightInGrams": 75173
         }
     ]
-}"""
+}
+"""
+
+    const val STRESS = """
+{
+    "stressDetails": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "EXAMPLE_6789124",
+            "startTimeInSeconds": 1490245200,
+            "calendarDate": "2017-03-23",
+            "startTimeOffsetInSeconds": 0,
+            "durationInSeconds": 540,
+            "timeOffsetStressLevelValues": {
+                "0": 18,
+                "180": 51,
+                "360": 28,
+                "540": 29
+            },
+            "timeOffsetBodyBatteryValues": {
+                "0": 55,
+                "180": 56,
+                "360": 59
+            }
+        }
+    ]
+}
+"""
+
+    const val USER_METRICS = """
+{
+    "userMetrics": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "EXAMPLE 843244",
+            "calendarDate": "2017-03-23",
+            "vo2Max": 48.0,
+            "enhanced": true,
+            "fitnessAge": 32
+        }
+    ]
+}
+"""
+
+    const val PULSE_OX = """
+{
+    "pulseox": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "example1234-spo2OnDemand",
+            "calendarDate": "2018-08-27",
+            "startTimeInSeconds": 1572303600,
+            "timeOffsetSpo2Values": {
+                "55740": 93
+            },
+            "durationInSeconds": 0,
+            "startTimeOffsetInSeconds": 3600,
+            "onDemand": true
+        }
+    ]
+}
+"""
 }
