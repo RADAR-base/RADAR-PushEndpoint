@@ -23,6 +23,7 @@ import org.radarbase.push.integration.garmin.utils.GarminHealthData
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.DUMMY_ACCESS_TOKEN
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_CONNECT_STUB_USERS_URL
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BODY_COMPS_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BP_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_DAILIES_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_EPOCHS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_HEALTH_SNAPSHOT_PATH
@@ -174,6 +175,15 @@ class GarminPushEndpointTest {
     fun testHRV() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_HRV_PATH) {
             setBody(GarminHealthData.HRV)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testBloodPressure() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_BP_PATH) {
+            setBody(GarminHealthData.BLOOD_PRESSURE)
             contentType(ContentType.Application.Json)
         }
         assertEquals(HttpStatusCode.OK, response.status)

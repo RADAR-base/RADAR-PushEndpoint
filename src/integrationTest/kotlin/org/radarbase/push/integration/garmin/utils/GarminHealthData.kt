@@ -444,4 +444,22 @@ object GarminHealthData {
     ]
 }
 """
+    const val BLOOD_PRESSURE = """
+{
+    "bloodPressures": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "x473db21-632b3500",
+            "systolic": 120,
+            "diastolic": 110,
+            "pulse": 82,
+            "sourceType": "MANUAL",
+            "startTimeInSeconds": 1519679700,
+            "measurementTimeInSeconds": 1663776000,
+            "measurementTimeOffsetInSeconds": -18000
+        }
+    ]
+}
+"""
 }

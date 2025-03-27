@@ -19,6 +19,7 @@ object PushTestUtils {
     const val GARMIN_PUSH_RESPIRATION_PATH = "$GARMIN_PUSH_BASE_URL/respiration"
     const val GARMIN_PUSH_HEALTH_SNAPSHOT_PATH = "$GARMIN_PUSH_BASE_URL/healthSnapshot"
     const val GARMIN_PUSH_HRV_PATH = "$GARMIN_PUSH_BASE_URL/hrv"
+    const val GARMIN_PUSH_BP_PATH = "$GARMIN_PUSH_BASE_URL/bloodPressure"
     val TEST_USERS = generateUsers()
     val DUMMY_ACCESS_TOKEN = generateAccessToken()
 
