@@ -462,4 +462,127 @@ object GarminHealthData {
     ]
 }
 """
+
+    const val MOVE_IQ = """
+{
+    "moveIQActivities": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "EXAMPLE_843244",
+            "calendarDate": "2017-03-23",
+            "startTimeInSeconds": 1490245200,
+            "durationInSeconds": 738,
+            "offsetInSeconds": 0,
+            "activityType": "Running",
+            "activitySubType": "Hurdles"
+        }
+    ]
+}
+"""
+
+    const val ACTIVITIES = """
+{
+    "activities": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "5001968355",
+            "activityId": 5001968355,
+            "activityType": "RUNNING",
+            "startTimeInSeconds": 1452470400,
+            "startTimeOffsetInSeconds": 0,
+            "durationInSeconds": 11580,
+            "averageSpeedInMetersPerSecond": 2.888999938964844,
+            "distanceInMeters": 519818.125,
+            "activeKilocalories": 448,
+            "deviceName": "Forerunner 910XT",
+            "averagePaceInMinutesPerKilometer": 0.5975272352046997
+        },
+        {
+            "userId": "sub-2",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "5001968355",
+            "activityId": 5001968355,
+            "activityType": "CYCLING",
+            "startTimeInSeconds": 1452506094,
+            "startTimeOffsetInSeconds": 0,
+            "durationInSeconds": 1824,
+            "averageSpeedInMetersPerSecond": 8.75,
+            "distanceInMeters": 4322.357,
+            "activeKilocalories": 360,
+            "deviceName": "Forerunner 910XT"
+        }
+    ]
+}
+"""
+
+    const val ACTIVITY_DETAILS = """
+{
+    "activityDetails": [
+        {
+            "userId": "sub-1",
+            "userAccessToken": "dummy-access-token",
+            "summaryId": "5001968355-detail",
+            "activityId": 5001968355,
+            "summary": {
+                "durationInSeconds": 1789,
+                "startTimeInSeconds": 1512234126,
+                "startTimeOffsetInSeconds": -25200,
+                "activityType": "RUNNING",
+                "averageHeartRateInBeatsPerMinute": 144,
+                "averageRunCadenceInStepsPerMinute": 84.0,
+                "averageSpeedInMetersPerSecond": 2.781,
+                "averagePaceInMinutesPerKilometer": 15.521924,
+                "activeKilocalories": 367,
+                "deviceName": "forerunner935",
+                "distanceInMeters": 4976.83,
+                "maxHeartRateInBeatsPerMinute": 159,
+                "maxPaceInMinutesPerKilometer": 10.396549,
+                "maxRunCadenceInStepsPerMinute": 106.0,
+                "maxSpeedInMetersPerSecond": 4.152,
+                "startingLatitudeInDegree": 51.053232522681355,
+                "startingLongitudeInDegree": -114.06880217604339,
+                "steps": 5022,
+                "totalElevationGainInMeters": 16.0,
+                "totalElevationLossInMeters": 22.0
+            },
+            "samples": [
+                {
+                    "startTimeInSeconds": 1669313992,
+                    "latitudeInDegree": 38.832325832918286,
+                    "longitudeInDegree": -94.74890395067632,
+                    "elevationInMeters": 314.0,
+                    "heartRate": 108,
+                    "speedMetersPerSecond": 1.3250000476837158,
+                    "totalDistanceInMeters": 1903.4200439453125,
+                    "timerDurationInSeconds": 1460,
+                    "clockDurationInSeconds": 1460,
+                    "movingDurationInSeconds": 1379
+                },
+                {
+                    "startTimeInSeconds": 1669314001,
+                    "latitudeInDegree": 38.832390792667866,
+                    "longitudeInDegree": -94.74878308363259,
+                    "elevationInMeters": 314.20001220703125,
+                    "heartRate": 109,
+                    "speedMetersPerSecond": 1.315999984741211,
+                    "totalDistanceInMeters": 1916.18994140625,
+                    "timerDurationInSeconds": 1469,
+                    "clockDurationInSeconds": 1469,
+                    "movingDurationInSeconds": 1388
+                }
+            ],
+            "laps": [
+                {
+                    "startTimeInSeconds": 1512234126
+                },
+                {
+                    "startTimeInSeconds": 1512234915
+                }
+            ]
+        }
+    ]
+}
+"""
 }
