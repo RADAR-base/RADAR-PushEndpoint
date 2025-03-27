@@ -22,12 +22,15 @@ import org.junit.jupiter.api.Test
 import org.radarbase.push.integration.garmin.utils.GarminHealthData
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.DUMMY_ACCESS_TOKEN
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_CONNECT_STUB_USERS_URL
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_ACTIVITIES_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_ACTIVITY_DETAILS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BODY_COMPS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_BP_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_DAILIES_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_EPOCHS_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_HEALTH_SNAPSHOT_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_HRV_PATH
+import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_MOVE_IQ_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_PULSE_OX_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_RESPIRATION_PATH
 import org.radarbase.push.integration.garmin.utils.PushTestUtils.GARMIN_PUSH_SLEEPS_PATH
@@ -184,6 +187,33 @@ class GarminPushEndpointTest {
     fun testBloodPressure() = runBlocking {
         val response = httpClient.post(GARMIN_PUSH_BP_PATH) {
             setBody(GarminHealthData.BLOOD_PRESSURE)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testMoveIQ() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_MOVE_IQ_PATH) {
+            setBody(GarminHealthData.MOVE_IQ)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testActivities() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_ACTIVITIES_PATH) {
+            setBody(GarminHealthData.ACTIVITIES)
+            contentType(ContentType.Application.Json)
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun testActivityDetails() = runBlocking {
+        val response = httpClient.post(GARMIN_PUSH_ACTIVITY_DETAILS_PATH) {
+            setBody(GarminHealthData.ACTIVITY_DETAILS)
             contentType(ContentType.Application.Json)
         }
         assertEquals(HttpStatusCode.OK, response.status)
