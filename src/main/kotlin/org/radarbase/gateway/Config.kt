@@ -3,6 +3,7 @@ package org.radarbase.gateway
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG
 import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
+import org.radarbase.gateway.KafkaConfig.Companion.copyOnChange
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
@@ -21,6 +22,10 @@ data class Config(
 ) {
     /** Fill in some default values for the configuration. */
     fun withDefaults(): Config = copy(kafka = kafka.withDefaults())
+
+    // For now, we only configure KafkaConfig from environment variables.
+    fun withEnv(): Config = this
+        .copyOnChange(kafka, { it.withEnv("KAFKA_") }) { copy(kafka = it) }
 
     /**
      * Validate the configuration.
@@ -159,6 +164,39 @@ data class KafkaConfig(
         serialization = serializationDefaults + serialization
     )
 
+    /**
+     * Extract KafkaConfig Admin and Producer entries from environmental variables.
+     * Properties for Producer and Admin are prefixed with "$prefix_PRODUCER_" and "$prefix_ADMIN_" respectively.
+     * Property names are deduced by removing prefixes and replacing underscores with dots.
+     * For instance, the environmental variable "KAFKA_PRODUCER_BOOTSTRAP_SERVERS" will be
+     * converted to "bootstrap.servers" in the producer configuration. The environmental variable
+     * "KAFKA_ADMIN_DEFAULT_API_TIMEOUT_MS" will be converted to "default.api.timeout.ms" in the admin configuration.
+     *
+     * @param prefix the prefix of the environmental variables (usually "KAFKA_")
+     */
+    fun withEnv(prefix: String): KafkaConfig {
+        val admin = admin.toMutableMap()
+        val producer = producer.toMutableMap()
+        System.getenv().entries.stream()
+            .filter { it.key.startsWith(prefix) && it.value.isNotEmpty() }
+            .forEach { (envVar, envValue) ->
+                val configSection = envVar.removePrefix(prefix).substringBefore("_")
+                if (configSection !in listOf("PRODUCER", "ADMIN")) {
+                    return@forEach
+                }
+                val configName = envVarToConfigName(envVar, prefix="${prefix}${configSection}_")
+                if (configSection == "PRODUCER") {
+                    producer[configName] = envValue
+                } else {
+                    admin[configName] = envValue
+                }
+            }
+        return copy(admin = admin, producer = producer)
+    }
+
+    private fun envVarToConfigName(envVar: String, prefix: String): String =
+        envVar.removePrefix(prefix).replace("_", ".").lowercase()
+
     fun validate() {
         check(producer[BOOTSTRAP_SERVERS_CONFIG] is String) { "$BOOTSTRAP_SERVERS_CONFIG missing in kafka: producer: {} configuration" }
         check(admin[BOOTSTRAP_SERVERS_CONFIG] is String) { "$BOOTSTRAP_SERVERS_CONFIG missing in kafka: admin: {} configuration" }
@@ -186,5 +224,18 @@ data class KafkaConfig(
         private val serializationDefaults = mapOf<String, Any>(
             MAX_SCHEMAS_PER_SUBJECT_CONFIG to 10_000
         )
+
+        inline fun <T, V> T.copyOnChange(
+            original: V,
+            modification: (V) -> V,
+            doCopy: T.(V) -> T,
+        ): T {
+            val newValue = modification(original)
+            return if (newValue != original) {
+                doCopy(newValue)
+            } else {
+                this
+            }
+        }
     }
 }

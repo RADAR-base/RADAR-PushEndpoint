@@ -21,8 +21,8 @@ pushIntegration:
         consumerSecret: change_me
         userRepositoryClass: org.radarbase.push.integration.garmin.user.GarminServiceUserRepository
         userRepositoryUrl: http://radar-rest-sources-backend:8080/rest-sources/backend
-        userRepositoryClientId: radar_push_endpoint
-        userRepositoryClientSecret: w6fhtBsCjsjePsF5txjYpMzqGuodSzEGtQDth
+        userRepositoryClientId:
+        userRepositoryClientSecret:
         userRepositoryTokenUrl: http://management-portal:8080/managementportal/oauth/token
         backfill:
             enabled: true
