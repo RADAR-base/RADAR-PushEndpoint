@@ -4,7 +4,7 @@
 [![Docker Build](https://img.shields.io/docker/cloud/build/radarbase/radar-push-endpoint)](https://hub.docker.com/repository/docker/radarbase/radar-push-endpoint)
 
 RADAR Push Endpoint that exposes REST interface for push subscription based APIs to the Apache
- Kafka.
+Kafka.
 
 ## Configuration
 
@@ -12,18 +12,19 @@ Currently, Garmin is integrated. For adding more services, see the [Extending se
 
 ```yaml
    pushIntegration:
-      # Push service specific config
-      garmin: 
-        enabled: true
-        userRepositoryClass: "org.radarbase.push.integration.garmin.user.ServiceUserRepository"
-      service-n:
-        enabled: true
-        property-xyz: "value"
+     # Push service specific config
+     garmin:
+       enabled: true
+       userRepositoryClass: "org.radarbase.push.integration.garmin.user.ServiceUserRepository"
+     service-n:
+       enabled: true
+       property-xyz: "value"
 ```
 
-For Garmin, you will need to configure the endpoints in the [Garmin Developer Portal](https://healthapi.garmin.com/tools/updateEndpoints)
+For Garmin, you will need to configure the endpoints in
+the [Garmin Developer Portal](https://healthapi.garmin.com/tools/updateEndpoints)
 
-If you are using the `org.radarbase.push.integration.garmin.user.GarminServiceUserRepository` 
+If you are using the `org.radarbase.push.integration.garmin.user.GarminServiceUserRepository`
 make sure to create the oauth client in management portal with following properties -
 
 ```
@@ -46,8 +47,16 @@ then configure the following properties-
         userRepositoryClientSecret: "your_client_secret"
         userRepositoryTokenUrl: "http://managementportal-app:8080/oauth/token/"
 ```
+
 Modify the URLs according to your deployment.
 
+### Configure Kafka Admin and Producer with Environment Variables
+
+Properties for Kafka Admin Client and Kafka Producer can be set using environment variables. For this, prefix the
+property name with `KAFKA_ADMIN_` or `KAFKA_PRODUCER_`, respectively, followed by the property name in uppercase and
+with dots replaced by underscores. For example, `bootstrap.servers` for Kafka Producer should be set as
+`KAFKA_PRODUCER_BOOTSTRAP_SERVERS` and `default.api.timeout.ms` for Kafka Admin Client should be set as
+`KAFKA_ADMIN_DEFAULT_API_TIMEOUT_MS`.
 
 ## Usage
 
@@ -66,6 +75,7 @@ docker-compose exec kafka-1 kafka-topics --create --topic $TOPIC --bootstrap-ser
 
 Now the service is accessible through <http://localhost:8090/push/integrations/>.
 Garmin endpoints are available at -
+
 - <http://localhost:8090/push/integrations/garmin/dailies>
 - <http://localhost:8090/push/integrations/garmin/activities>
 - <http://localhost:8090/push/integrations/garmin/activityDetails>
@@ -81,34 +91,45 @@ Garmin endpoints are available at -
 - <http://localhost:8090/push/integrations/garmin/deregister>
 
 ## Extending
+
 This section walks through add a new push service integration. These should be implemented in a
- new package `org.radarbase.push.integration.<service-name>`.
+new package `org.radarbase.push.integration.<service-name>`.
 
 ### Resource
+
 Create a new Resource and configure the endpoints required by the push service integration. For
- reference take a look at [GarminPushEndpoint](src/main/kotlin/org/radarbase/push/integration/garmin/resource/GarminPushEndpoint.kt)
+reference take a look
+at [GarminPushEndpoint](src/main/kotlin/org/radarbase/push/integration/garmin/resource/GarminPushEndpoint.kt)
 
 ### User Repository
+
 Create a new UserRepository to provide user specific info and authorization info. This should
- implement the interface [UserRepository](src/main/kotlin/org/radarbase/push/integration/common/user/UserRepository.kt).
-For reference, take a look at [ServiceUserRepository](src/main/kotlin/org/radarbase/push/integration/garmin/user/ServiceUserRepository.kt)
+implement the interface [UserRepository](src/main/kotlin/org/radarbase/push/integration/common/user/UserRepository.kt).
+For reference, take a look
+at [ServiceUserRepository](src/main/kotlin/org/radarbase/push/integration/garmin/user/ServiceUserRepository.kt)
 
 ### Auth Validator
+
 Create a new AuthValidator to check the requests and authorise with users provided by
- the User Repository. This can be done by implementing the [AuthValidator](https://github.com/RADAR-base/radar-jersey/blob/master/src/main/kotlin/org/radarbase/jersey/auth/AuthValidator.kt)
-  interface provided by `radar-jersey` library.
-For reference, take a look at [GarminAuthValidator](src/main/kotlin/org/radarbase/push/integration/garmin/auth/GarminAuthValidator.kt)
+the User Repository. This can be done by implementing
+the [AuthValidator](https://github.com/RADAR-base/radar-jersey/blob/master/src/main/kotlin/org/radarbase/jersey/auth/AuthValidator.kt)
+interface provided by `radar-jersey` library.
+For reference, take a look
+at [GarminAuthValidator](src/main/kotlin/org/radarbase/push/integration/garmin/auth/GarminAuthValidator.kt)
 
 ### Converter
-This is optional but will help keep the code consistent. 
+
+This is optional but will help keep the code consistent.
 Create Converters for converting data posted by the push service to Kafka records. This can be
- done by implementing the [AvroConverter](src/main/kotlin/org/radarbase/push/integration/common/converter/AvroConverter.kt) interface.
-For reference, take a look at converter implementations in [garmin converter](src/main/kotlin/org/radarbase/push/integration/garmin/converter) package.
+done by implementing
+the [AvroConverter](src/main/kotlin/org/radarbase/push/integration/common/converter/AvroConverter.kt) interface.
+For reference, take a look at converter implementations
+in [garmin converter](src/main/kotlin/org/radarbase/push/integration/garmin/converter) package.
 
 ### Configuration
 
 Firstly, create a Resource Enhancer to register all your required classes to Jersey Context.
- Remember to use `named` to distinguish your service implementation.
+Remember to use `named` to distinguish your service implementation.
 
 ```kotlin
 class ServiceXIntegrationResourceEnhancer(private val config: Config) :
@@ -136,26 +157,29 @@ class ServiceXIntegrationResourceEnhancer(private val config: Config) :
 }
 ```
 
-Next, add your `AuthValidator` to the [DelegatedAuthValidator](src/main/kotlin/org/radarbase/push/integration/common/auth/DelegatedAuthValidator.kt) so service specific Auth can be performed.
+Next, add your `AuthValidator` to
+the [DelegatedAuthValidator](src/main/kotlin/org/radarbase/push/integration/common/auth/DelegatedAuthValidator.kt) so
+service specific Auth can be performed.
 Make sure the path to your service's resources contain the matching string (`servicex` in this
- case).
- 
+case).
+
 ```kotlin
 ...
 
-    fun delegate(): AuthValidator {
-        return when {
-            uriInfo.matches(GARMIN_QUALIFIER) -> namedValidators.named(GARMIN_QUALIFIER).get()
-            uriInfo.matches("servicex") -> namedValidators.named("servicex").get()
-            // Add support for more as integrations are added
-            else -> throw IllegalStateException()
-        }
+fun delegate(): AuthValidator {
+    return when {
+        uriInfo.matches(GARMIN_QUALIFIER) -> namedValidators.named(GARMIN_QUALIFIER).get()
+        uriInfo.matches("servicex") -> namedValidators.named("servicex").get()
+        // Add support for more as integrations are added
+        else -> throw IllegalStateException()
     }
+}
 
 ...
 ```
 
 Next, add the configuration to the [Config](src/main/kotlin/org/radarbase/gateway/Config.kt) class.
+
 ```kotlin
 ...
 data class PushIntegrationConfig(
@@ -173,16 +197,18 @@ data class ServiceXConfig(
 ...
 ```
 
-Finally, add your newly created Resource Enhancer to [PushIntegrationEnhancerFactory](src/main/kotlin/org/radarbase/gateway/inject/PushIntegrationEnhancerFactory.kt)
+Finally, add your newly created Resource Enhancer
+to [PushIntegrationEnhancerFactory](src/main/kotlin/org/radarbase/gateway/inject/PushIntegrationEnhancerFactory.kt)
+
 ```kotlin
 ...
-        // Push Service specific enhancers
-        if (config.pushIntegration.garmin.enabled) {
-            enhancersList.add(GarminPushIntegrationResourceEnhancer(config))
-        }
-        if(config.pushIntegration.servicex.enabled) {
-            enhancersList.add(ServiceXIntegrationResourceEnhancer(config))
-        }
+// Push Service specific enhancers
+if (config.pushIntegration.garmin.enabled) {
+    enhancersList.add(GarminPushIntegrationResourceEnhancer(config))
+}
+if (config.pushIntegration.servicex.enabled) {
+    enhancersList.add(ServiceXIntegrationResourceEnhancer(config))
+}
 
 
 ...
