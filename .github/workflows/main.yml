@@ -20,14 +20,15 @@ jobs:
         # Steps represent a sequence of tasks that will be executed as part of the job
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
 
-            - uses: actions/setup-java@v1
+            - uses: actions/setup-java@v4
               with:
-                  java-version: 11
+                  distribution: temurin
+                  java-version: 17
 
             - name: Cache
-              uses: actions/cache@v2.0.0
+              uses: actions/cache@v3
               with:
                   # Cache gradle directories
                   path: |
@@ -55,10 +56,10 @@ jobs:
         # Steps represent a sequence of tasks that will be executed as part of the job
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
 
             - name: Login to Docker Hub
-              uses: docker/login-action@v1
+              uses: docker/login-action@v3
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -66,35 +67,37 @@ jobs:
             # Add Docker labels and tags
             - name: Docker meta
               id: docker_meta
-              uses: crazy-max/ghaction-docker-meta@v2
+              uses: docker/metadata-action@v4
               with:
                   images: ${{ env.DOCKER_IMAGE }}
 
             # Setup docker build environment
             - name: Set up QEMU
-              uses: docker/setup-qemu-action@v1
+              uses: docker/setup-qemu-action@v2
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v1
+              uses: docker/setup-buildx-action@v2
 
             - name: Cache Docker layers
               id: cache-buildx
-              uses: actions/cache@v2
+              uses: actions/cache@v3
               with:
                   path: /tmp/.buildx-cache
                   key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', '**/*.gradle.kts', 'gradle.properties', 'src/main/**') }}
                   restore-keys: |
                       ${{ runner.os }}-buildx-
+
             - name: Cache parameters
               id: cache-parameters
               run: |
                   if [ "${{ steps.cache-buildx.outputs.cache-hit }}" = "true" ]; then
-                    echo "::set-output name=cache-to::"
+                    echo "cache-to=" >> $GITHUB_OUTPUT
                   else
-                    echo "::set-output name=cache-to::type=local,dest=/tmp/.buildx-cache-new,mode=max"
+                    echo "cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max" >> $GITHUB_OUTPUT
                   fi
+
             - name: Build docker
-              uses: docker/build-push-action@v2
+              uses: docker/build-push-action@v3
               with:
                   cache-from: type=local,src=/tmp/.buildx-cache
                   cache-to: ${{ steps.cache-parameters.outputs.cache-to }}
@@ -107,6 +110,7 @@ jobs:
                       org.opencontainers.image.authors=Joris Borgdorff <joris@thehyve.nl>
                       org.opencontainers.image.vendor=RADAR-base
                       org.opencontainers.image.licenses=Apache-2.0
+
             - name: Inspect docker image
               run: docker image inspect ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
 
@@ -124,5 +128,28 @@ jobs:
             - name: Move docker build cache
               if: steps.cache-buildx.outputs.cache-hit != 'true'
               run: |
-                  rm -rf /tmp/.buildx-cache
-                  mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+                rm -rf /tmp/.buildx-cache
+                mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+            - uses: actions/setup-java@v3
+              with:
+                distribution: zulu
+                java-version: 17
+
+            - name: Setup Gradle
+              uses: gradle/gradle-build-action@v2
+
+            # Gradle check
+            - name: Integration test
+              run: |
+                echo "RADAR_PUSH_ENDPOINT_TAG=${{ steps.docker_meta.outputs.version }}" >> src/integrationTest/docker/.env
+                ./gradlew composeUp -PdockerComposeBuild=false
+                sleep 15
+                ./gradlew integrationTest -PdockerComposeBuild=false
+
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                name: integration-test-logs
+                path: build/container-logs/
+                retention-days: 7

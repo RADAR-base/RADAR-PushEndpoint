@@ -23,66 +23,97 @@ class GarminRequestGenerator(
     private val defaultQueryRange: Duration = Duration.ofDays(15),
 ) : RequestGenerator {
 
-    private val routes: List<Route> = listOf(
-        GarminActivitiesRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminDailiesRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminActivityDetailsRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminBodyCompsRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminEpochsRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminMoveIQRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminPulseOxRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminRespirationRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminSleepsRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminStressDetailsRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminUserMetricsRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminHealthSnapshotRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminHrvRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-        GarminBloodPressureRoute(
-            config.pushIntegration.garmin.consumerKey,
-            userRepository
-        ),
-    )
+    private val routes: List<Route> =
+        mutableListOf<Route>().apply {
+            if (config.pushIntegration.garmin.backfill.activitiesEnabled) {
+                add(GarminActivitiesRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.dailiesEnabled) {
+                add(GarminDailiesRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.activityDetailsEnabled) {
+                add(GarminActivityDetailsRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.bodyCompositionsEnabled) {
+                add(GarminBodyCompsRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.epochSummariesEnabled) {
+                add(GarminEpochsRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.moveIQEnabled) {
+                add(GarminMoveIQRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.pulseOXEnabled) {
+                add(GarminPulseOxRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.respirationEnabled) {
+                add(GarminRespirationRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.sleepsEnabled) {
+                add(GarminSleepsRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.stressEnabled) {
+                add(GarminStressDetailsRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.userMetricsEnabled) {
+                add(GarminUserMetricsRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.healthSnapshotEnabled) {
+                add(GarminHealthSnapshotRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.heartRateVariabilityEnabled) {
+                add(GarminHrvRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+            if (config.pushIntegration.garmin.backfill.bloodPressureEnabled) {
+                add(GarminBloodPressureRoute(
+                    config.pushIntegration.garmin.consumerKey,
+                    userRepository
+                ))
+            }
+        }.toList()
 
     private val userNextRequest: MutableMap<String, Instant> = mutableMapOf()
+
+    private val routeNextRequest: MutableMap<Route, Instant> = mutableMapOf()
 
     private var nextRequestTime: Instant = Instant.MIN
 
@@ -92,6 +123,11 @@ class GarminRequestGenerator(
     override fun requests(user: User, max: Int): Sequence<RestRequest> {
         return if (user.ready()) {
             routes.asSequence()
+                .filter { r->
+                    routeNextRequest[r]?.let {
+                        Instant.now() > it
+                    } ?: true
+                }
                 .flatMap { route ->
                     val offsets: Offsets? = offsetPersistenceFactory.read(user.versionedId)
                     val backfillLimit = Instant.now().minus(route.maxBackfillPeriod())
@@ -153,6 +189,15 @@ class GarminRequestGenerator(
                 )
                 userNextRequest[request.user.versionedId] = Instant.now().plus(USER_BACK_OFF_TIME)
             }
+            400 -> {
+                val msg = response.body?.string() ?: ""
+                if (msg.contains("Endpoint not enabled for summary type")) {
+                    logger.warn("The Route is not enabled in Garmin dev portal, backing off:, {}", msg)
+                    routeNextRequest[request.route] = Instant.now().plus(ROUTE_BACK_OFF_TIME)
+                } else {
+                    logger.warn("Bad request: {}, {}", request, response)
+                }
+            }
             else -> logger.warn("Request Failed: {}, {}", request, response)
         }
     }
@@ -169,5 +214,6 @@ class GarminRequestGenerator(
         private val logger = LoggerFactory.getLogger(GarminRequestGenerator::class.java)
         private val BACK_OFF_TIME = Duration.ofMinutes(1L)
         private val USER_BACK_OFF_TIME = Duration.ofDays(1L)
+        private val ROUTE_BACK_OFF_TIME = Duration.ofDays(5L)
     }
 }
