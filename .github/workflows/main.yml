@@ -148,6 +148,8 @@ jobs:
 
             # Gradle check
             - name: Integration test
+              env:
+                KAFKA_CONFLUENT_VERSION: 6.1.0
               run: |
                 echo "RADAR_PUSH_ENDPOINT_TAG=${{ steps.docker_meta.outputs.version }}" >> src/integrationTest/docker/.env
                 ./gradlew composeUp -PdockerComposeBuild=false
