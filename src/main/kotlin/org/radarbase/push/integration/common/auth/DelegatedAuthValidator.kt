@@ -27,6 +27,7 @@ class DelegatedAuthValidator(
 
     companion object {
         const val GARMIN_QUALIFIER = "garmin"
+        const val OURA_QUALIFIER = "oura"
     }
 
     override fun verify(token: String, request: ContainerRequestContext): Auth? =

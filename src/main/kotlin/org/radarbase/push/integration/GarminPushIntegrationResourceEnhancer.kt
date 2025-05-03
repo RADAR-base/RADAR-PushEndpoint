@@ -10,12 +10,15 @@ import org.radarbase.gateway.Config
 import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
+import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.OURA_QUALIFIER
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.garmin.auth.GarminAuthValidator
 import org.radarbase.push.integration.garmin.factory.GarminAuthMetadataFactory
 import org.radarbase.push.integration.garmin.factory.GarminUserTreeMapFactory
 import org.radarbase.push.integration.garmin.service.BackfillService
+import org.radarbase.push.integration.oura.service.OuraBackfillService
 import org.radarbase.push.integration.garmin.service.GarminHealthApiService
+import org.radarbase.push.integration.oura.user.OuraUserRepository
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 
 
@@ -31,7 +34,7 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
 
     override val classes: Array<Class<*>>
         get() = if (config.pushIntegration.garmin.backfill.enabled) {
-            arrayOf(BackfillService::class.java)
+            arrayOf(OuraBackfillService::class.java)
         } else {
             emptyArray()
         }
@@ -39,9 +42,14 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
     override fun AbstractBinder.enhance() {
 
         bind(config.pushIntegration.garmin.userRepository)
-            .to(GarminUserRepository::class.java)
-            .named(GARMIN_QUALIFIER)
+        .to(GarminUserRepository::class.java)
+        .named(GARMIN_QUALIFIER)
             .`in`(Singleton::class.java)
+
+        bind(config.pushIntegration.garmin.userRepository)
+        .to(OuraUserRepository::class.java)
+        .named(OURA_QUALIFIER)
+        .`in`(Singleton::class.java)
 
         bind(GarminHealthApiService::class.java)
             .to(GarminHealthApiService::class.java)
