@@ -1,0 +1,71 @@
+package org.radarbase.push.integration.garmin.utils
+
+
+object PushTestUtils {
+    const val WIREMOCK_PORT = 8085
+    const val GARMIN_CONNECT_STUB_USERS_URL = "/users?source-type=Garmin&authorized=true"
+    const val OAUTH_CREDENTIALS_URL = "/users/1/token"
+    const val OAUTH_CREDENTIALS_URL_SECOND = "/users/2/token"
+    const val USER_DE_REGISTRATION_URL = "/source-clients/Garmin/authorization/sub-1?accessToken=dummy-access-token"
+    const val USER_DE_REGISTRATION_URL_SECOND = "/source-clients/Garmin/authorization/sub-2?accessToken=dummy-access-token"
+    const val GARMIN_PUSH_BASE_URL = "http://0.0.0.0:8090/push/integrations/garmin"
+    const val GARMIN_PUSH_EPOCHS_PATH = "$GARMIN_PUSH_BASE_URL/epochs"
+    const val GARMIN_PUSH_DAILIES_PATH = "$GARMIN_PUSH_BASE_URL/dailies"
+    const val GARMIN_PUSH_SLEEPS_PATH = "$GARMIN_PUSH_BASE_URL/sleeps"
+    const val GARMIN_PUSH_BODY_COMPS_PATH = "$GARMIN_PUSH_BASE_URL/bodyCompositions"
+    const val GARMIN_PUSH_STRESS_PATH = "$GARMIN_PUSH_BASE_URL/stress"
+    const val GARMIN_PUSH_USER_METRICS_PATH = "$GARMIN_PUSH_BASE_URL/userMetrics"
+    const val GARMIN_PUSH_PULSE_OX_PATH = "$GARMIN_PUSH_BASE_URL/pulseOx"
+    const val GARMIN_PUSH_RESPIRATION_PATH = "$GARMIN_PUSH_BASE_URL/respiration"
+    const val GARMIN_PUSH_HEALTH_SNAPSHOT_PATH = "$GARMIN_PUSH_BASE_URL/healthSnapshot"
+    const val GARMIN_PUSH_HRV_PATH = "$GARMIN_PUSH_BASE_URL/hrv"
+    const val GARMIN_PUSH_BP_PATH = "$GARMIN_PUSH_BASE_URL/bloodPressure"
+    const val GARMIN_PUSH_MOVE_IQ_PATH = "$GARMIN_PUSH_BASE_URL/moveIQ"
+    const val GARMIN_PUSH_ACTIVITIES_PATH = "$GARMIN_PUSH_BASE_URL/activities"
+    const val GARMIN_PUSH_ACTIVITY_DETAILS_PATH = "$GARMIN_PUSH_BASE_URL/activityDetails"
+    val TEST_USERS = generateUsers()
+    val DUMMY_ACCESS_TOKEN = generateAccessToken()
+
+    fun generateAccessToken(): String {
+        return """
+            {
+                "accessToken": "dummy-access-token"
+            }
+            """
+    }
+
+    fun generateUsers(): String {
+        return """{
+        "users": [
+            {
+                "id": "1",
+                "createdAt": "2025-03-23T12:00:00Z",
+                "projectId": "radar",
+                "userId": "sub-1",
+                "humanReadableUserId": null,
+                "sourceId": "garmin",
+                "externalId": null,
+                "isAuthorized": true,
+                "startDate": "2024-09-23T12:00:00Z",
+                "endDate": "2025-09-23T12:00:00Z",
+                "version": null,
+                "serviceUserId": "sub-1"
+            }, 
+            {
+                "id": "2",
+                "createdAt": "2025-03-23T12:00:00Z",
+                "projectId": "radar",
+                "userId": "sub-2",
+                "humanReadableUserId": null,
+                "sourceId": "garmin",
+                "externalId": null,
+                "isAuthorized": true,
+                "startDate": "2024-09-23T12:00:00Z",
+                "endDate": "2025-09-23T12:00:00Z",
+                "version": null,
+                "serviceUserId": "sub-2"
+            }
+        ]
+    }"""
+    }
+}
