@@ -45,6 +45,11 @@ dependencies {
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
+    val guavaVersion: String by project
+    implementation("com.google.guava:guava:$guavaVersion")
+
+    val lzVersion: String by project
+    implementation("net.jpountz.lz4:lz4:$lzVersion")
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
