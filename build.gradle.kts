@@ -111,6 +111,10 @@ val integrationTest by tasks.registering(Test::class) {
     testClassesDirs = integrationTestSourceSet.output.classesDirs
     classpath = integrationTestSourceSet.runtimeClasspath
     shouldRunAfter("test")
+    val externalWiremockProp = (project.findProperty("externalWiremock") as String?) ?: System.getenv("EXTERNAL_WIREMOCK")
+    if (externalWiremockProp?.toBoolean() == true) {
+        environment("EXTERNAL_WIREMOCK", "true")
+    }
 }
 
 tasks.withType<Test> {

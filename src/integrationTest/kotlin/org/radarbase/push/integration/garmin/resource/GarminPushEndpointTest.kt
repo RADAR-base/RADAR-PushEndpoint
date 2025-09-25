@@ -47,50 +47,52 @@ class GarminPushEndpointTest {
 
     @BeforeEach
     fun setUp() {
-        wireMockServer.stubFor(
-            WireMock.get(WireMock.urlEqualTo(GARMIN_CONNECT_STUB_USERS_URL))
-                .willReturn(
-                    WireMock.aResponse()
-                        .withStatus(200)
-                        .withBody(TEST_USERS)
-                )
-        )
+        wireMockServer?.let { server ->
+            server.stubFor(
+                WireMock.get(WireMock.urlEqualTo(GARMIN_CONNECT_STUB_USERS_URL))
+                    .willReturn(
+                        WireMock.aResponse()
+                            .withStatus(200)
+                            .withBody(TEST_USERS)
+                    )
+            )
 
-        wireMockServer.stubFor(
-            WireMock.get(WireMock.urlEqualTo(OAUTH_CREDENTIALS_URL))
-                .willReturn(
-                    WireMock.aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(DUMMY_ACCESS_TOKEN)
-                )
-        )
+            server.stubFor(
+                WireMock.get(WireMock.urlEqualTo(OAUTH_CREDENTIALS_URL))
+                    .willReturn(
+                        WireMock.aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody(DUMMY_ACCESS_TOKEN)
+                    )
+            )
 
-        wireMockServer.stubFor(
-            WireMock.get(WireMock.urlEqualTo(OAUTH_CREDENTIALS_URL_SECOND))
-                .willReturn(
-                    WireMock.aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(DUMMY_ACCESS_TOKEN)
-                )
-        )
+            server.stubFor(
+                WireMock.get(WireMock.urlEqualTo(OAUTH_CREDENTIALS_URL_SECOND))
+                    .willReturn(
+                        WireMock.aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody(DUMMY_ACCESS_TOKEN)
+                    )
+            )
 
-        wireMockServer.stubFor(
-            WireMock.delete(WireMock.urlEqualTo(USER_DE_REGISTRATION_URL))
-                .willReturn(
-                    WireMock.aResponse()
-                        .withStatus(204)
-                )
-        )
+            server.stubFor(
+                WireMock.delete(WireMock.urlEqualTo(USER_DE_REGISTRATION_URL))
+                    .willReturn(
+                        WireMock.aResponse()
+                            .withStatus(204)
+                    )
+            )
 
-        wireMockServer.stubFor(
-            WireMock.delete(WireMock.urlEqualTo(USER_DE_REGISTRATION_URL_SECOND))
-                .willReturn(
-                    WireMock.aResponse()
-                        .withStatus(204)
-                )
-        )
+            server.stubFor(
+                WireMock.delete(WireMock.urlEqualTo(USER_DE_REGISTRATION_URL_SECOND))
+                    .willReturn(
+                        WireMock.aResponse()
+                            .withStatus(204)
+                    )
+            )
+        }
     }
 
     @Test
@@ -221,16 +223,23 @@ class GarminPushEndpointTest {
 
     companion object {
         private lateinit var httpClient: HttpClient
-        private lateinit var wireMockServer: WireMockServer
+        private var wireMockServer: WireMockServer? = null
+        private val useExternalWiremock: Boolean = System.getenv("EXTERNAL_WIREMOCK")?.lowercase() == "true"
 
         @BeforeAll
         @JvmStatic
         fun setUpClientAndServer() {
-            wireMockServer = WireMockServer(
-                WireMockConfiguration()
-                    .port(WIREMOCK_PORT)
-            )
-            wireMockServer.start()
+            if (!useExternalWiremock) {
+                wireMockServer = WireMockServer(
+                    WireMockConfiguration()
+                        .port(WIREMOCK_PORT)
+                ).apply {
+                    start()
+                }
+            } else {
+                println("Using external WireMock on port $WIREMOCK_PORT")
+            }
+
 
             httpClient = HttpClient(CIO) {
                 install(ContentNegotiation) {
@@ -247,7 +256,7 @@ class GarminPushEndpointTest {
         @JvmStatic
         @AfterAll
         fun tearDown() {
-            wireMockServer.stop()
+            wireMockServer?.stop()
             httpClient.close()
         }
     }

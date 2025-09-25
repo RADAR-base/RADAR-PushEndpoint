@@ -154,7 +154,7 @@ jobs:
                 echo "RADAR_PUSH_ENDPOINT_TAG=${{ steps.docker_meta.outputs.version }}" >> src/integrationTest/docker/.env
                 ./gradlew composeUp -PdockerComposeBuild=false
                 sleep 15
-                ./gradlew integrationTest -PdockerComposeBuild=false
+                ./gradlew integrationTest -PdockerComposeBuild=false -PexternalWiremock=true
 
             - uses: actions/upload-artifact@v4
               if: always()
