@@ -7,7 +7,7 @@ plugins {
     id("idea")
     id("application")
     kotlin("jvm")
-    id("com.avast.gradle.docker-compose") version "0.14.3"
+    id("com.avast.gradle.docker-compose") version "0.17.2"
     id("com.github.ben-manes.versions") version "0.39.0"
 }
 
@@ -143,14 +143,14 @@ dockerCompose {
     useComposeFiles = listOf("src/integrationTest/docker/docker-compose.yml")
     val dockerComposeBuild: String? by project
     val doBuild = dockerComposeBuild?.toBooleanLenient() ?: true
-    buildBeforeUp = doBuild
-    buildBeforePull = doBuild
-    buildAdditionalArgs = emptyList<String>()
+    buildBeforeUp.set(doBuild)
+    buildBeforePull.set(doBuild)
+    buildAdditionalArgs.set(emptyList<String>())
     val dockerComposeStopContainers: String? by project
-    stopContainers = dockerComposeStopContainers?.toBooleanLenient() ?: true
-    waitForTcpPortsTimeout = Duration.ofMinutes(3)
-    environment["SERVICES_HOST"] = "localhost"
-    captureContainersOutputToFiles = project.file("build/container-logs")
+    stopContainers.set(dockerComposeStopContainers?.toBooleanLenient() ?: true)
+    waitForTcpPortsTimeout.set(Duration.ofMinutes(3))
+    environment.put("SERVICES_HOST", "localhost")
+    captureContainersOutputToFiles.set(project.file("build/container-logs"))
     isRequiredBy(integrationTest)
 }
 
