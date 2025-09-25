@@ -82,17 +82,27 @@ services:
     volumes:
       - ./etc/:/mp-includes/
 
+  wiremock:
+      image: wiremock/wiremock:2.35.0
+      ports:
+          - "8085:8085"
+      volumes:
+          - ./wiremock/mappings:/home/wiremock/mappings:ro
+          - ./wiremock/__files:/home/wiremock/__files:ro
+      command: ["--port", "8085"]
+
   #---------------------------------------------------------------------------#
   # Push Endpoint                                                             #
   #---------------------------------------------------------------------------#
   push-endpoint:
     build:
-     context: ../../../..
+     context: ../../..
     image: radarbase/radar-push-endpoint:${RADAR_PUSH_ENDPOINT_TAG}
     depends_on:
       - kafka-1
       - schema-registry-1
       - managementportal-app
+      - wiremock
     ports:
       - "127.0.0.1:8090:8090"
     command:

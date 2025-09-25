@@ -31,8 +31,8 @@ pushIntegration:
     garmin:
         enabled: true
         userRepositoryClass: org.radarbase.push.integration.garmin.user.GarminServiceUserRepository
-        userRepositoryUrl: http://localhost:8085
-        userRepositoryTokenUrl: http://localhost:8080/managementportal/oauth/token
+        userRepositoryUrl: http://wiremock:8085
+        userRepositoryTokenUrl: http://managementportal-app:8080/managementportal/oauth/token
         backfill:
             defaultEndDate: "1590844126"
             # Redis configuration
