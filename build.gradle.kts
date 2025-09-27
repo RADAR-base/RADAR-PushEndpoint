@@ -7,7 +7,7 @@ plugins {
     id("idea")
     id("application")
     kotlin("jvm")
-    id("com.avast.gradle.docker-compose") version "0.14.3"
+    id("com.avast.gradle.docker-compose") version "0.17.2"
     id("com.github.ben-manes.versions") version "0.39.0"
 }
 
@@ -142,8 +142,9 @@ dockerCompose {
     val dockerComposeStopContainers: String? by project
     stopContainers = dockerComposeStopContainers?.toBooleanLenient() ?: true
     waitForTcpPortsTimeout = Duration.ofMinutes(3)
-    environment["SERVICES_HOST"] = "localhost"
+    environment.put("SERVICES_HOST", "localhost")
     captureContainersOutputToFiles = project.file("build/container-logs")
+    useDockerComposeV2.set(true)
     isRequiredBy(integrationTest)
 }
 
