@@ -154,7 +154,8 @@ dockerCompose {
     stopContainers.set(dockerComposeStopContainers?.toBooleanLenient() ?: true)
     waitForTcpPortsTimeout.set(Duration.ofMinutes(3))
     environment.put("SERVICES_HOST", "localhost")
-    captureContainersOutputToFiles.set(project.file("build/container-logs"))
+    captureContainersOutputToFiles = project.file("build/container-logs")
+    useDockerComposeV2.set(true)
     isRequiredBy(integrationTest)
 }
 
