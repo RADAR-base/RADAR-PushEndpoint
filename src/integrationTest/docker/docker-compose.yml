@@ -116,7 +116,7 @@ services:
   # Redis                                                                     #
   #---------------------------------------------------------------------------#
   redis:
-    image: bitnami/redis
+    image: bitnamilegacy/redis
     ports:
       - "6379:6379"
     environment:
