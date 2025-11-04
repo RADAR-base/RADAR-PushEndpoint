@@ -17,7 +17,7 @@ data class GarminUser(
     @JsonProperty("externalId") override val externalId: String?,
     @JsonProperty("isAuthorized") override val isAuthorized: Boolean,
     @JsonProperty("startDate") override val startDate: Instant,
-    @JsonProperty("endDate") override val endDate: Instant,
+    @JsonProperty("endDate") override val endDate: Instant?,
     @JsonProperty("version") override val version: String? = null,
     @JsonProperty("serviceUserId") override val serviceUserId: String,
 ) : User {
