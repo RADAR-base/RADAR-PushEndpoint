@@ -1,2 +1,3 @@
 client_id;resource_ids;client_secret;scope;authorized_grant_types;redirect_uri;authorities;access_token_validity;refresh_token_validity;additional_information;autoapprove
 pRMT;res_ManagementPortal,res_gateway;;MEASUREMENT.CREATE,SUBJECT.UPDATE,SUBJECT.READ,PROJECT.READ,SOURCETYPE.READ,SOURCE.READ,SOURCETYPE.READ,SOURCEDATA.READ,USER.READ,ROLE.READ;refresh_token,authorization_code;;;43200;7948800;{"dynamic_registration": true};
+radar_pushendpoint;res_ManagementPortal,res_restAuthorizer;;SUBJECT.READ,MEASUREMENT.READ,SUBJECT.UPDATE,MEASUREMENT.CREATE;client_credentials;;;43200;7948800;;

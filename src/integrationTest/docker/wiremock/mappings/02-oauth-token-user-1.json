@@ -1,0 +1,14 @@
+{
+    "priority": 1,
+    "request": {
+        "method": "GET",
+        "url": "/users/1/token"
+    },
+    "response": {
+        "status": 200,
+        "bodyFileName": "dummy_access_token.json",
+        "headers": {
+            "Content-Type": "application/json"
+        }
+    }
+}

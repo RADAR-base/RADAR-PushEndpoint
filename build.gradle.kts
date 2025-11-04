@@ -42,11 +42,16 @@ dependencies {
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     val radarJerseyVersion: String by project
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
-
-    implementation(project(path = ":deprecated-javax", configuration = "shadow"))
-
     val guavaVersion: String by project
     implementation("com.google.guava:guava:$guavaVersion")
+    val ktorVersion: String by project
+    integrationTestImplementation("io.ktor:ktor-client-core:$ktorVersion")
+    integrationTestImplementation("io.ktor:ktor-client-cio:$ktorVersion")
+    integrationTestImplementation(platform("io.ktor:ktor-bom:$ktorVersion"))
+    integrationTestImplementation("io.ktor:ktor-client-content-negotiation")
+    integrationTestImplementation("io.ktor:ktor-serialization-kotlinx-json")
+
+    implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
     val lzVersion: String by project
     implementation("net.jpountz.lz4:lz4:$lzVersion")
@@ -88,6 +93,8 @@ dependencies {
     integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
     integrationTestImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTestImplementation("org.radarbase:radar-commons-testing:$radarCommonsVersion")
+    val wiremockVersion: String by project
+    integrationTestImplementation("com.github.tomakehurst:wiremock:$wiremockVersion")
 }
 
 tasks.withType<KotlinCompile> {
@@ -104,6 +111,10 @@ val integrationTest by tasks.registering(Test::class) {
     testClassesDirs = integrationTestSourceSet.output.classesDirs
     classpath = integrationTestSourceSet.runtimeClasspath
     shouldRunAfter("test")
+    val externalWiremockProp = (project.findProperty("externalWiremock") as String?) ?: System.getenv("EXTERNAL_WIREMOCK")
+    if (externalWiremockProp?.toBoolean() == true) {
+        environment("EXTERNAL_WIREMOCK", "true")
+    }
 }
 
 tasks.withType<Test> {
@@ -136,12 +147,12 @@ dockerCompose {
     useComposeFiles = listOf("src/integrationTest/docker/docker-compose.yml")
     val dockerComposeBuild: String? by project
     val doBuild = dockerComposeBuild?.toBooleanLenient() ?: true
-    buildBeforeUp = doBuild
-    buildBeforePull = doBuild
-    buildAdditionalArgs = emptyList<String>()
+    buildBeforeUp.set(doBuild)
+    buildBeforePull.set(doBuild)
+    buildAdditionalArgs.set(emptyList<String>())
     val dockerComposeStopContainers: String? by project
-    stopContainers = dockerComposeStopContainers?.toBooleanLenient() ?: true
-    waitForTcpPortsTimeout = Duration.ofMinutes(3)
+    stopContainers.set(dockerComposeStopContainers?.toBooleanLenient() ?: true)
+    waitForTcpPortsTimeout.set(Duration.ofMinutes(3))
     environment.put("SERVICES_HOST", "localhost")
     captureContainersOutputToFiles = project.file("build/container-logs")
     useDockerComposeV2.set(true)

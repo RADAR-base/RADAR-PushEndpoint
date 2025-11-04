@@ -1,0 +1,32 @@
+{
+    "users": [
+        {
+            "id": "1",
+            "createdAt": "2025-03-23T12:00:00Z",
+            "projectId": "radar",
+            "userId": "sub-1",
+            "humanReadableUserId": null,
+            "sourceId": "garmin",
+            "externalId": null,
+            "isAuthorized": true,
+            "startDate": "2024-09-23T12:00:00Z",
+            "endDate": null,
+            "version": null,
+            "serviceUserId": "sub-1"
+        },
+        {
+            "id": "2",
+            "createdAt": "2025-03-23T12:00:00Z",
+            "projectId": "radar",
+            "userId": "sub-2",
+            "humanReadableUserId": null,
+            "sourceId": "garmin",
+            "externalId": null,
+            "isAuthorized": true,
+            "startDate": "2024-09-23T12:00:00Z",
+            "endDate": null,
+            "version": null,
+            "serviceUserId": "sub-2"
+        }
+    ]
+}
