@@ -96,7 +96,7 @@ class GarminServiceUserRepository(
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
-    override fun getAccessToken(user: User): String {
+    override fun getOAuth1AccessToken(user: User): String {
         val credentials: OAuth1UserCredentials =
             oAuth1CachedCredentials[user.id] ?: requestUserCredentials(user)
         return credentials.accessToken
@@ -107,14 +107,12 @@ class GarminServiceUserRepository(
         throw HttpBadRequestException("", "Not available for source type")
     }
 
-//    override fun getOAuth2AccessToken(user: User): String {
-//
-//        {
-//            val request = requestFor("users/" + user.id + "/token").build()
-//            val credentials: OAuth2UserCredentials = makeRequest(request, oAuth2ResponseReader)
-//        }
-//
-//    }
+    override fun getOAuth2AccessToken(user: User): String {
+        return oAuth2CachedCredentials.getOrFetchToken(user.id) {
+            val request = requestFor("users/" + user.id + "/token").build()
+            makeRequest(request, oAuth2ResponseReader)
+        }
+    }
 
     override fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams {
         val body = JSONObject(payload).toString().toRequestBody(JSON_MEDIA_TYPE)

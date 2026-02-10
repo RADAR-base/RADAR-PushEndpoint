@@ -106,7 +106,7 @@ class GarminAuthValidator(
             )
             return false
         }
-        if (userRepository.getAccessToken(user) != accessToken) {
+        if (userRepository.getOAuth1AccessToken(user) != accessToken) {
             logger.warn(
                 "invalid_token: The token for user {} does not" +
                     " match with the records on the system.", userId

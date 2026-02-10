@@ -29,15 +29,17 @@ abstract class GarminRoute(
             .get()
             .build()
 
-        val parameters = getParams(request.url)
-
-        if (isOauth2Flow) {
-            val accessToken = userRepository.getAccessToken()
+        return if (isOauth2Flow) {
+            val accessToken = userRepository.getOAuth2AccessToken(user)
+            request.newBuilder()
+                .addHeader("Authorization", "Bearer $accessToken")
+                .build()
         } else {
+            val parameters = getParams(request.url)
             val requestParams = SignRequestParams(baseUrl, ROUTE_METHOD, parameters)
             val signedRequest = userRepository.getSignedRequest(user, requestParams)
 
-            return Oauth1Signing(signedRequest.parameters).signRequest(request)
+            Oauth1Signing(signedRequest.parameters).signRequest(request)
         }
     }
 
@@ -67,9 +69,9 @@ abstract class GarminRoute(
             .map { startRange ->
                 val endRange = (startRange + maxIntervalPerRequest).coerceAtMost(end)
                 val request = createRequest(
-                    user, isOauth2Flow,"$GARMIN_BACKFILL_BASE_URL/${subPath()}",
+                    user, isOauth2Flow, "$GARMIN_BACKFILL_BASE_URL/${subPath()}",
                     "?summaryStartTimeInSeconds=${startRange.epochSecond}" +
-                            "&summaryEndTimeInSeconds=${endRange.epochSecond}"
+                        "&summaryEndTimeInSeconds=${endRange.epochSecond}"
                 )
                 RestRequest(request, user, this, startRange, endRange)
             }
