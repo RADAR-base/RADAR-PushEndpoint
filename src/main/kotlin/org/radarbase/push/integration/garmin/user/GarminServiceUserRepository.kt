@@ -48,8 +48,9 @@ class GarminServiceUserRepository(
 
     private val userListReader: ObjectReader by lazy { objectReaderFactory.readerFor(Users::class) }
     private val userReader: ObjectReader by lazy { objectReaderFactory.readerFor(GarminUser::class) }
-    private val oauthReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth1UserCredentials::class) }
+    private val oAuth1ResponseReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth1UserCredentials::class) }
     private val signedRequestReader: ObjectReader by lazy { objectReaderFactory.readerFor(SignRequestParams::class) }
+    private val oAuth2ResponseReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth2UserCredentials::class) }
 
     init {
         baseUrl = garminConfig.userRepositoryUrl.toHttpUrl()
@@ -84,7 +85,7 @@ class GarminServiceUserRepository(
 
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
         val request = requestFor("users/" + user.id + "/token").build()
-        val credentials = makeRequest(request, oauthReader) as OAuth1UserCredentials
+        val credentials = makeRequest(request, oAuth1ResponseReader) as OAuth1UserCredentials
         cachedCredentials[user.id] = credentials
         return credentials
     }
@@ -99,6 +100,13 @@ class GarminServiceUserRepository(
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getUserAccessTokenSecret(user: User): String {
         throw HttpBadRequestException("", "Not available for source type")
+    }
+
+    override fun getOAuth2AccessToken(user: User): String {
+        val request = requestFor("users/" + user.id + "/token").build()
+        val credentials: OAuth2UserCredentials = makeRequest(request, oAuth2ResponseReader)
+
+
     }
 
     override fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams {

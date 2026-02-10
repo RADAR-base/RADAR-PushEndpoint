@@ -30,10 +30,15 @@ abstract class GarminRoute(
             .build()
 
         val parameters = getParams(request.url)
-        val requestParams = SignRequestParams(baseUrl, ROUTE_METHOD, parameters)
-        val signedRequest = userRepository.getSignedRequest(user, requestParams)
 
-        return Oauth1Signing(signedRequest.parameters).signRequest(request)
+        if (isOauth2Flow) {
+            val accessToken = userRepository.getAccessToken()
+        } else {
+            val requestParams = SignRequestParams(baseUrl, ROUTE_METHOD, parameters)
+            val signedRequest = userRepository.getSignedRequest(user, requestParams)
+
+            return Oauth1Signing(signedRequest.parameters).signRequest(request)
+        }
     }
 
     fun getParams(url: HttpUrl): Map<String, String> {
