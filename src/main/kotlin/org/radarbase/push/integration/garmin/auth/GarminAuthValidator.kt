@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.inject.Named
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.core.Context
+import org.radarbase.gateway.Config
 import org.radarbase.jersey.auth.Auth
 import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.auth.disabled.DisabledAuth
@@ -18,40 +19,45 @@ import java.time.Instant
 
 class GarminAuthValidator(
     @Context private val objectMapper: ObjectMapper,
+    @Context private val config: Config,
     @Named(GARMIN_QUALIFIER) private val userRepository: GarminUserRepository
-) :
-    AuthValidator {
-
+) : AuthValidator {
     private var nextRetry: Instant = Instant.MIN
+    private val isOauth2Flow = config.pushIntegration.garmin.oauthVersion.equals("oauth2", ignoreCase = true)
 
     override fun verify(token: String, request: ContainerRequestContext): Auth {
         return if (token.isBlank()) {
             throw HttpUnauthorizedException("invalid_token", "The token was empty")
         } else {
             var isAnyUnauthorised = false
-            // Enrich the request by adding the User
-            // the data format in Garmin's post is { <data-type> : [ {<data-1>}, {<data-2>} ] }
             val tree = request.getProperty("tree") as JsonNode
 
             val userTreeMap: Map<User, JsonNode> =
-                // group by user ID since request can contain data from multiple users
                 tree[tree.fieldNames().next()]
                     .groupBy { node ->
                         node[USER_ID_KEY].asText()
                     }
                     .filter { (userId, userData) ->
-                        val accessToken = userData[0][USER_ACCESS_TOKEN_KEY].asText()
-                        if (checkIsAuthorised(userId, accessToken)) true else {
+                        val isAuthorized = if (isOauth2Flow) {
+                            checkIsAuthorisedOAuth2(userId)
+                        } else {
+                            val accessToken = userData[0][USER_ACCESS_TOKEN_KEY].asText()
+                            checkIsAuthorisedOAuth1(userId, accessToken)
+                        }
+                        if (isAuthorized) {
+                            true
+                        } else {
                             isAnyUnauthorised = true
-                            userRepository.deregisterUser(userId, accessToken)
+                            if (!isOauth2Flow) {
+                                val accessToken = userData[0][USER_ACCESS_TOKEN_KEY].asText()
+                                userRepository.deregisterUser(userId, accessToken)
+                            }
                             false
                         }
                     }
                     .entries
                     .associate { (userId, userData) ->
                         userRepository.findByExternalId(userId) to
-                            // Map the List<JsonNode> back to <data-type>: [ {<data-1>}, {<data-2>} ]
-                            // so it can be processed in the services without much refactoring
                             objectMapper.createObjectNode()
                                 .set(tree.fieldNames().next(), objectMapper.valueToTree(userData))
                     }
@@ -63,54 +69,70 @@ class GarminAuthValidator(
             )
             request.removeProperty("tree")
 
-            // Disable auth since we don't have proper auth support
             DisabledAuth("res_gateway")
         }
     }
 
     override fun getToken(request: ContainerRequestContext): String? {
         return if (request.hasEntity()) {
-            // We put the json tree in the request because the entity stream will be closed here
             val tree = objectMapper.readTree(request.entityStream)
             request.setProperty("tree", tree)
-            val userAccessToken = tree[tree.fieldNames().next()][0][USER_ACCESS_TOKEN_KEY]
-                ?: throw HttpUnauthorizedException("invalid_token", "No user access token provided")
-            userAccessToken.asText().also {
-                request.setProperty(USER_ACCESS_TOKEN_KEY, it)
+
+            if (isOauth2Flow) {
+                val userId = tree[tree.fieldNames().next()][0][USER_ID_KEY]?.asText()
+                    ?: throw HttpUnauthorizedException("invalid_token", "No user ID provided")
+                userId //TODO: make sure if we can return the user id or fetch the access token
+            } else {
+                val userAccessToken = tree[tree.fieldNames().next()][0][USER_ACCESS_TOKEN_KEY]
+                    ?: throw HttpUnauthorizedException("invalid_token", "No user access token provided")
+                userAccessToken.asText().also {
+                    request.setProperty(USER_ACCESS_TOKEN_KEY, it)
+                }
             }
         } else {
             null
         }
     }
 
-    private fun checkIsAuthorised(userId: String, accessToken: String, retry: Boolean = true):
-        Boolean {
+    private fun checkIsAuthorisedOAuth1(userId: String, accessToken: String, retry: Boolean = true): Boolean {
         val user = try {
             userRepository.findByExternalId(userId)
-        } catch (exc: NoSuchElementException) {
+        } catch (_: NoSuchElementException) {
             return if (retry && Instant.now() > nextRetry) {
                 userRepository.applyPendingUpdates()
                 nextRetry = Instant.now().plusSeconds(REFRESH_TIMEOUT_S)
-                checkIsAuthorised(userId, accessToken, retry = false)
+                checkIsAuthorisedOAuth1(userId, accessToken, retry = false)
             } else {
-                logger.warn(
-                    "no_user: The user {} could not be found in the " +
-                        "user repository.", userId
-                )
+                logger.warn("The user {} could not be found in the user repository", userId)
                 false
             }
         }
         if (!user.isAuthorized) {
-            logger.warn(
-                "invalid_user: The user {} does not seem to be authorized.", userId
-            )
+            logger.warn("iThe user {} does not seem to be authorized", userId)
             return false
         }
         if (userRepository.getOAuth1AccessToken(user) != accessToken) {
-            logger.warn(
-                "invalid_token: The token for user {} does not" +
-                    " match with the records on the system.", userId
-            )
+            logger.warn("The token for user {} does not match with the auth records", userId)
+            return false
+        }
+        return true
+    }
+
+    private fun checkIsAuthorisedOAuth2(userId: String, retry: Boolean = true): Boolean {
+        val user = try {
+            userRepository.findByExternalId(userId)
+        } catch (_: NoSuchElementException) {
+            return if (retry && Instant.now() > nextRetry) {
+                userRepository.applyPendingUpdates()
+                nextRetry = Instant.now().plusSeconds(REFRESH_TIMEOUT_S)
+                checkIsAuthorisedOAuth2(userId, retry = false)
+            } else {
+                logger.warn(" The user {} could not be found in the user repository.", userId)
+                false
+            }
+        }
+        if (!user.isAuthorized) {
+            logger.warn("The user {} does not seem to be authorized.", userId)
             return false
         }
         return true
