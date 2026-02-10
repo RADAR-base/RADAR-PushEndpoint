@@ -46,8 +46,8 @@ data class GarminConfig(
     val consumerKey: String = "",
     val consumerSecret: String = "",
     val backfill: BackfillConfig = BackfillConfig(),
-    val userRepositoryClass: String =
-        "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
+    val userRepositoryClass: String = "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
+    val oauthVersion: String = "oauth2",
     val userRepositoryUrl: String = "http://localhost:8080/",
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",

@@ -30,6 +30,7 @@ kafka:
 pushIntegration:
     garmin:
         enabled: true
+        oauthVersion: oauth2
         backfill:
             defaultEndDate: "1590844126"
             # Redis configuration

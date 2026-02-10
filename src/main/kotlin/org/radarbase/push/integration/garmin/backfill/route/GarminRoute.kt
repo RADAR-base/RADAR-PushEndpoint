@@ -23,7 +23,7 @@ abstract class GarminRoute(
     override val maxIntervalPerRequest: Duration
         get() = DEFAULT_INTERVAL_PER_REQUEST
 
-    fun createRequest(user: User, baseUrl: String, queryParams: String): Request {
+    fun createRequest(user: User, isOauth2Flow: Boolean, baseUrl: String, queryParams: String): Request {
         val request = Request.Builder()
             .url(baseUrl + queryParams)
             .get()
@@ -51,6 +51,7 @@ abstract class GarminRoute(
 
     override fun generateRequests(
         user: User,
+        isOauth2Flow: Boolean,
         start: Instant,
         end: Instant,
         max: Int
@@ -61,7 +62,7 @@ abstract class GarminRoute(
             .map { startRange ->
                 val endRange = (startRange + maxIntervalPerRequest).coerceAtMost(end)
                 val request = createRequest(
-                    user, "$GARMIN_BACKFILL_BASE_URL/${subPath()}",
+                    user, isOauth2Flow,"$GARMIN_BACKFILL_BASE_URL/${subPath()}",
                     "?summaryStartTimeInSeconds=${startRange.epochSecond}" +
                             "&summaryEndTimeInSeconds=${endRange.epochSecond}"
                 )
