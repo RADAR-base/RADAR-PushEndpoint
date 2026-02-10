@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("unused")
-class TokenCache<V>(private val removalAdvance: Duration = Duration.ofMinutes(30)) {
+class OAuth2TokenCache(private val removalAdvance: Duration = Duration.ofMinutes(30)) {
     private val map = ConcurrentHashMap<String, OAuth2UserCredentials>()
 
     fun put(userId: String, accessToken: String, expiry: Instant) {
