@@ -81,7 +81,9 @@ class GarminAuthValidator(
             if (isOauth2Flow) {
                 val userId = tree[tree.fieldNames().next()][0][USER_ID_KEY]?.asText()
                     ?: throw HttpUnauthorizedException("invalid_token", "No user ID provided")
-                userId //TODO: make sure if we can return the user id or fetch the access token
+                // OAuth2 push notifications do not include userAccessToken, so use userId
+                // as the token identifier for the verify() flow.
+                userId
             } else {
                 val userAccessToken = tree[tree.fieldNames().next()][0][USER_ACCESS_TOKEN_KEY]
                     ?: throw HttpUnauthorizedException("invalid_token", "No user access token provided")
@@ -108,7 +110,7 @@ class GarminAuthValidator(
             }
         }
         if (!user.isAuthorized) {
-            logger.warn("iThe user {} does not seem to be authorized", userId)
+            logger.warn("The user {} does not seem to be authorized", userId)
             return false
         }
         if (userRepository.getOAuth1AccessToken(user) != accessToken) {

@@ -7,5 +7,5 @@ import java.time.Instant
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class OAuth2UserCredentials(
     @param:JsonProperty("accessToken") val accessToken: String,
-    @param:JsonProperty("expiresIn") val expiresAt: Instant
+    @param:JsonProperty("expiresAt") val expiresAt: Instant
 )
