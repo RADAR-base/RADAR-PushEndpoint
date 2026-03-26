@@ -11,7 +11,8 @@ import org.radarbase.jersey.auth.AuthValidator
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.User
-import org.radarbase.push.integration.garmin.auth.GarminAuthValidator
+import org.radarbase.push.integration.garmin.auth.GarminOAuth1AuthValidator
+import org.radarbase.push.integration.garmin.auth.GarminOAuth2AuthValidator
 import org.radarbase.push.integration.garmin.factory.GarminAuthMetadataFactory
 import org.radarbase.push.integration.garmin.factory.GarminUserTreeMapFactory
 import org.radarbase.push.integration.garmin.service.BackfillService
@@ -19,8 +20,18 @@ import org.radarbase.push.integration.garmin.service.GarminHealthApiService
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 
 
-class GarminPushIntegrationResourceEnhancer(private val config: Config) :
-    JerseyResourceEnhancer {
+class GarminPushIntegrationResourceEnhancer(private val config: Config) : JerseyResourceEnhancer {
+
+    val authValidatorImpl: Class<out AuthValidator> = config.pushIntegration.garmin.oauthVersion.equals(
+        "oauth2", ignoreCase = true
+    ).let { isOauth2Flow ->
+        if (isOauth2Flow) {
+            GarminOAuth2AuthValidator::class.java
+        } else {
+            GarminOAuth1AuthValidator::class.java
+        }
+    }
+
 
     override fun ResourceConfig.enhance() {
         packages(
@@ -47,7 +58,7 @@ class GarminPushIntegrationResourceEnhancer(private val config: Config) :
             .to(GarminHealthApiService::class.java)
             .`in`(Singleton::class.java)
 
-        bind(GarminAuthValidator::class.java)
+        bind(authValidatorImpl)
             .to(AuthValidator::class.java)
             .named(GARMIN_QUALIFIER)
             .`in`(Singleton::class.java)
