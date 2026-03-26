@@ -3,155 +3,159 @@ name: CI
 
 # Run in master and dev branches and in all pull requests to those branches
 on:
-    push:
-        branches: [ master, dev ]
-    pull_request:
-        branches: [ master, dev ]
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
 
 env:
-    DOCKER_IMAGE: radarbase/radar-push-endpoint
+  REGISTRY: ghcr.io
+  REPOSITORY: ${{ github.repository }}
 
 jobs:
-    # Build and test the code
-    build:
-        # The type of runner that the job will run on
-        runs-on: ubuntu-latest
+  # Build and test the code
+  build:
+    runs-on: ubuntu-latest
 
-        # Steps represent a sequence of tasks that will be executed as part of the job
-        steps:
-            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v5
 
-            - uses: actions/setup-java@v4
-              with:
-                  distribution: temurin
-                  java-version: 17
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
 
-            - name: Cache
-              uses: actions/cache@v3
-              with:
-                  # Cache gradle directories
-                  path: |
-                      ~/.gradle/caches/jars-3
-                      ~/.gradle/caches/modules-2/files-2.1/
-                      ~/.gradle/caches/modules-2/metadata-2.96/
-                      ~/.gradle/native
-                      ~/.gradle/wrapper
-                  # Key for restoring and saving the cache
-                  key: ${{ runner.os }}-gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-            # Compile the code
-            - name: Compile code
-              run: ./gradlew assemble
+      - name: Compile code
+        run: ./gradlew assemble
 
-            # Gradle check
-            - name: Check
-              run: ./gradlew check
+      - name: Check
+        run: ./gradlew check
 
-    # Check that the docker image builds correctly
-    docker:
-        # The type of runner that the job will run on
-        runs-on: ubuntu-latest
+  # Build and optionally push docker image
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
-        # Steps represent a sequence of tasks that will be executed as part of the job
-        steps:
-            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v5
 
-            - name: Login to Docker Hub
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker build parameters
+        id: docker_params
+        run: |
+          if [ "${{ github.event_name == 'pull_request' }}" = "true" ]; then
+            echo "push=false" >> $GITHUB_OUTPUT
+            echo "load=true" >> $GITHUB_OUTPUT
+            echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          else
+            echo "push=true" >> $GITHUB_OUTPUT
+            echo "load=false" >> $GITHUB_OUTPUT
+            echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
+          fi
 
-            # Add Docker labels and tags
-            - name: Docker meta
-              id: docker_meta
-              uses: docker/metadata-action@v4
-              with:
-                  images: ${{ env.DOCKER_IMAGE }}
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            # Setup docker build environment
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v2
+      - name: Lowercase image name
+        run: |
+          echo "DOCKER_IMAGE=${REGISTRY}/${REPOSITORY,,}/radar-push-endpoint" >>${GITHUB_ENV}
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v2
+      # Add Docker labels and tags
+      - name: Docker meta
+        id: docker_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
 
-            - name: Cache Docker layers
-              id: cache-buildx
-              uses: actions/cache@v3
-              with:
-                  path: /tmp/.buildx-cache
-                  key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', '**/*.gradle.kts', 'gradle.properties', 'src/main/**') }}
-                  restore-keys: |
-                      ${{ runner.os }}-buildx-
+      # Setup docker build environment
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-            - name: Cache parameters
-              id: cache-parameters
-              run: |
-                  if [ "${{ steps.cache-buildx.outputs.cache-hit }}" = "true" ]; then
-                    echo "cache-to=" >> $GITHUB_OUTPUT
-                  else
-                    echo "cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max" >> $GITHUB_OUTPUT
-                  fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Build docker
-              uses: docker/build-push-action@v3
-              with:
-                  cache-from: type=local,src=/tmp/.buildx-cache
-                  cache-to: ${{ steps.cache-parameters.outputs.cache-to }}
-                  load: true
-                  tags: ${{ steps.docker_meta.outputs.tags }}
-                  # Use runtime labels from docker_meta as well as fixed labels
-                  labels: |
-                      ${{ steps.docker_meta.outputs.labels }}
-                      maintainer=Joris Borgdorff <joris@thehyve.nl>
-                      org.opencontainers.image.authors=Joris Borgdorff <joris@thehyve.nl>
-                      org.opencontainers.image.vendor=RADAR-base
-                      org.opencontainers.image.licenses=Apache-2.0
+      - name: Cache Docker layers
+        id: cache-buildx
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', '**/*.gradle.kts', 'gradle.properties', 'src/main/**') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
-            - name: Inspect docker image
-              run: docker image inspect ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
+      - name: Cache parameters
+        id: cache-parameters
+        run: |
+          if [ "${{ steps.cache-buildx.outputs.cache-hit }}" = "true" ]; then
+            echo "cache-to=" >> $GITHUB_OUTPUT
+          else
+            echo "cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max" >> $GITHUB_OUTPUT
+          fi
 
-            - name: Check docker image
-              run: docker run --rm ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }} curl --help
+      - name: Build docker and optionally push
+        uses: docker/build-push-action@v6
+        with:
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: ${{ steps.cache-parameters.outputs.cache-to }}
+          platforms: ${{ steps.docker_params.outputs.platforms }}
+          load: ${{ steps.docker_params.outputs.load }}
+          push: ${{ steps.docker_params.outputs.push }}
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: |
+            ${{ steps.docker_meta.outputs.labels }}
+            maintainer=Yatharth Ranjan <yatharth.ranjan@kcl.ac.uk>
+            org.opencontainers.image.description=RADAR-base push endpoint
+            org.opencontainers.image.authors=Yatharth Ranjan <yatharth.ranjan@kcl.ac.uk>
+            org.opencontainers.image.vendor=RADAR-base
+            org.opencontainers.image.licenses=Apache-2.0
 
-            # Push the image on the dev and master branches
-            - name: Push image
-              if: ${{ github.event_name != 'pull_request' }}
-              run: docker push ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
+      - name: Pull images
+        if: steps.docker_params.outputs.load == 'false'
+        run: docker pull ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
 
-            # Temp fix
-            # https://github.com/docker/build-push-action/issues/252
-            # https://github.com/moby/buildkit/issues/1896
-            - name: Move docker build cache
-              if: steps.cache-buildx.outputs.cache-hit != 'true'
-              run: |
-                rm -rf /tmp/.buildx-cache
-                mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      - name: Inspect docker image
+        run: docker image inspect ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }}
 
-            - uses: actions/setup-java@v3
-              with:
-                distribution: zulu
-                java-version: 17
+      - name: Check docker image
+        run: docker run --rm ${{ env.DOCKER_IMAGE }}:${{ steps.docker_meta.outputs.version }} curl --help
 
-            - name: Setup Gradle
-              uses: gradle/gradle-build-action@v2
+      # Temp fix
+      # https://github.com/docker/build-push-action/issues/252
+      # https://github.com/moby/buildkit/issues/1896
+      - name: Move docker build cache
+        if: steps.cache-buildx.outputs.cache-hit != 'true'
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-            # Gradle check
-            - name: Integration test
-              env:
-                KAFKA_CONFLUENT_VERSION: 6.1.0
-              run: |
-                echo "RADAR_PUSH_ENDPOINT_TAG=${{ steps.docker_meta.outputs.version }}" >> src/integrationTest/docker/.env
-                ./gradlew composeUp -PdockerComposeBuild=false
-                sleep 15
-                ./gradlew integrationTest -PdockerComposeBuild=false -PexternalWiremock=true
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 17
 
-            - uses: actions/upload-artifact@v4
-              if: always()
-              with:
-                name: integration-test-logs
-                path: build/container-logs/
-                retention-days: 7
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Integration test
+        env:
+          KAFKA_CONFLUENT_VERSION: 6.1.0
+        run: |
+          echo "RADAR_PUSH_ENDPOINT_TAG=${{ steps.docker_meta.outputs.version }}" >> src/integrationTest/docker/.env
+          ./gradlew composeUp -PdockerComposeBuild=false
+          sleep 15
+          ./gradlew integrationTest -PdockerComposeBuild=false -PexternalWiremock=true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-logs
+          path: build/container-logs/
+          retention-days: 7
