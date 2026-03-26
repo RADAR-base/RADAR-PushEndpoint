@@ -111,6 +111,8 @@ class GarminRequestGenerator(
             }
         }.toList()
 
+    private val isOauth2Flow: Boolean = config.pushIntegration.garmin.oauthVersion.equals("oauth2", ignoreCase = true)
+
     private val userNextRequest: MutableMap<String, Instant> = mutableMapOf()
 
     private val routeNextRequest: MutableMap<Route, Instant> = mutableMapOf()
@@ -154,7 +156,7 @@ class GarminRequestGenerator(
                     val endDate = userRepository.getBackfillEndDate(user)
                     if (endDate <= startOffset) return@flatMap emptySequence()
                     val endTime = (startOffset + defaultQueryRange).coerceAtMost(endDate)
-                    route.generateRequests(user, startOffset, endTime, max / routes.size)
+                    route.generateRequests(user, isOauth2Flow, startOffset, endTime, max / routes.size)
                 }
                 .takeWhile { !shouldBackoff }
         } else emptySequence()

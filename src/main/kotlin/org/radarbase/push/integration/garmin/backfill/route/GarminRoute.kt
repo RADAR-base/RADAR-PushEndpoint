@@ -23,17 +23,24 @@ abstract class GarminRoute(
     override val maxIntervalPerRequest: Duration
         get() = DEFAULT_INTERVAL_PER_REQUEST
 
-    fun createRequest(user: User, baseUrl: String, queryParams: String): Request {
+    fun createRequest(user: User, isOauth2Flow: Boolean, baseUrl: String, queryParams: String): Request {
         val request = Request.Builder()
             .url(baseUrl + queryParams)
             .get()
             .build()
 
-        val parameters = getParams(request.url)
-        val requestParams = SignRequestParams(baseUrl, ROUTE_METHOD, parameters)
-        val signedRequest = userRepository.getSignedRequest(user, requestParams)
+        return if (isOauth2Flow) {
+            val accessToken = userRepository.getOAuth2AccessToken(user)
+            request.newBuilder()
+                .addHeader("Authorization", "Bearer $accessToken")
+                .build()
+        } else {
+            val parameters = getParams(request.url)
+            val requestParams = SignRequestParams(baseUrl, ROUTE_METHOD, parameters)
+            val signedRequest = userRepository.getSignedRequest(user, requestParams)
 
-        return Oauth1Signing(signedRequest.parameters).signRequest(request)
+            Oauth1Signing(signedRequest.parameters).signRequest(request)
+        }
     }
 
     fun getParams(url: HttpUrl): Map<String, String> {
@@ -51,6 +58,7 @@ abstract class GarminRoute(
 
     override fun generateRequests(
         user: User,
+        isOauth2Flow: Boolean,
         start: Instant,
         end: Instant,
         max: Int
@@ -61,9 +69,9 @@ abstract class GarminRoute(
             .map { startRange ->
                 val endRange = (startRange + maxIntervalPerRequest).coerceAtMost(end)
                 val request = createRequest(
-                    user, "$GARMIN_BACKFILL_BASE_URL/${subPath()}",
+                    user, isOauth2Flow, "$GARMIN_BACKFILL_BASE_URL/${subPath()}",
                     "?summaryStartTimeInSeconds=${startRange.epochSecond}" +
-                            "&summaryEndTimeInSeconds=${endRange.epochSecond}"
+                        "&summaryEndTimeInSeconds=${endRange.epochSecond}"
                 )
                 RestRequest(request, user, this, startRange, endRange)
             }

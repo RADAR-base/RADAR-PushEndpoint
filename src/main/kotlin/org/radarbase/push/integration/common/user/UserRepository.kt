@@ -48,8 +48,10 @@ interface UserRepository {
      * @throws NoSuchElementException if the user does not exists in this repository.
      */
     @Throws(IOException::class, NotAuthorizedException::class)
-    fun getAccessToken(user: User): String
+    fun getOAuth1AccessToken(user: User): String
 
+    @Throws(IOException::class, NotAuthorizedException::class)
+    fun getOAuth2AccessToken(user: User): String
     /**
      * Get the current refresh token of given user.
      *

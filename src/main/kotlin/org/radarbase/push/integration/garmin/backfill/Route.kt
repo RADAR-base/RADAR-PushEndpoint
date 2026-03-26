@@ -11,7 +11,7 @@ interface Route {
      */
     val maxIntervalPerRequest: Duration
 
-    fun generateRequests(user: User, start: Instant, end: Instant, max: Int): Sequence<RestRequest>
+    fun generateRequests(user: User, isOauth2Flow: Boolean, start: Instant, end: Instant, max: Int): Sequence<RestRequest>
 
     /**
      * This is how it would appear in the offsets

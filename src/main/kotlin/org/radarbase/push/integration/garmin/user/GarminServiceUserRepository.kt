@@ -19,6 +19,7 @@ import org.radarbase.push.integration.common.auth.SignRequestParams
 import org.radarbase.push.integration.common.inject.ObjectReaderFactory
 import org.radarbase.push.integration.common.user.User
 import org.radarbase.push.integration.common.user.Users
+import org.radarbase.push.integration.garmin.util.OAuth2TokenCache
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.URL
@@ -33,8 +34,12 @@ class GarminServiceUserRepository(
     @Context private val objectReaderFactory: ObjectReaderFactory,
 ) : GarminUserRepository(config) {
     private val garminConfig: GarminConfig = config.pushIntegration.garmin
-    private val cachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> =
+    private val oAuth1CachedCredentials: ConcurrentHashMap<String, OAuth1UserCredentials> by lazy {
         ConcurrentHashMap<String, OAuth1UserCredentials>()
+    }
+    private val oAuth2CachedCredentials: OAuth2TokenCache by lazy {
+        OAuth2TokenCache(Duration.ofMinutes(30))
+    }
     private var nextFetch = MIN_INSTANT
 
     private val baseUrl: HttpUrl
@@ -48,8 +53,9 @@ class GarminServiceUserRepository(
 
     private val userListReader: ObjectReader by lazy { objectReaderFactory.readerFor(Users::class) }
     private val userReader: ObjectReader by lazy { objectReaderFactory.readerFor(GarminUser::class) }
-    private val oauthReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth1UserCredentials::class) }
+    private val oAuth1ResponseReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth1UserCredentials::class) }
     private val signedRequestReader: ObjectReader by lazy { objectReaderFactory.readerFor(SignRequestParams::class) }
+    private val oAuth2ResponseReader: ObjectReader by lazy { objectReaderFactory.readerFor(OAuth2UserCredentials::class) }
 
     init {
         baseUrl = garminConfig.userRepositoryUrl.toHttpUrl()
@@ -84,21 +90,28 @@ class GarminServiceUserRepository(
 
     fun requestUserCredentials(user: User): OAuth1UserCredentials {
         val request = requestFor("users/" + user.id + "/token").build()
-        val credentials = makeRequest(request, oauthReader) as OAuth1UserCredentials
-        cachedCredentials[user.id] = credentials
+        val credentials = makeRequest(request, oAuth1ResponseReader) as OAuth1UserCredentials
+        oAuth1CachedCredentials[user.id] = credentials
         return credentials
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
-    override fun getAccessToken(user: User): String {
+    override fun getOAuth1AccessToken(user: User): String {
         val credentials: OAuth1UserCredentials =
-            cachedCredentials[user.id] ?: requestUserCredentials(user)
+            oAuth1CachedCredentials[user.id] ?: requestUserCredentials(user)
         return credentials.accessToken
     }
 
     @Throws(IOException::class, NotAuthorizedException::class)
     override fun getUserAccessTokenSecret(user: User): String {
         throw HttpBadRequestException("", "Not available for source type")
+    }
+
+    override fun getOAuth2AccessToken(user: User): String {
+        return oAuth2CachedCredentials.getOrFetchToken(user.id) {
+            val request = requestFor("users/" + user.id + "/token").build()
+            makeRequest(request, oAuth2ResponseReader)
+        }
     }
 
     override fun getSignedRequest(user: User, payload: SignRequestParams): SignRequestParams {
