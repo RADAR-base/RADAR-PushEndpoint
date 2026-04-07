@@ -60,11 +60,15 @@ class GarminServiceUserRepository(
         if (clientId.isEmpty())
             throw ConfigException("Client ID for user repository is not set.")
 
+        val tokenClient = client.newBuilder()
+            .addInterceptor(AUDIENCE_INTERCEPTOR)
+            .build()
+
         repositoryClient = OAuth2Client.Builder()
             .credentials(clientId, clientSecret)
             .endpoint(tokenUrl)
             .scopes("SUBJECT.READ", "MEASUREMENT.READ", "SUBJECT.UPDATE", "MEASUREMENT.CREATE")
-            .httpClient(client)
+            .httpClient(tokenClient)
             .build()
     }
 
@@ -196,5 +200,28 @@ class GarminServiceUserRepository(
         private val MIN_INSTANT: Instant = Instant.EPOCH
 
         private val logger = LoggerFactory.getLogger(GarminServiceUserRepository::class.java)
+
+        private const val RSA_AUDIENCE = "res_restAuthorizer"
+
+        private val AUDIENCE_INTERCEPTOR = Interceptor { chain ->
+            val request = chain.request()
+            val formBody = request.body as? FormBody
+            if (formBody == null || request.method != "POST") {
+                return@Interceptor chain.proceed(request)
+            }
+
+            val rewrittenBody = FormBody.Builder().apply {
+                repeat(formBody.size) { i ->
+                    addEncoded(formBody.encodedName(i), formBody.encodedValue(i))
+                }
+                add("audience", RSA_AUDIENCE)
+            }.build()
+
+            chain.proceed(
+                request.newBuilder()
+                    .post(rewrittenBody)
+                    .build(),
+            )
+        }
     }
 }
