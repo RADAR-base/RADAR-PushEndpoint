@@ -1,8 +1,6 @@
 package org.radarbase.gateway.inject
 
-import okhttp3.internal.toImmutableList
 import org.radarbase.gateway.Config
-import org.radarbase.jersey.config.ConfigLoader
 import org.radarbase.jersey.enhancer.Enhancers
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
@@ -11,21 +9,15 @@ import org.radarbase.push.integration.common.inject.PushIntegrationResourceEnhan
 
 class PushIntegrationEnhancerFactory(private val config: Config) : EnhancerFactory {
 
-    override fun createEnhancers(): List<JerseyResourceEnhancer> {
-
-        val enhancersList = mutableListOf(
-            GatewayResourceEnhancer(config),
-            Enhancers.health,
-            Enhancers.exception,
-            RadarResourceEnhancer(),
-            PushIntegrationResourceEnhancer()
-        )
+    override fun createEnhancers(): List<JerseyResourceEnhancer> = buildList {
+        add(GatewayResourceEnhancer(config))
+        add(Enhancers.health)
+        add(Enhancers.exception)
+        add(RadarResourceEnhancer())
+        add(PushIntegrationResourceEnhancer())
 
         if (config.pushIntegration.garmin.enabled) {
-            enhancersList.add(GarminPushIntegrationResourceEnhancer(config))
+            add(GarminPushIntegrationResourceEnhancer(config))
         }
-        // Add more enhancers as services are added
-
-        return enhancersList.toImmutableList()
     }
 }

@@ -5,12 +5,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.jsonMapper
+import com.fasterxml.jackson.module.kotlin.kotlinModule
 import jakarta.ws.rs.ext.ContextResolver
 import okhttp3.FormBody
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.glassfish.jersey.internal.inject.AbstractBinder
 import org.glassfish.jersey.server.ResourceConfig
 import org.radarbase.jersey.auth.filter.AuthenticationFilter
@@ -18,14 +18,15 @@ import org.radarbase.jersey.auth.filter.AuthorizationFeature
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import java.util.concurrent.TimeUnit
 
-class RadarResourceEnhancer: JerseyResourceEnhancer {
+class RadarResourceEnhancer : JerseyResourceEnhancer {
 
-    var mapper: ObjectMapper = ObjectMapper()
-        .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-        .registerModule(JavaTimeModule())
-        .registerModule(KotlinModule())
-        .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    var mapper: ObjectMapper = jsonMapper {
+        addModule(JavaTimeModule())
+        addModule(kotlinModule())
+        serializationInclusion(JsonInclude.Include.NON_NULL)
+        configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+        configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    }
 
     val audienceInterceptor = Interceptor { chain ->
         var req = chain.request()
@@ -50,7 +51,8 @@ class RadarResourceEnhancer: JerseyResourceEnhancer {
 
     override val classes = arrayOf(
         AuthenticationFilter::class.java,
-        AuthorizationFeature::class.java)
+        AuthorizationFeature::class.java
+    )
 
     override fun ResourceConfig.enhance() {
         register(ContextResolver { mapper })
