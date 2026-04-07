@@ -7,11 +7,9 @@ import org.glassfish.jersey.message.GZipEncoder
 import org.glassfish.jersey.server.filter.EncodingFilter
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.*
-import org.radarbase.jersey.config.ConfigLoader
 import org.radarbase.jersey.filter.Filters
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.jersey.service.HealthService
-import org.radarbase.producer.rest.SchemaRetriever
 
 class GatewayResourceEnhancer(private val config: Config): JerseyResourceEnhancer {
 
@@ -26,10 +24,6 @@ class GatewayResourceEnhancer(private val config: Config): JerseyResourceEnhance
                 .to(Config::class.java)
 
         // Bind factories.
-        bindFactory(SchemaRetrieverFactory::class.java)
-                .to(SchemaRetriever::class.java)
-                .`in`(Singleton::class.java)
-
         bindFactory(ProducerPoolFactory::class.java)
                 .to(ProducerPool::class.java)
                 .`in`(Singleton::class.java)
