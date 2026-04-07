@@ -38,12 +38,12 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
 
-    val radarCommonsVersion: String by project
-    implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     val radarJerseyVersion: String by project
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
     val guavaVersion: String by project
     implementation("com.google.guava:guava:$guavaVersion")
+    val okhttp3Version: String by project
+    implementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
     val ktorVersion: String by project
     integrationTestImplementation("io.ktor:ktor-client-core:$ktorVersion")
     integrationTestImplementation("io.ktor:ktor-client-cio:$ktorVersion")
@@ -80,7 +80,6 @@ dependencies {
     implementation("redis.clients:jedis:$jedisVersion")
 
     val junitVersion: String by project
-    val okhttp3Version: String by project
     val radarSchemasVersion: String by project
     implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 
@@ -92,7 +91,6 @@ dependencies {
     testImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
     integrationTestImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
-    integrationTestImplementation("org.radarbase:radar-commons-testing:$radarCommonsVersion")
     val wiremockVersion: String by project
     integrationTestImplementation("com.github.tomakehurst:wiremock:$wiremockVersion")
 }
