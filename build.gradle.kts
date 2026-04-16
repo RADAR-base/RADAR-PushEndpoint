@@ -58,6 +58,8 @@ dependencies {
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
+    implementation("com.google.auth:google-auth-library-oauth2-http:${project.property("googleAuthVersion")}")
+
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
     val jacksonVersion: String by project
