@@ -95,12 +95,6 @@ class GoogleHealthApiService(
         }
     }
 
-    /**
-     * Fetch and publish data for a single user, data type, and time window, blocking until all
-     * pages are exhausted.
-     * Per-user concurrency is bounded by [MAX_CONCURRENT_PER_USER] so simultaneous PING and backfill
-     * traffic for the same user cannot exceed it.
-     */
     private fun fetchAllForUser(ping: GoogleHealthPing, interval: PingInterval) {
         val user = resolveUser(ping.healthUserId) ?: return
         if (!user.isAuthorized) {
@@ -110,29 +104,39 @@ class GoogleHealthApiService(
         val window = widenInterval(interval)
         for (dataType in googleConfig.enabledDataTypes) {
             try {
-                val perType = converters[dataType]
-                if (perType.isNullOrEmpty()) {
-                    logger.debug("No converter registered for dataType={}", dataType)
-                    return
-                }
-                val sem = userSemaphores.computeIfAbsent(user.id) { Semaphore(MAX_CONCURRENT_PER_USER) }
-                sem.acquire()
-                try {
-                    var pageToken: String? = null
-                    do {
-                        val response = fetchDataPoints(user, dataType, window, pageToken)
-                        perType.forEach { conv ->
-                            val records = conv.convert(response, user)
-                            if (records.isNotEmpty()) producerPool.produce(conv.topic, records)
-                        }
-                        pageToken = response["nextPageToken"]?.asText()?.takeIf { it.isNotEmpty() }
-                    } while (pageToken != null)
-                } finally {
-                    sem.release()
-                }
+                fetchAndPublishBlocking(user, dataType, window)
             } catch (ex: Exception) {
                 logger.error("Failed to fetch {} for user {}", dataType, user.userId, ex)
             }
+        }
+    }
+
+    /**
+     * Fetch and publish data for a single user, data type, and time window, blocking until all
+     * pages are exhausted.
+     * Per-user concurrency is bounded by [MAX_CONCURRENT_PER_USER] so simultaneous PING and backfill
+     * traffic for the same user cannot exceed it.
+     */
+    fun fetchAndPublishBlocking(user: User, dataType: String, window: Pair<Instant, Instant>) {
+        val perType = converters[dataType]
+        if (perType.isNullOrEmpty()) {
+            logger.debug("No converter registered for dataType={}", dataType)
+            return
+        }
+        val sem = userSemaphores.computeIfAbsent(user.id) { Semaphore(MAX_CONCURRENT_PER_USER) }
+        sem.acquire()
+        try {
+            var pageToken: String? = null
+            do {
+                val response = fetchDataPoints(user, dataType, window, pageToken)
+                perType.forEach { conv ->
+                    val records = conv.convert(response, user)
+                    if (records.isNotEmpty()) producerPool.produce(conv.topic, records)
+                }
+                pageToken = response["nextPageToken"]?.asText()?.takeIf { it.isNotEmpty() }
+            } while (pageToken != null)
+        } finally {
+            sem.release()
         }
     }
 
@@ -271,7 +275,7 @@ class GoogleHealthApiService(
         }
     }
 
-    private fun buildFilterExpression(dataType: String, window: Pair<Instant, Instant>, ): String {
+    private fun buildFilterExpression(dataType: String, window: Pair<Instant, Instant>): String {
         val stem = dataType.replace('-', '_')
         val startText = ISO_FMT.format(window.first)
         val endText = ISO_FMT.format(window.second)
@@ -290,6 +294,7 @@ class GoogleHealthApiService(
 
             TimeAxis.DAILY -> {
                 val startDate = window.first.atZone(java.time.ZoneOffset.UTC).toLocalDate()
+
                 /**
                  * Google supports `>=` and `<` only for daily date filters. Advance endDate by one day so a same-day window still matches.
                  * A PING interval that lives within 2026-04-17 becomes `date >= "2026-04-17" AND date < "2026-04-18"`.
