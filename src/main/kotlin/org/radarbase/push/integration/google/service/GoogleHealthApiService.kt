@@ -44,6 +44,9 @@ import org.radarbase.push.integration.google.converter.SleepClassicGoogleHealthA
 import org.radarbase.push.integration.google.converter.SleepStageGoogleHealthAvroConverter
 import org.radarbase.push.integration.google.converter.StepsGoogleHealthAvroConverter
 import org.radarbase.push.integration.google.converter.TotalCaloriesGoogleHealthAvroConverter
+import org.radarbase.push.integration.google.exceptions.TransientGoogleHealthException
+import org.radarbase.push.integration.google.model.GoogleHealthPing
+import org.radarbase.push.integration.google.model.PingInterval
 import org.radarbase.push.integration.google.user.GoogleHealthUserRepository
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.slf4j.LoggerFactory
@@ -438,22 +441,5 @@ class GoogleHealthApiService(
     }
 }
 
-/**
- * Thrown when a retryable Google Health API error (429 or 5xx) exhausts its retry budget.
- * Propagates out of [GoogleHealthApiService.fetchAndPublishBlocking] so that
- * [org.radarbase.push.integration.google.service.GoogleHealthBackfillService] does not advance its
- * Redis cursor past a chunk that never completed — the next scheduled iteration will retry.
- */
-class TransientGoogleHealthException(message: String) : RuntimeException(message)
 
-data class GoogleHealthPing(
-    val healthUserId: String,
-    val operation: String,
-    val dataType: String,
-    val intervals: List<PingInterval>,
-)
 
-data class PingInterval(
-    val physicalStartTime: Instant,
-    val physicalEndTime: Instant,
-)
