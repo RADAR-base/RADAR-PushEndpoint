@@ -38,3 +38,53 @@ pushIntegration:
                 uri: redis://localhost:6379
                 # Key prefix for locks
                 lockPrefix: radar-push-garmin/lock/
+    googlehealth:
+        enabled: false
+        userRepositoryUrl: http://rest-source-auth:8080/rest-sources/backend/
+        userRepositoryClientId: radar_pushendpoint
+        userRepositoryClientSecret: ""
+        userRepositoryTokenUrl: http://rest-source-auth:8080/rest-sources/backend/token/
+        googleCloudProjectId:
+        subscriberId:
+        subscriberEndpointUri:
+        subscriberSecret: ""   # set to a 32+ byte random string; Google sends this back as Authorization
+        triggerDataTypes:
+            - steps
+            - sleep
+            - exercise
+            - daily-resting-heart-rate
+        enabledDataTypes:
+            - steps
+            - heart-rate
+            - heart-rate-variability
+            - oxygen-saturation
+            - total-calories
+            - daily-resting-heart-rate
+            - respiratory-rate-sleep-summary
+            - daily-sleep-temperature-derivations
+            - sleep
+            - exercise
+        # stepsTopicName: connect_fitbit_intraday_steps
+        # heartRateTopicName: connect_fitbit_intraday_heart_rate
+        # heartRateVariabilityTopicName: connect_fitbit_intraday_hrv
+        # oxygenSaturationTopicName: connect_fitbit_intraday_spo2
+        # totalCaloriesTopicName: connect_fitbit_intraday_calories
+        # dailyRestingHeartRateTopicName: connect_fitbit_resting_heart_rate
+        # respiratoryRateSleepSummaryTopicName: connect_fitbit_breathing_rate
+        # dailySleepTemperatureDerivationsTopicName: connect_fitbit_skin_temperature
+        # sleepStagesTopicName: connect_fitbit_sleep_stages
+        # sleepClassicTopicName: connect_fitbit_sleep_classic
+        # exerciseTopicName: connect_fitbit_activity_log
+
+        # Historical backfill for freshly-authorized users. When enabled, a scheduled
+        # loop pulls past data per-user-per-dataType from `user.startDate` up to
+        # `now - 1h`. Progress is persisted in Redis so restarts resume from the last completed chunk boundary.
+        backfill:
+            enabled: true
+            redis:
+                uri: redis://redis:6379
+                lockPrefix: radar-push-googlehealth/lock
+            maxThreads: 4
+            maxBackfillPeriod: P730D
+            chunkSizeDays: 7
+            iterationIntervalMinutes: 10
