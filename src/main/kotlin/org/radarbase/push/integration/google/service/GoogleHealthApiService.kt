@@ -178,7 +178,12 @@ class GoogleHealthApiService(
         pageToken: String?,
     ): JsonNode {
         val url = apiBaseUrl.newBuilder().addPathSegments("users/me/dataTypes/$dataType/dataPoints:rollUp").build()
-
+        /**
+         * Note on `chunkSizeDays` + `total-calories`: Google's rollUp endpoint enforces
+         * pageSize >= ceil(range_seconds / windowSize_seconds). With windowSize=60s a
+         * 7-day chunk requires 10080 buckets. If you see 400 INVALID_ARGUMENT on the
+         * rollUp pageSize, reduce `chunkSizeDays` to 6 (8640 buckets).
+         */
         val rangeSeconds = window.second.epochSecond - window.first.epochSecond
         val minBuckets = ((rangeSeconds + 59) / 60).toInt()  // ceil(range / 60s)
         val effectivePageSize = maxOf(PAGE_SIZE, minBuckets)
