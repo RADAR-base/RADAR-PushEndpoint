@@ -44,16 +44,19 @@ import org.radarbase.push.integration.google.converter.SleepClassicGoogleHealthA
 import org.radarbase.push.integration.google.converter.SleepStageGoogleHealthAvroConverter
 import org.radarbase.push.integration.google.converter.StepsGoogleHealthAvroConverter
 import org.radarbase.push.integration.google.converter.TotalCaloriesGoogleHealthAvroConverter
+import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
+import org.radarbase.push.integration.garmin.util.offset.UserRoute
+import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
 import org.radarbase.push.integration.google.exceptions.TransientGoogleHealthException
 import org.radarbase.push.integration.google.model.GoogleHealthPing
 import org.radarbase.push.integration.google.model.PingInterval
 import org.radarbase.push.integration.google.user.GoogleHealthUserRepository
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.slf4j.LoggerFactory
+import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -64,6 +67,7 @@ class GoogleHealthApiService(
     @param:Context private val producerPool: ProducerPool,
     @param:Context private val httpClient: OkHttpClient,
     @param:Context private val config: Config,
+    @param:Context private val offsets: OffsetRedisPersistence,
 ) {
     private val googleConfig = config.pushIntegration.googlehealth
     private val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
@@ -76,40 +80,121 @@ class GoogleHealthApiService(
 
     private val converters: Map<String, List<GoogleHealthAvroConverter>> = buildConverters()
 
+    private val nonSubscribedTypes: List<String> =
+        googleConfig.enabledDataTypes.filter { it !in googleConfig.triggerDataTypes }
+
     fun handlePing(ping: GoogleHealthPing) {
-        val firstInterval = ping.intervals.firstOrNull() ?: run {
+        if (ping.intervals.isEmpty()) {
             logger.info("Ignoring PING with no intervals for user {}", ping.healthUserId)
             return
         }
-        val dedupKey = "${ping.healthUserId}:${firstInterval.physicalStartTime.truncatedTo(ChronoUnit.HOURS)}"
-        if (!dedup.claim(dedupKey)) {
-            logger.info("Skipping duplicate PING for {}", dedupKey)
-            return
+        val freshIntervals = ping.intervals.filter { interval ->
+            val dedupKey = dedupKeyFor(ping.healthUserId, interval)
+            dedup.claim(dedupKey).also { claimed ->
+                if (!claimed) logger.info("Skipping duplicate PING interval {}", dedupKey)
+            }
         }
+        if (freshIntervals.isEmpty()) return
         executor.submit {
             try {
-                fetchAllForUser(ping, firstInterval)
+                fetchAllForUser(ping, freshIntervals)
             } catch (ex: Exception) {
                 logger.error("Unhandled error while processing PING for user {}", ping.healthUserId, ex)
             }
         }
     }
 
-    private fun fetchAllForUser(ping: GoogleHealthPing, interval: PingInterval) {
+    private fun fetchAllForUser(ping: GoogleHealthPing, intervals: List<PingInterval>) {
         val user = resolveUser(ping.healthUserId) ?: return
         if (!user.isAuthorized) {
             logger.info("Skipping PING for unauthorized user {}", user.id)
             return
         }
-        val window = widenInterval(interval)
-        for (dataType in googleConfig.enabledDataTypes) {
+
+        if (ping.dataType in googleConfig.enabledDataTypes) {
+            for (interval in intervals) {
+                val window = widenInterval(interval)
+                try {
+                    fetchAndPublishBlocking(user, ping.dataType, window)
+                } catch (ex: Exception) {
+                    logger.error(
+                        "Failed to fetch {} for user {} interval=[{},{})",
+                        ping.dataType,
+                        user.userId,
+                        interval.physicalStartTime,
+                        interval.physicalEndTime,
+                        ex,
+                    )
+                }
+            }
+        }
+
+        if (nonSubscribedTypes.isEmpty()) return
+        val target = intervals.maxOf { widenInterval(it).second }
+        for (dataType in nonSubscribedTypes) {
             try {
-                fetchAndPublishBlocking(user, dataType, window)
+                catchUpFetch(user, dataType, target)
             } catch (ex: Exception) {
-                logger.error("Failed to fetch {} for user {}", dataType, user.userId, ex)
+                logger.error(
+                    "Catch-up fetch failed for {} user={} target={}",
+                    dataType, user.versionedId, target, ex,
+                )
             }
         }
     }
+
+    /**
+     * Advance a non-subscribed type's stored offset forward to [target], one day per iteration.
+     * Advances the Redis offset after each chunk returns a 200 (including empty responses —
+     * `:reconcile` returning zero records means the user legitimately had no data in that window,
+     * not that data is pending). Stops on [TransientGoogleHealthException] without advancing so
+     * the next PING retries the same chunk.
+     */
+    private fun catchUpFetch(user: User, dataType: String, target: Instant) {
+        val path = Path.of(user.versionedId)
+        val route = liveRouteFor(dataType)
+        val cutoff = ensureHistoricalCutoff(user)
+        val storedOffset = offsets.read(user.versionedId)
+            ?.offsetsMap?.get(UserRoute(user.versionedId, route))
+        // Live cursor never reaches into the historical range owned by backfill — if there's no
+        // stored live offset yet (new user, or first PING on this type), start exactly at cutoff.
+        var cursor = storedOffset?.coerceAtLeast(cutoff) ?: cutoff
+        if (!cursor.isBefore(target)) return
+        while (cursor.isBefore(target)) {
+            val chunkEnd = minOf(cursor.plus(CATCHUP_CHUNK), target)
+            try {
+                fetchAndPublishBlocking(user, dataType, cursor to chunkEnd)
+            } catch (ex: TransientGoogleHealthException) {
+                logger.warn(
+                    "Catch-up transient failure user={} type={} chunk=[{},{}). Next PING will retry.",
+                    user.versionedId, dataType, cursor, chunkEnd, ex,
+                )
+                return
+            }
+            offsets.add(path, UserRouteOffset(user.versionedId, route, chunkEnd))
+            cursor = chunkEnd
+        }
+    }
+
+    /**
+     * Read or establish the user's historical-cutoff timestamp. This is the boundary between the
+     * backfill service (owns `[user.startDate, cutoff]`) and the PING path (owns `[cutoff, now]`).
+     * Captured lazily on first access by whichever path runs first.
+     */
+    fun ensureHistoricalCutoff(user: User): Instant {
+        val path = Path.of(user.versionedId)
+        val existing = offsets.read(user.versionedId)
+            ?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
+        if (existing != null) return existing
+        val cutoff = Instant.now().minus(CUTOFF_LAG)
+        offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
+        return cutoff
+    }
+
+    private fun dedupKeyFor(healthUserId: String, interval: PingInterval): String =
+        "$healthUserId:${interval.physicalStartTime}:${interval.physicalEndTime}"
+
+    private fun liveRouteFor(dataType: String): String = "$LIVE_ROUTE_PREFIX$dataType"
 
     /**
      * Fetch and publish data for a single user, data type, and time window, blocking until all
@@ -401,8 +486,14 @@ class GoogleHealthApiService(
         private const val MAX_5XX_RETRIES = 5
         private const val MAX_ERROR_BODY_BYTES = 4096L
 
+        const val LIVE_ROUTE_PREFIX = "gh:live:"
+        const val BACKFILL_ROUTE_PREFIX = "gh:bf:"
+        const val CUTOFF_ROUTE = "gh:_historical_cutoff"
+
         private val DEDUP_TTL: Duration = Duration.ofMinutes(5)
         private val OVERLAP: Duration = Duration.ofMinutes(2)
+        private val CATCHUP_CHUNK: Duration = Duration.ofDays(1)
+        private val CUTOFF_LAG: Duration = Duration.ofHours(1)
         private val RATE_LIMIT_INITIAL_BACKOFF: Duration = Duration.ofSeconds(30)
         private val RATE_LIMIT_MAX_BACKOFF: Duration = Duration.ofMinutes(10)
         private val SERVER_ERROR_INITIAL_BACKOFF: Duration = Duration.ofSeconds(2)
