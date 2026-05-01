@@ -183,12 +183,14 @@ class GoogleHealthApiService(
      */
     fun ensureHistoricalCutoff(user: User): Instant {
         val path = Path.of(user.versionedId)
-        val existing = offsets.read(user.versionedId)
-            ?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
-        if (existing != null) return existing
-        val cutoff = Instant.now().minus(CUTOFF_LAG)
-        offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
-        return cutoff
+        return offsets.read(user.versionedId)
+            ?.offsetsMap
+            ?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
+            ?: Instant.now()
+                .minus(CUTOFF_LAG)
+                .also { cutoff ->
+                    offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
+                }
     }
 
     private fun dedupKeyFor(healthUserId: String, interval: PingInterval): String =

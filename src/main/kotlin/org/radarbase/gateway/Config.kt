@@ -142,9 +142,10 @@ data class GoogleHealthConfig(
         "steps",
         "sleep",
         "exercise",
-        "daily-heart-rate-variability",
-        "daily-oxygen-saturation",
         "daily-resting-heart-rate",
+        "total-calories",
+        "heart-rate",
+        "daily-sleep-temperature-derivations"
     ),
     val enabledDataTypes: List<String> = listOf(
         "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
