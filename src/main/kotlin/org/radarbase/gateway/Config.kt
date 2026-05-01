@@ -6,7 +6,7 @@ import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
-import org.radarbase.push.integration.google.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import java.net.URI
 import java.time.Duration
 import java.time.Instant
@@ -127,7 +127,7 @@ data class UserBackfillConfig(
 data class GoogleHealthConfig(
     val enabled: Boolean = false,
     val userRepositoryClass: String =
-        "org.radarbase.push.integration.googlehealth.user.GoogleHealthServiceUserRepository",
+        "org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository",
     val userRepositoryUrl: String = "http://localhost:8080/",
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
@@ -180,7 +180,7 @@ data class GoogleHealthConfig(
             }
             check(GoogleHealthUserRepository::class.java.isAssignableFrom(userRepository)) {
                 "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.push.integration.googlehealth.user.GoogleHealthUserRepository`"
+                    " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
             }
         }
     }

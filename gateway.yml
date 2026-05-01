@@ -53,6 +53,10 @@ pushIntegration:
             - sleep
             - exercise
             - daily-resting-heart-rate
+            - total-calories
+            - heart-rate
+            - daily-sleep-temperature-derivations
+
         enabledDataTypes:
             - steps
             - heart-rate
