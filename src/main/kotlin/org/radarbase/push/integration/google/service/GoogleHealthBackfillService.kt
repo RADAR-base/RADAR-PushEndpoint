@@ -26,12 +26,12 @@ import org.glassfish.jersey.server.monitoring.RequestEvent
 import org.glassfish.jersey.server.monitoring.RequestEventListener
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
-import org.radarbase.push.integration.common.user.User
+import org.radarbase.googlehealth.user.User
 import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
 import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
-import org.radarbase.push.integration.google.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.nio.file.Path

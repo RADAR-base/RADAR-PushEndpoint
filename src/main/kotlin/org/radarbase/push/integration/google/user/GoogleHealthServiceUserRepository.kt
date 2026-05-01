@@ -18,7 +18,6 @@ package org.radarbase.push.integration.google.user
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectReader
-import jakarta.ws.rs.NotAuthorizedException
 import jakarta.ws.rs.core.Context
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -28,9 +27,14 @@ import org.apache.kafka.common.config.ConfigException
 import org.radarbase.exception.TokenException
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.GoogleHealthConfig
+import org.radarbase.googlehealth.user.GoogleHealthUser
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.user.GoogleHealthUsers
+import org.radarbase.googlehealth.user.RestOauth2AccessToken
+import org.radarbase.googlehealth.user.User
+import org.radarbase.googlehealth.exception.UserNotAuthorizedException
 import org.radarbase.oauth.OAuth2Client
 import org.radarbase.push.integration.common.inject.ObjectReaderFactory
-import org.radarbase.push.integration.common.user.User
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.URL
@@ -91,10 +95,10 @@ class GoogleHealthServiceUserRepository(
         return timedCachedUsers.asSequence()
     }
 
-    @Throws(IOException::class, NotAuthorizedException::class)
+    @Throws(IOException::class, UserNotAuthorizedException::class)
     override fun getAccessToken(user: User): String = getOAuth2AccessToken(user)
 
-    @Throws(IOException::class, NotAuthorizedException::class)
+    @Throws(IOException::class, UserNotAuthorizedException::class)
     override fun getRefreshToken(user: User): String {
         throw UnsupportedOperationException("Refresh tokens are managed by RSA, not PEP")
     }

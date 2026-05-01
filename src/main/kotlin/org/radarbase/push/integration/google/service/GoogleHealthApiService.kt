@@ -31,26 +31,26 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
-import org.radarbase.push.integration.common.user.User
-import org.radarbase.push.integration.google.converter.DailyRestingHeartRateGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.DailySleepTemperatureDerivationsGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.ExerciseGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.GoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.HeartRateGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.HeartRateVariabilityGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.OxygenSaturationGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.RespiratoryRateSleepSummaryGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.SleepClassicGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.SleepStageGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.StepsGoogleHealthAvroConverter
-import org.radarbase.push.integration.google.converter.TotalCaloriesGoogleHealthAvroConverter
+import org.radarbase.googlehealth.user.User
+import org.radarbase.googlehealth.converter.DailyRestingHeartRateGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.DailySleepTemperatureDerivationsGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.ExerciseGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.HeartRateGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.HeartRateVariabilityGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.OxygenSaturationGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.RespiratoryRateSleepSummaryGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.SleepClassicGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.SleepStageGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.StepsGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.TotalCaloriesGoogleHealthAvroConverter
 import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
-import org.radarbase.push.integration.google.exceptions.TransientGoogleHealthException
-import org.radarbase.push.integration.google.model.GoogleHealthPing
-import org.radarbase.push.integration.google.model.PingInterval
-import org.radarbase.push.integration.google.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.exception.TransientGoogleHealthException
+import org.radarbase.googlehealth.model.GoogleHealthPing
+import org.radarbase.googlehealth.model.PingInterval
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
@@ -91,7 +91,7 @@ class GoogleHealthApiService(
         val freshIntervals = ping.intervals.filter { interval ->
             val dedupKey = dedupKeyFor(ping.healthUserId, interval)
             dedup.claim(dedupKey).also { claimed ->
-                if (!claimed) logger.info("Skipping duplicate PING interval {}", dedupKey)
+                if (!claimed) logger.info("Skipping duplicate PING interval {} for user {}", dedupKey, ping.healthUserId)
             }
         }
         if (freshIntervals.isEmpty()) return
@@ -145,7 +145,7 @@ class GoogleHealthApiService(
 
     /**
      * Advance a non-subscribed type's stored offset forward to [target], one day per iteration.
-     * Advances the Redis offset after each chunk returns a 200 (including empty responses —
+     * Advances the Redis offset after each chunk returns a 200 (including empty responses,
      * `:reconcile` returning zero records means the user legitimately had no data in that window,
      * not that data is pending). Stops on [TransientGoogleHealthException] without advancing so
      * the next PING retries the same chunk.
@@ -156,7 +156,7 @@ class GoogleHealthApiService(
         val cutoff = ensureHistoricalCutoff(user)
         val storedOffset = offsets.read(user.versionedId)
             ?.offsetsMap?.get(UserRoute(user.versionedId, route))
-        // Live cursor never reaches into the historical range owned by backfill — if there's no
+        // Live cursor never reaches into the historical range owned by backfill, if there's no
         // stored live offset yet (new user, or first PING on this type), start exactly at cutoff.
         var cursor = storedOffset?.coerceAtLeast(cutoff) ?: cutoff
         if (!cursor.isBefore(target)) return

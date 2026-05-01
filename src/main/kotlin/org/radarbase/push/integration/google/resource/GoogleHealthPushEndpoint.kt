@@ -27,7 +27,7 @@ import jakarta.ws.rs.core.Response
 import org.radarbase.jersey.auth.Authenticated
 import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator.Companion.HANDSHAKE_PROPERTY
 import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator.Companion.PING_PROPERTY
-import org.radarbase.push.integration.google.model.GoogleHealthPing
+import org.radarbase.googlehealth.model.GoogleHealthPing
 import org.radarbase.push.integration.google.service.GoogleHealthApiService
 
 @Consumes(MediaType.APPLICATION_JSON)

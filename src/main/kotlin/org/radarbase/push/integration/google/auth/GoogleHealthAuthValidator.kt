@@ -27,9 +27,9 @@ import org.radarbase.jersey.auth.disabled.DisabledAuth
 import org.radarbase.jersey.exception.HttpUnauthorizedException
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
-import org.radarbase.push.integration.google.model.GoogleHealthPing
-import org.radarbase.push.integration.google.model.PingInterval
-import org.radarbase.push.integration.google.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.model.GoogleHealthPing
+import org.radarbase.googlehealth.model.PingInterval
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
