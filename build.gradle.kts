@@ -18,6 +18,7 @@ allprojects {
     version = "0.3.3"
 
     repositories {
+        mavenLocal()
         mavenCentral()
         maven(url = "https://packages.confluent.io/maven/")
     }
@@ -57,6 +58,8 @@ dependencies {
     implementation("net.jpountz.lz4:lz4:$lzVersion")
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
+
+    implementation("org.radarbase:google-health-library:0.7.3")
 
     implementation("com.google.auth:google-auth-library-oauth2-http:${project.property("googleAuthVersion")}")
 
