@@ -80,8 +80,9 @@ class GoogleHealthApiService(
 
     private val converters: Map<String, List<GoogleHealthAvroConverter>> = buildConverters()
 
-    private val nonSubscribedTypes: List<String> =
-        googleConfig.enabledDataTypes.filter { it !in googleConfig.triggerDataTypes }
+    private val nonSubscribedTypes: List<String> = googleConfig.enabledDataTypes.filter {
+        it !in googleConfig.triggerDataTypes
+    }
 
     fun handlePing(ping: GoogleHealthPing) {
         if (ping.intervals.isEmpty()) {
@@ -91,7 +92,9 @@ class GoogleHealthApiService(
         val freshIntervals = ping.intervals.filter { interval ->
             val dedupKey = dedupKeyFor(ping.healthUserId, interval)
             dedup.claim(dedupKey).also { claimed ->
-                if (!claimed) logger.info("Skipping duplicate PING interval {} for user {}", dedupKey, ping.healthUserId)
+                if (!claimed) logger.info(
+                    "Skipping duplicate PING interval {} for user {}", dedupKey, ping.healthUserId
+                )
             }
         }
         if (freshIntervals.isEmpty()) return
@@ -154,8 +157,7 @@ class GoogleHealthApiService(
         val path = Path.of(user.versionedId)
         val route = liveRouteFor(dataType)
         val cutoff = ensureHistoricalCutoff(user)
-        val storedOffset = offsets.read(user.versionedId)
-            ?.offsetsMap?.get(UserRoute(user.versionedId, route))
+        val storedOffset = offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, route))
         // Live cursor never reaches into the historical range owned by backfill, if there's no
         // stored live offset yet (new user, or first PING on this type), start exactly at cutoff.
         var cursor = storedOffset?.coerceAtLeast(cutoff) ?: cutoff
@@ -183,14 +185,10 @@ class GoogleHealthApiService(
      */
     fun ensureHistoricalCutoff(user: User): Instant {
         val path = Path.of(user.versionedId)
-        return offsets.read(user.versionedId)
-            ?.offsetsMap
-            ?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
-            ?: Instant.now()
-                .minus(CUTOFF_LAG)
-                .also { cutoff ->
-                    offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
-                }
+        return offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
+            ?: Instant.now().minus(CUTOFF_LAG).also { cutoff ->
+                offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
+            }
     }
 
     private fun dedupKeyFor(healthUserId: String, interval: PingInterval): String =
@@ -265,6 +263,7 @@ class GoogleHealthApiService(
         pageToken: String?,
     ): JsonNode {
         val url = apiBaseUrl.newBuilder().addPathSegments("users/me/dataTypes/$dataType/dataPoints:rollUp").build()
+
         /**
          * NOTE: For `chunkSizeDays` + `total-calories`: Google's rollUp endpoint enforces
          * pageSize >= ceil(range_seconds / windowSize_seconds). With windowSize=60s a

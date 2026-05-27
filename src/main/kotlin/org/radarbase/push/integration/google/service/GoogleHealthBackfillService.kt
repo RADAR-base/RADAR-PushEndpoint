@@ -56,14 +56,15 @@ import java.util.concurrent.TimeUnit
  * Per-user concurrency is bounded by [GoogleHealthApiService]'s semaphore.
  */
 class GoogleHealthBackfillService(
-    @param:Context private val config: Config,
     @param:Named(GOOGLE_HEALTH_QUALIFIER) private val userRepository: GoogleHealthUserRepository,
     @param:Context private val apiService: GoogleHealthApiService,
     @param:Context private val offsets: OffsetRedisPersistence,
     @param:Context private val locks: RedisRemoteLockManager,
-) : ApplicationEventListener {
+    @Context config: Config,
+    ) : ApplicationEventListener {
 
-    private val bfConfig = config.pushIntegration.googlehealth.backfill
+    private val ghConfig = config.pushIntegration.googlehealth
+    private val bfConfig = ghConfig.backfill
     private val scheduler = Executors.newSingleThreadScheduledExecutor()
     private val workerPool = Executors.newFixedThreadPool(bfConfig.maxThreads)
     private val futures: MutableList<Future<*>> = mutableListOf()
@@ -141,7 +142,7 @@ class GoogleHealthBackfillService(
             logger.debug("Skipping unauthorized user {} for backfill", user.versionedId)
             return
         }
-        for (dataType in config.pushIntegration.googlehealth.enabledDataTypes) {
+        for (dataType in ghConfig.enabledDataTypes) {
             try {
                 backfillOneDataType(user, dataType)
             } catch (ex: Throwable) {
