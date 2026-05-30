@@ -120,7 +120,7 @@ class GoogleHealthServiceUserRepository(
 
     override fun findByExternalId(externalId: String): User {
         return stream()
-            .firstOrNull { it.externalId == externalId }
+            .firstOrNull { it.serviceUserId == externalId }
             ?: throw NoSuchElementException("GoogleHealth user not found: $externalId")
     }
 
