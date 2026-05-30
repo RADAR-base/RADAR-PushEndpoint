@@ -55,38 +55,104 @@ class GoogleHealthAuthValidator(
 
     override fun verify(token: String, request: ContainerRequestContext): Auth {
         val userAgent = request.getHeaderString("User-Agent") ?: ""
-        val isHandshake = userAgent == VERIFICATION_USER_AGENT
         val bodyBytes = request.getProperty(BODY_BYTES_PROPERTY) as? ByteArray
 
-        if (isHandshake) return handleHandshake(token, request)
+        val tree: JsonNode? = if (bodyBytes != null && bodyBytes.isNotEmpty()) {
+            try {
+                objectMapper.readTree(ByteArrayInputStream(bodyBytes))
+            } catch (ex: Exception) {
+                logger.warn("Could not parse Google Health request body as JSON (userAgent={})", userAgent, ex)
+                null
+            }
+        } else {
+            null
+        }
 
+        if (isVerificationHandshake(tree)) {
+            logger.info("GH-TEST Google Health verification handshake received (userAgent={})", userAgent)
+            return handleHandshake(token, request)
+        }
+
+        // Not a handshake => a data push. Authenticate before doing any work on the payload.
         verifyBearer(token)
 
-        // Parse PING
-        if (bodyBytes != null && bodyBytes.isNotEmpty()) {
-            val tree = objectMapper.readTree(ByteArrayInputStream(bodyBytes))
-            request.setProperty("ping_tree", tree)
-            parsePing(tree, request)
+        if (tree != null) {
+            val pings = parsePings(tree)
+            if (pings.isNotEmpty()) request.setProperty(PING_PROPERTY, pings)
         }
 
         return DisabledAuth("res_gateway")
     }
 
-    private fun parsePing(tree: JsonNode, request: ContainerRequestContext) {
-        val data = tree["data"] ?: return
-        val ping = GoogleHealthPing(
-            healthUserId = data["healthUserId"]?.asText() ?: return,
-            operation = data["operation"]?.asText() ?: "UPSERT",
-            dataType = data["dataType"]?.asText() ?: return,
-            intervals = data["intervals"]?.map { i ->
-                val p = i["physicalTimeInterval"]
-                PingInterval(
-                    physicalStartTime = Instant.parse(p["startTime"].asText()),
-                    physicalEndTime = Instant.parse(p["endTime"].asText()),
-                )
-            } ?: emptyList(),
+    private fun isVerificationHandshake(tree: JsonNode?): Boolean =
+        tree != null && tree.isObject && tree["type"]?.asText() == VERIFICATION_TYPE
+
+    /**
+     * Parse a data-push body into pings. Google Health pushes arrive as a JSON array of
+     * notification objects, each shaped `{ "data": { ... } }`.
+     */
+    private fun parsePings(tree: JsonNode): List<GoogleHealthPing> {
+        logger.info("[GH-TEST] Raw Google Health payload received: {}", tree.toPrettyString())
+
+        if (!tree.isArray) {
+            logger.warn("Expected a JSON array of Google Health notifications but got {}", tree.nodeType)
+            return emptyList()
+        }
+
+        val pings = tree.mapNotNull(::parseSinglePing)
+        logger.info(
+            "Parsed {} Google Health ping(s) from a payload of {} notification element(s)",
+            pings.size,
+            tree.size(),
         )
-        request.setProperty(PING_PROPERTY, ping)
+        return pings
+    }
+
+    private fun parseSinglePing(element: JsonNode): GoogleHealthPing? {
+        val data = element["data"] ?: element
+
+        val healthUserId = data["healthUserId"]?.asText()
+        if (healthUserId.isNullOrEmpty()) {
+            logger.warn("Skipping Google Health notification without healthUserId: {}", element)
+            return null
+        }
+
+        val operation = data["operation"]?.asText() ?: "UPSERT"
+        val dataType = data["dataType"]?.asText() ?: "UNKNOWN"
+        val rawIntervals = data["intervals"]
+        val intervals = rawIntervals?.mapNotNull(::parseInterval) ?: emptyList()
+        val skipped = (rawIntervals?.size() ?: 0) - intervals.size
+        if (skipped > 0) {
+            logger.info(
+                "[GH-TEST] dataType={} healthUserId={}: {} of {} interval(s) had no physicalTimeInterval " +
+                    "(civil-only) and were skipped",
+                dataType, healthUserId, skipped, rawIntervals?.size() ?: 0,
+            )
+        }
+
+        return GoogleHealthPing(
+            healthUserId = healthUserId,
+            operation = operation,
+            dataType = dataType,
+            intervals = intervals,
+        )
+    }
+
+    /**
+     * Resolve a single interval to its physical (UTC) window. Civil-only intervals (e.g. the
+     * daily-aggregate notifications that omit `physicalTimeInterval`) are skipped: their times are
+     * the device's local, zoneless times, and the same change also arrives with a physical interval
+     * and is covered by the backfill / catch-up paths.
+     */
+    private fun parseInterval(node: JsonNode): PingInterval? {
+        val physical = node["physicalTimeInterval"]
+        val start = physical?.get("startTime")?.asText()
+        val end = physical?.get("endTime")?.asText()
+        if (start.isNullOrEmpty() || end.isNullOrEmpty()) {
+            logger.info("[GH-TEST] Skipping Google Health interval without physicalTimeInterval: {}", node)
+            return null
+        }
+        return PingInterval(Instant.parse(start), Instant.parse(end))
     }
 
     private fun handleHandshake(token: String, request: ContainerRequestContext): Auth {
@@ -117,8 +183,10 @@ class GoogleHealthAuthValidator(
     companion object {
         const val BODY_BYTES_PROPERTY = "googlehealth_body_bytes"
         const val HANDSHAKE_PROPERTY = "googlehealth_handshake"
+        // Holds the parsed List<GoogleHealthPing> for a data-push request.
         const val PING_PROPERTY = "googlehealth_ping"
-        private const val VERIFICATION_USER_AGENT = "Google-Health-API-Webhooks-Verifier"
+        // Body marker that identifies the subscription verification handshake.
+        private const val VERIFICATION_TYPE = "verification"
         private val logger = LoggerFactory.getLogger(GoogleHealthAuthValidator::class.java)
 
         private fun constantTimeEquals(a: String, b: String): Boolean {
