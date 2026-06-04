@@ -154,7 +154,7 @@ data class GoogleHealthConfig(
     ),
     val stepsTopicName: String = "connect_fitbit_intraday_steps",
     val heartRateTopicName: String = "connect_fitbit_intraday_heart_rate",
-    val heartRateVariabilityTopicName: String = "connect_fitbit_intraday_hrv",
+    val heartRateVariabilityTopicName: String = "connect_fitbit_intraday_heart_rate_variability",
     val oxygenSaturationTopicName: String = "connect_fitbit_intraday_spo2",
     val totalCaloriesTopicName: String = "connect_fitbit_intraday_calories",
     val dailyRestingHeartRateTopicName: String = "connect_fitbit_resting_heart_rate",
