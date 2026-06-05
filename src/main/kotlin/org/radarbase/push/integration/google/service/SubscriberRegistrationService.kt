@@ -190,7 +190,7 @@ class SubscriberRegistrationService(
     private fun buildSubscriberConfigs(): List<Map<String, Any>> = listOf(
         mapOf(
             "dataTypes" to ghConfig.triggerDataTypes,
-            "subscriptionCreatePolicy" to "AUTOMATIC",
+            "subscriptionCreatePolicy" to "MANUAL",
         )
     )
 
@@ -199,9 +199,10 @@ class SubscriberRegistrationService(
         desired: List<Map<String, Any>>,
     ): Boolean {
         if (existing == null || existing.size != desired.size) return false
-        val existingDataTypes = existing.firstOrNull()?.get("dataTypes")
-        val desiredDataTypes = desired.firstOrNull()?.get("dataTypes")
-        return existingDataTypes == desiredDataTypes
+        val existingConfig = existing.firstOrNull()
+        val desiredConfig = desired.firstOrNull()
+        return existingConfig?.get("dataTypes") == desiredConfig?.get("dataTypes") &&
+            existingConfig?.get("subscriptionCreatePolicy") == desiredConfig?.get("subscriptionCreatePolicy")
     }
 
     companion object {
