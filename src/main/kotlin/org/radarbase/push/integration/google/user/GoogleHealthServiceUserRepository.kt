@@ -207,7 +207,7 @@ class GoogleHealthServiceUserRepository(
     }
 
     companion object {
-        private const val GOOGLEHEALTH_SOURCE = "Google"
+        private const val GOOGLEHEALTH_SOURCE = "GoogleHealth"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
 
