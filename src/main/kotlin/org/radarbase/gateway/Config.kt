@@ -6,7 +6,9 @@ import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import java.net.URI
+import java.time.Duration
 import java.time.Instant
 
 data class Config(
@@ -33,11 +35,12 @@ data class Config(
 }
 
 data class PushIntegrationConfig(
-    val garmin: GarminConfig = GarminConfig()
+    val garmin: GarminConfig = GarminConfig(),
+    val googlehealth: GoogleHealthConfig = GoogleHealthConfig(),
 ) {
     fun validate() {
         garmin.validate()
-        // Add more validations as services are added
+        googlehealth.validate()
     }
 }
 
@@ -119,6 +122,80 @@ data class UserBackfillConfig(
     val userId: String,
     val startDate: Instant,
     val endDate: Instant
+)
+
+data class GoogleHealthConfig(
+    val enabled: Boolean = false,
+    val userRepositoryClass: String =
+        "org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository",
+    val userRepositoryUrl: String = "http://localhost:8080/",
+    val userRepositoryClientId: String = "radar_pushendpoint",
+    val userRepositoryClientSecret: String = "",
+    val userRepositoryTokenUrl: String = "http://localhost:8080/token/",
+    val apiBaseUrl: String = "https://health.googleapis.com/v4",
+    val googleCloudProjectId: String = "",
+    val subscriberId: String = "radar-pep",
+    val subscriberEndpointUri: String = "",
+    val subscriberSecret: String = "",
+    val serviceAccountKeyPath: String = "",
+    val triggerDataTypes: List<String> = listOf(
+        "steps",
+        "sleep",
+        "exercise",
+        "daily-resting-heart-rate",
+        "total-calories",
+        "heart-rate",
+        "daily-sleep-temperature-derivations"
+    ),
+    val enabledDataTypes: List<String> = listOf(
+        "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
+        "total-calories", "daily-resting-heart-rate", "respiratory-rate-sleep-summary",
+        "daily-sleep-temperature-derivations", "sleep", "exercise",
+    ),
+    val stepsTopicName: String = "connect_fitbit_intraday_steps",
+    val heartRateTopicName: String = "connect_fitbit_intraday_heart_rate",
+    val heartRateVariabilityTopicName: String = "connect_fitbit_intraday_heart_rate_variability",
+    val oxygenSaturationTopicName: String = "connect_fitbit_intraday_spo2",
+    val totalCaloriesTopicName: String = "connect_fitbit_intraday_calories",
+    val dailyRestingHeartRateTopicName: String = "connect_fitbit_resting_heart_rate",
+    val respiratoryRateSleepSummaryTopicName: String = "connect_fitbit_breathing_rate",
+    val dailySleepTemperatureDerivationsTopicName: String = "connect_fitbit_skin_temperature",
+    val sleepStagesTopicName: String = "connect_fitbit_sleep_stages",
+    val sleepClassicTopicName: String = "connect_fitbit_sleep_classic",
+    val exerciseTopicName: String = "connect_fitbit_activity_log",
+    val backfill: GoogleHealthBackfillConfig = GoogleHealthBackfillConfig(),
+) {
+    val userRepository: Class<*> = Class.forName(userRepositoryClass)
+
+    fun validate() {
+        if (enabled) {
+            check(googleCloudProjectId.isNotEmpty()) {
+                "googleCloudProjectId must be set when google health is enabled"
+            }
+            check(subscriberEndpointUri.isNotEmpty()) {
+                "subscriberEndpointUri must be set when google health is enabled"
+            }
+            check(subscriberSecret.isNotEmpty()) {
+                "subscriberSecret must be set when google health is enabled"
+            }
+            check(GoogleHealthUserRepository::class.java.isAssignableFrom(userRepository)) {
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
+                    " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
+            }
+        }
+    }
+}
+
+data class GoogleHealthBackfillConfig(
+    val enabled: Boolean = false,
+    val redis: RedisConfig = RedisConfig(
+        uri = URI("redis://localhost:6379"),
+        lockPrefix = "radar-push-googlehealth/lock",
+    ),
+    val maxThreads: Int = 4,
+    val maxBackfillPeriod: Duration = Duration.ofDays(365 * 2L),
+    val chunkSizeDays: Long = 7,
+    val iterationIntervalMinutes: Long = 10,
 )
 
 data class GatewayServerConfig(

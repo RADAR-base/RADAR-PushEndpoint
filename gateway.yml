@@ -38,3 +38,43 @@ pushIntegration:
                 uri: redis://localhost:6379
                 # Key prefix for locks
                 lockPrefix: radar-push-garmin/lock/
+    googlehealth:
+        enabled: false
+        userRepositoryUrl: http://rest-source-auth:8080/rest-sources/backend/
+        userRepositoryClientId: radar_pushendpoint
+        userRepositoryClientSecret: ""
+        userRepositoryTokenUrl: http://rest-source-auth:8080/rest-sources/backend/token/
+        googleCloudProjectId:
+        subscriberId:
+        subscriberEndpointUri:
+        subscriberSecret: ""   # set to a 32+ byte random string; Google sends this back as Authorization
+        triggerDataTypes:
+            - steps
+            - sleep
+            - exercise
+            - daily-resting-heart-rate
+            - total-calories
+            - heart-rate
+            - daily-sleep-temperature-derivations
+
+        enabledDataTypes:
+            - steps
+            - heart-rate
+            - heart-rate-variability
+            - oxygen-saturation
+            - total-calories
+            - daily-resting-heart-rate
+            - respiratory-rate-sleep-summary
+            - daily-sleep-temperature-derivations
+            - sleep
+            - exercise
+
+        backfill:
+            enabled: true
+            redis:
+                uri: redis://redis:6379
+                lockPrefix: radar-push-googlehealth/lock
+            maxThreads: 4
+            maxBackfillPeriod: P730D
+            chunkSizeDays: 7
+            iterationIntervalMinutes: 10
