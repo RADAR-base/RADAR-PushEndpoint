@@ -138,6 +138,13 @@ data class GoogleHealthConfig(
     val subscriberEndpointUri: String = "",
     val subscriberSecret: String = "",
     val serviceAccountKeyPath: String = "",
+    val subscriptionReconcileEnabled: Boolean = true,
+    val subscriptionReconcileIntervalMinutes: Long = 5,
+    /**
+     * If a single deletion would delete more subscriptions than this, it skips
+     * deletion and alarms instead
+     */
+    val subscriptionReconcileMaxDeletesPerPass: Int = 50,
     val triggerDataTypes: List<String> = listOf(
         "steps",
         "sleep",
