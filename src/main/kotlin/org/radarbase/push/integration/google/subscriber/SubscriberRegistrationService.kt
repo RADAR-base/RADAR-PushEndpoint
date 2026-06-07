@@ -1,20 +1,4 @@
-/*
- * Copyright 2026 King's College London
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package org.radarbase.push.integration.google.service
+package org.radarbase.push.integration.google.subscriber
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.ws.rs.core.Context
@@ -23,14 +7,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.glassfish.jersey.server.monitoring.ApplicationEvent
-import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.DESTROY_FINISHED
-import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.INITIALIZATION_FINISHED
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener
 import org.glassfish.jersey.server.monitoring.RequestEvent
 import org.glassfish.jersey.server.monitoring.RequestEventListener
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.google.util.GoogleServiceAccountTokenProvider
 import org.slf4j.LoggerFactory
+import kotlin.collections.get
 
 /**
  * Registers a Google Health webhook subscriber at application startup.
@@ -49,8 +32,8 @@ class SubscriberRegistrationService(
 
     override fun onEvent(event: ApplicationEvent?) {
         when (event?.type) {
-            INITIALIZATION_FINISHED -> registerSubscriber()
-            DESTROY_FINISHED -> {
+            ApplicationEvent.Type.INITIALIZATION_FINISHED -> registerSubscriber()
+            ApplicationEvent.Type.DESTROY_FINISHED -> {
                 // Intentionally not unsubscribing on shutdown. Keeping the subscription alive across
                 // restarts avoids a window where PINGs would be missed. If operators need to remove the subscriber.
                 logger.info("Application shutting down — subscriber {} left active", subscriberId)
@@ -151,9 +134,8 @@ class SubscriberRegistrationService(
             return
         }
 
-        logger.info("Subscriber {} exists but needs update — patching", subscriberId)
-        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId" +
-            "?updateMask=endpointUri,subscriberConfigs"
+        logger.info("Subscriber {} exists but needs update", subscriberId)
+        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId?updateMask=endpointUri,subscriberConfigs"
         val payload = mapOf(
             "endpointUri" to desiredUri,
             "subscriberConfigs" to desiredConfigs,
@@ -168,7 +150,7 @@ class SubscriberRegistrationService(
         httpClient.newCall(request).execute().use { response ->
             val respBody = response.body?.string()
             if (response.isSuccessful) {
-                logger.info("Subscriber {} patched successfully — state ACTIVE", subscriberId)
+                logger.info("Subscriber {} patched successfully", subscriberId)
             } else {
                 logger.error(
                     "Failed to patch subscriber {}: HTTP {} — {}",
