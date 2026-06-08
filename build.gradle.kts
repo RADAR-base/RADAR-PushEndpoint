@@ -66,11 +66,6 @@ dependencies {
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
     val jacksonVersion: String by project
-    // Force every Jackson module (including ones pulled transitively, e.g. by
-    // google-health-library) to the pinned version. radar-jersey 0.10.0 and
-    // RadarResourceEnhancer's KotlinModule() need 2.14.x; otherwise a transitive
-    // drags jackson-module-kotlin up to 2.20.x, whose KotlinModule constructor was
-    // removed -> NoSuchMethodError at startup.
     implementation(enforcedPlatform("com.fasterxml.jackson:jackson-bom:$jacksonVersion"))
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
