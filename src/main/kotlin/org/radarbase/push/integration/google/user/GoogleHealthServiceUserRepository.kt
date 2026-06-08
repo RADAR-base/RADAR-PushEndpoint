@@ -125,8 +125,7 @@ class GoogleHealthServiceUserRepository(
     }
 
     override fun deregisterUser(serviceUserId: String) {
-        val request =
-            requestFor("source-clients/$GOOGLEHEALTH_SOURCE/authorization/$serviceUserId")
+        val request = requestFor("source-clients/$GOOGLEHEALTH_SOURCE/authorization/$serviceUserId")
                 .method("DELETE", EMPTY_BODY).build()
         return makeRequest(request, null)
     }
@@ -143,6 +142,15 @@ class GoogleHealthServiceUserRepository(
         timedCachedUsers = makeRequest<GoogleHealthUsers>(request, userListReader).users
 
         nextFetch = Instant.now().plus(FETCH_THRESHOLD)
+    }
+
+    /**
+     * Fetch users who have de-authorized / withdrawn (`authorized=false`).
+     */
+    @Throws(IOException::class)
+    override fun fetchUnauthorizedUsers(): List<User> {
+        val request = requestFor("users?source-type=$GOOGLEHEALTH_SOURCE&authorized=false").build()
+        return makeRequest<GoogleHealthUsers>(request, userListReader).users
     }
 
     @Throws(IOException::class)
