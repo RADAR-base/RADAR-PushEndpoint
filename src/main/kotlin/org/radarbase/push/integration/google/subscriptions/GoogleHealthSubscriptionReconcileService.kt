@@ -70,8 +70,13 @@ class GoogleHealthSubscriptionReconcileService(
             logger.warn("Service account not configured — subscription reconcile will not run.")
             return
         }
-        logger.info("Starting Google Health subscription reconcile (intervalMinutes={}).", intervalMinutes)
-        scheduler.scheduleAtFixedRate(::tick, 1, intervalMinutes, TimeUnit.MINUTES)
+        logger.info(
+            "Starting Google Health subscription reconcile (firstRunDelay={}s, intervalMinutes={}).",
+            RECONCILE_INITIAL_DELAY_SECONDS, intervalMinutes,
+        )
+        scheduler.scheduleAtFixedRate(
+            ::tick, RECONCILE_INITIAL_DELAY_SECONDS, intervalMinutes * 60, TimeUnit.SECONDS,
+        )
     }
 
     private fun stop() {
@@ -187,6 +192,7 @@ class GoogleHealthSubscriptionReconcileService(
 
     companion object {
         private const val RECONCILE_LOCK = "googlehealth-subscription-reconcile"
+        private const val RECONCILE_INITIAL_DELAY_SECONDS = 90L
         private val logger = LoggerFactory.getLogger(GoogleHealthSubscriptionReconcileService::class.java)
     }
 }
