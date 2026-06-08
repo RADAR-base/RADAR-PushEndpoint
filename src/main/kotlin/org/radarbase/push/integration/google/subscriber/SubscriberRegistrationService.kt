@@ -167,6 +167,10 @@ class SubscriberRegistrationService(
                 logger.info("Subscriber(ID: {}) created. Listening on {}", subscriberId, ghConfig.subscriberEndpointUri)
                 return true
             }
+            if (response.code == 409) {
+                logger.info("Subscriber {} already exists (HTTP 409) — treating as success", subscriberId)
+                return true
+            }
             logger.error(
                 "Failed to create subscriber {}: HTTP {} - {}. " +
                     "If subscriberEndpointUri ({}) does not match the live deployment, " +
