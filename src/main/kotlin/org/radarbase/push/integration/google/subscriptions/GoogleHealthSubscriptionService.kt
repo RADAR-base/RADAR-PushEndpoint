@@ -54,7 +54,6 @@ class GoogleHealthSubscriptionService(
         healthUserId: String,
         dataTypes: List<String> = defaultDataTypes,
     ): SubscriptionResult {
-        if (!tokenProvider.isConfigured) return SubscriptionResult.NotConfigured
         val subscriptionId = subscriptionIdFor(healthUserId)
         val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId/subscriptions?subscriptionId=$subscriptionId"
         val payload = mapOf(
@@ -73,7 +72,6 @@ class GoogleHealthSubscriptionService(
     }
 
     fun deleteSubscription(healthUserId: String): SubscriptionResult {
-        if (!tokenProvider.isConfigured) return SubscriptionResult.NotConfigured
         val subscriptionId = subscriptionIdFor(healthUserId)
         val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId/subscriptions/$subscriptionId"
         return execute(healthUserId, "delete") { token ->
@@ -92,7 +90,6 @@ class GoogleHealthSubscriptionService(
      * Idempotent: a missing subscription reports [SubscriptionResult.Success].
      */
     fun deleteByName(name: String): SubscriptionResult {
-        if (!tokenProvider.isConfigured) return SubscriptionResult.NotConfigured
         val url = "$baseUrl/$name"
         return execute(name, "delete") { token ->
             Request.Builder()
@@ -103,12 +100,25 @@ class GoogleHealthSubscriptionService(
         }
     }
 
+    fun patchSubscription(name: String, dataTypes: List<String>): SubscriptionResult {
+        val url = "$baseUrl/$name?updateMask=dataTypes"
+        val body = objectMapper.writeValueAsString(mapOf("dataTypes" to dataTypes))
+            .toRequestBody(JSON_MEDIA_TYPE)
+        return execute(name, "patch") { token ->
+            Request.Builder()
+                .url(url)
+                .patch(body)
+                .header("Authorization", "Bearer $token")
+                .header("Content-Type", "application/json")
+                .build()
+        }
+    }
+
     /**
-     * Lists all subscriptions currently registered under this deployment's subscriber, following
-     * pagination. This is the source of truth for reconciliation.
+     * Returns every subscription under this deployment's subscriber (following all pages).
      *
-     * Throws on any non-success response so a transient failure is never mistaken for "Google has
-     * no subscriptions" — which a reconcile loop would otherwise read as "delete everything".
+     * Throws on any error instead of returning an empty list, so reconcile treats a failed read as
+     * "unknown" and skips the pass — a hiccup is never mistaken for "Google has no subscriptions".
      */
     @Throws(IOException::class)
     fun listSubscriptions(): List<RemoteSubscription> {
@@ -151,6 +161,7 @@ class GoogleHealthSubscriptionService(
         action: String,
         buildRequest: (String) -> Request,
     ): SubscriptionResult {
+        if (!tokenProvider.isConfigured) return SubscriptionResult.NotConfigured
         val token = try {
             tokenProvider.getAccessToken()
         } catch (ex: Exception) {
