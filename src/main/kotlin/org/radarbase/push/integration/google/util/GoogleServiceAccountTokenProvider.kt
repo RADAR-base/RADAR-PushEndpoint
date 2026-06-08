@@ -32,7 +32,7 @@ class GoogleServiceAccountTokenProvider(
 ) {
     private val credentials: GoogleCredentials? = run {
         val keyPath = config.pushIntegration.googlehealth.serviceAccountKeyPath
-        if (keyPath.isEmpty()) {
+        if (keyPath.isNullOrEmpty()) {
             logger.warn(
                 "No serviceAccountKeyPath configured, subscriber registration will not work"
             )
