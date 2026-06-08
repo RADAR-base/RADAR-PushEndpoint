@@ -93,6 +93,5 @@ pushIntegration:
                 uri: redis://redis:6379
                 lockPrefix: radar-push-googlehealth/lock
             maxThreads: 4
-            maxBackfillPeriod: P730D                      # ISO-8601 duration (2 years)
             chunkSizeDays: 7
             iterationIntervalMinutes: 10

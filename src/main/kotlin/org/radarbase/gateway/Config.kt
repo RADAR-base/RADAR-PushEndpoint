@@ -214,10 +214,14 @@ data class GoogleHealthBackfillConfig(
         lockPrefix = "radar-push-googlehealth/lock",
     ),
     val maxThreads: Int = 4,
-    val maxBackfillPeriod: Duration = Duration.ofDays(365 * 2L),
+    val maxBackfillPeriod: Duration = Duration.ofDays(MAX_BACKFILL_DAYS),
     val chunkSizeDays: Long = 7,
     val iterationIntervalMinutes: Long = 10,
-)
+) {
+    companion object {
+        private const val MAX_BACKFILL_DAYS = 365 * 2L
+    }
+}
 
 data class GatewayServerConfig(
     /** Base URL to serve data with. This will determine the base path and the port. */
