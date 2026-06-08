@@ -29,7 +29,9 @@ import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator
 import org.radarbase.push.integration.google.service.GoogleHealthApiService
 import org.radarbase.push.integration.google.service.GoogleHealthBackfillService
-import org.radarbase.push.integration.google.service.SubscriberRegistrationService
+import org.radarbase.push.integration.google.subscriptions.GoogleHealthSubscriptionReconcileService
+import org.radarbase.push.integration.google.subscriptions.GoogleHealthSubscriptionService
+import org.radarbase.push.integration.google.subscriber.SubscriberRegistrationService
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import org.radarbase.push.integration.google.util.GoogleServiceAccountTokenProvider
 import redis.clients.jedis.JedisPool
@@ -44,13 +46,16 @@ class GoogleHealthPushIntegrationResourceEnhancer(private val config: Config) :
     }
 
     override val classes: Array<Class<*>>
-        get() = if (config.pushIntegration.googlehealth.backfill.enabled) {
-            arrayOf(
-                SubscriberRegistrationService::class.java,
-                GoogleHealthBackfillService::class.java,
-            )
-        } else {
-            arrayOf(SubscriberRegistrationService::class.java)
+        get() {
+            val ghConfig = config.pushIntegration.googlehealth
+            val services = mutableListOf<Class<*>>(SubscriberRegistrationService::class.java)
+            if (ghConfig.backfill.enabled) {
+                services += GoogleHealthBackfillService::class.java
+            }
+            if (ghConfig.subscriptionReconcileEnabled) {
+                services += GoogleHealthSubscriptionReconcileService::class.java
+            }
+            return services.toTypedArray()
         }
 
     override fun AbstractBinder.enhance() {
@@ -78,6 +83,10 @@ class GoogleHealthPushIntegrationResourceEnhancer(private val config: Config) :
 
         bind(GoogleServiceAccountTokenProvider::class.java)
             .to(GoogleServiceAccountTokenProvider::class.java)
+            .`in`(Singleton::class.java)
+
+        bind(GoogleHealthSubscriptionService::class.java)
+            .to(GoogleHealthSubscriptionService::class.java)
             .`in`(Singleton::class.java)
     }
 }
