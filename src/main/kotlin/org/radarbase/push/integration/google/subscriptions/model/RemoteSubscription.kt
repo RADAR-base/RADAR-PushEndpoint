@@ -24,4 +24,13 @@ data class RemoteSubscription(
 ) {
     val healthUserId: String?
         get() = user.removePrefix("users/").takeIf { it.isNotEmpty() && it != user }
+
+    /**
+     * Bare data-type tokens (e.g. "steps"), with Google's "users/{id}/dataTypes/" qualifier stripped.
+     * Google stores and returns subscription data types as fully-qualified resource names like
+     * (users/{userId}/dataTypes/daily-resting-heart-rate), while the
+     * config and create payloads use bare tokens, normalise before comparing the two.
+     */
+    val dataTypeIds: List<String>
+        get() = dataTypes.map { it.substringAfterLast('/') }
 }
