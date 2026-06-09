@@ -144,15 +144,6 @@ class GoogleHealthServiceUserRepository(
         nextFetch = Instant.now().plus(FETCH_THRESHOLD)
     }
 
-    /**
-     * Fetch users who have de-authorized / withdrawn (`authorized=false`).
-     */
-    @Throws(IOException::class)
-    override fun fetchUnauthorizedUsers(): List<User> {
-        val request = requestFor("users?source-type=$GOOGLEHEALTH_SOURCE&authorized=false").build()
-        return makeRequest<GoogleHealthUsers>(request, userListReader).users
-    }
-
     @Throws(IOException::class)
     private fun requestFor(relativeUrl: String): Request.Builder {
         val url: HttpUrl = baseUrl.resolve(relativeUrl)

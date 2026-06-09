@@ -26,7 +26,6 @@ import org.glassfish.jersey.server.monitoring.RequestEvent
 import org.glassfish.jersey.server.monitoring.RequestEventListener
 import org.radarbase.gateway.Config
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
-import org.radarbase.googlehealth.user.User
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
 import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
 import org.radarbase.push.integration.google.subscriptions.model.RemoteSubscription
@@ -106,16 +105,6 @@ class GoogleHealthSubscriptionReconcileService(
             return
         }
 
-        val withdrawn = try {
-            userRepository.fetchUnauthorizedUsers()
-        } catch (ex: IOException) {
-            logger.warn("Rest source backend unavailable when fetching unauthorized users ", ex)
-            return
-        } catch (ex: NoSuchElementException) {
-            logger.warn("Withdrawn fetchUnauthorizedUsers returned 404", ex)
-            return
-        }
-
         val authorizedIds = authorized.mapTo(mutableSetOf()) { it.serviceUserId }
         val remote = try {
             subscriptionService.listSubscriptions()
@@ -147,21 +136,19 @@ class GoogleHealthSubscriptionReconcileService(
             }
         }
 
-        deleteStale(authorizedIds, withdrawn, remote)
+        deleteStale(authorizedIds, remote)
     }
 
     /**
-     * Deletes subscriptions for users no longer authorized — those explicitly withdrawn and those
-     * removed entirely.
+     * Deletes subscriptions whose user is not in the current authorized set. A withdrawn user is
+     * removed from Rest Sources entirely (not returned as unauthorized), so they fall out of the
+     * authorized set and their leftover subscription is cleaned up here.
      */
     private fun deleteStale(
         authorizedIds: Set<String>,
-        unauthorized: List<User>,
         remote: List<RemoteSubscription>,
     ): Pair<Int, Int> {
-        val unauthorizedIds = unauthorized.mapTo(mutableSetOf()) { it.serviceUserId }
-        val knownIds = HashSet(authorizedIds).apply { addAll(unauthorizedIds) }
-        val staleSubscriptions = remote.filter { it.healthUserId != null && it.healthUserId !in knownIds }
+        val staleSubscriptions = remote.filter { it.healthUserId != null && it.healthUserId !in authorizedIds }
 
         if (maxDeletesPerPass > 0 && staleSubscriptions.size > maxDeletesPerPass) {
             logger.warn(
