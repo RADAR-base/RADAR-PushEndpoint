@@ -198,14 +198,14 @@ class GoogleHealthServiceUserRepository(
             ?: throw NoSuchElementException("User repository URL $urlString cannot be parsed as URL.")
     }
 
-    private data class CachedAccessToken(
-        val accessToken: String,
-        val expiresAt: Instant,
-    ) {
-        fun isExpired(): Boolean = Instant.now().isAfter(expiresAt.minus(EXPIRY_MARGIN))
-    }
-
     companion object {
+        private data class CachedAccessToken(
+            val accessToken: String,
+            val expiresAt: Instant,
+        ) {
+            fun isExpired(): Boolean = Instant.now().isAfter(expiresAt.minus(EXPIRY_MARGIN))
+        }
+
         private const val GOOGLEHEALTH_SOURCE = "GoogleHealth"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val EMPTY_BODY: RequestBody = "".toRequestBody(JSON_MEDIA_TYPE)
