@@ -492,7 +492,8 @@ class GoogleHealthApiService(
         const val CUTOFF_ROUTE = "gh:_historical_cutoff"
 
         private val DEDUP_TTL: Duration = Duration.ofMinutes(5)
-        private val OVERLAP: Duration = Duration.ofMinutes(2)
+        private val SETTINGS_CACHE_TTL: Duration = Duration.ofHours(6)
+        private val OVERLAP: Duration = Duration.ofSeconds(10)
         private val CATCHUP_CHUNK: Duration = Duration.ofDays(1)
         private val CUTOFF_LAG: Duration = Duration.ofHours(1)
         private val RATE_LIMIT_INITIAL_BACKOFF: Duration = Duration.ofSeconds(30)
