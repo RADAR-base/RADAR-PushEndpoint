@@ -63,6 +63,9 @@ dependencies {
 
     implementation("com.google.auth:google-auth-library-oauth2-http:${project.property("googleAuthVersion")}")
 
+    val tinkVersion: String by project
+    implementation("com.google.crypto.tink:tink:$tinkVersion")
+
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
     val jacksonVersion: String by project

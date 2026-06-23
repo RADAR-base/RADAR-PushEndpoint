@@ -39,6 +39,7 @@ import java.time.Instant
 class GoogleHealthAuthValidator(
     @param:Context private val objectMapper: ObjectMapper,
     @param:Context private val config: Config,
+    @param:Context private val signatureVerifier: GoogleHealthWebhookSignatureVerifier,
     @param:Named(GOOGLE_HEALTH_QUALIFIER) @param:Context private val userRepository: GoogleHealthUserRepository,
 ) : AuthValidator {
 
@@ -73,8 +74,13 @@ class GoogleHealthAuthValidator(
             return handleHandshake(token, request)
         }
 
-        // Not a handshake => a data push. Authenticate before doing any work on the payload.
+        // Not a handshake => a data push. Authenticate before doing any work on the payload: both the
+        // shared bearer secret and Google's cryptographic webhook signature must check out.
         verifyBearer(token)
+        signatureVerifier.verify(
+            request.getHeaderString(GoogleHealthWebhookSignatureVerifier.SIGNATURE_HEADER),
+            bodyBytes ?: ByteArray(0),
+        )
 
         if (tree != null) {
             val pings = parsePings(tree)
