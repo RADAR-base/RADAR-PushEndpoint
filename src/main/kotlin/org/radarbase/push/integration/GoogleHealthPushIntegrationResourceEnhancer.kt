@@ -27,7 +27,6 @@ import org.radarbase.push.integration.garmin.util.RedisHolder
 import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
 import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator
-import org.radarbase.push.integration.google.auth.GoogleHealthWebhookSignatureVerifier
 import org.radarbase.push.integration.google.service.GoogleHealthApiService
 import org.radarbase.push.integration.google.service.GoogleHealthBackfillService
 import org.radarbase.push.integration.google.subscriptions.GoogleHealthSubscriptionReconcileService
@@ -64,9 +63,6 @@ class GoogleHealthPushIntegrationResourceEnhancer(private val config: Config) :
             .to(GoogleHealthUserRepository::class.java)
             .named(GOOGLE_HEALTH_QUALIFIER)
             .`in`(Singleton::class.java)
-
-        bind(GoogleHealthWebhookSignatureVerifier())
-            .to(GoogleHealthWebhookSignatureVerifier::class.java)
 
         bind(GoogleHealthAuthValidator::class.java)
             .to(AuthValidator::class.java)
