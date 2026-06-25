@@ -28,6 +28,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import org.apache.avro.generic.IndexedRecord
 import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
@@ -35,6 +37,8 @@ import org.radarbase.googlehealth.user.User
 import org.radarbase.googlehealth.converter.DailyRestingHeartRateGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.DailySleepTemperatureDerivationsGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.ExerciseGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.ElectrocardiogramGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.IrregularRhythmNotificationGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.HeartRateGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.HeartRateVariabilityGoogleHealthAvroConverter
@@ -52,6 +56,8 @@ import org.radarbase.googlehealth.model.GoogleHealthPing
 import org.radarbase.googlehealth.model.PingInterval
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
+import org.radarbase.push.integration.google.tcx.TcxAvroConverter
+import org.radarbase.push.integration.google.tcx.TcxParser
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.time.Duration
@@ -84,7 +90,7 @@ class GoogleHealthApiService(
     private val converters: Map<String, List<GoogleHealthAvroConverter>> = buildConverters()
 
     private val nonSubscribedTypes: List<String> = googleConfig.enabledDataTypes.filter {
-        it !in googleConfig.triggerDataTypes
+        it !in googleConfig.triggerDataTypes && it !in NON_CHUNKED_TYPES
     }
 
     fun handlePing(ping: GoogleHealthPing) {
@@ -221,6 +227,9 @@ class GoogleHealthApiService(
                     val records = conv.convert(response, user)
                     if (records.isNotEmpty()) producerPool.produce(conv.topic, records)
                 }
+                if (dataType == "exercise" && googleConfig.exerciseTcxEnabled) {
+                    publishExerciseTcx(user, response)
+                }
                 pageToken = response["nextPageToken"]?.asText()?.takeIf { it.isNotEmpty() }
             } while (pageToken != null)
         } finally {
@@ -236,8 +245,57 @@ class GoogleHealthApiService(
     ): JsonNode {
         return when (dataType) {
             "total-calories" -> rollUpDataPoints(user, dataType, window, pageToken)
+            "exercise", "electrocardiogram", "irregular-rhythm-notification" ->
+                listDataPoints(user, dataType, window, pageToken)
             else -> reconcileDataPoints(user, dataType, window, pageToken)
         }
+    }
+
+    private fun listDataPoints(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>,
+        pageToken: String?,
+    ): JsonNode {
+        val filter = buildFilterExpression(user, dataType, window)
+        val urlBuilder = apiBaseUrl.newBuilder().addPathSegments("users/me/dataTypes/$dataType/dataPoints")
+            .addQueryParameter("filter", filter).addQueryParameter("pageSize", LIST_PAGE_SIZE.toString())
+        if (!pageToken.isNullOrEmpty()) urlBuilder.addQueryParameter("pageToken", pageToken)
+
+        val requestBuilder = { token: String ->
+            Request.Builder().url(urlBuilder.build()).header("Authorization", "Bearer $token")
+                .header("Accept", "application/json").get().build()
+        }
+        return executeWithRetry(user, requestBuilder)
+    }
+
+    /**
+     * Download one exercise session's TCX track via `:exportExerciseTcx?alt=media`
+     * `partialData=true` keeps trackpoints (e.g. heart rate, cadence) even when GPS is missing
+     * those rows carry null latitude/longitude.
+     */
+    private fun publishExerciseTcx(user: User, response: JsonNode) {
+        val points = response["dataPoints"]?.takeIf { it.isArray } ?: return
+        val records = mutableListOf<Pair<IndexedRecord, IndexedRecord>>()
+        for (point in points) {
+            val exerciseId = (point["name"] ?: point["dataPointName"])?.asText()
+                ?.substringAfterLast('/')?.toLongOrNull() ?: continue
+            val xml = exportExerciseTcx(user, exerciseId) ?: continue
+            records += TcxAvroConverter.convert(TcxParser.parse(xml), exerciseId, user.observationKey)
+        }
+        if (records.isNotEmpty()) producerPool.produce(googleConfig.exerciseTcxTopicName, records)
+    }
+
+    private fun exportExerciseTcx(user: User, exerciseId: Long): ByteArray? {
+        val url = apiBaseUrl.newBuilder()
+            .addPathSegments("users/me/dataTypes/exercise/dataPoints/$exerciseId:exportExerciseTcx")
+            .addQueryParameter("alt", "media")
+            .addQueryParameter("partialData", "true")
+            .build()
+        val requestBuilder = { token: String ->
+            Request.Builder().url(url).header("Authorization", "Bearer $token").get().build()
+        }
+        return executeWithRetry(user, requestBuilder, { it.body?.bytes() }, { null })
     }
 
     private fun reconcileDataPoints(
@@ -292,7 +350,12 @@ class GoogleHealthApiService(
         return executeWithRetry(user, requestBuilder)
     }
 
-    private fun executeWithRetry(user: User, buildRequest: (String) -> Request): JsonNode {
+    private fun <T> executeWithRetry(
+        user: User,
+        buildRequest: (String) -> Request,
+        onSuccess: (Response) -> T,
+        onSkip: () -> T,
+    ): T {
         var token = userRepository.getOAuth2AccessToken(user)
         var tokenRefreshed = false
         var rateLimitAttempts = 0
@@ -304,7 +367,7 @@ class GoogleHealthApiService(
             val response = httpClient.newCall(request).execute()
             response.use { resp ->
                 when {
-                    resp.isSuccessful -> return parseBody(resp.body?.string())
+                    resp.isSuccessful -> return onSuccess(resp)
                     resp.code == 401 && !tokenRefreshed -> {
                         logger.info("401 from Google Health — refreshing token for {}", user.id)
                         token = userRepository.getOAuth2AccessToken(user)
@@ -313,10 +376,10 @@ class GoogleHealthApiService(
 
                     resp.code == 403 -> {
                         logger.info("403 from Google Health — skipping request for user={}", user.id)
-                        return emptyResponse()
+                        return onSkip()
                     }
 
-                    resp.code == 404 -> return emptyResponse()
+                    resp.code == 404 -> return onSkip()
                     resp.code == 400 -> {
                         // Surface filter-shape mismatches loudly — silent empty responses
                         // hide bugs like "Member 'X' is not supported for filtering".
@@ -326,7 +389,7 @@ class GoogleHealthApiService(
                             request.url,
                             resp.peekBody(MAX_ERROR_BODY_BYTES).string(),
                         )
-                        return emptyResponse()
+                        return onSkip()
                     }
 
                     resp.code == 429 -> {
@@ -361,12 +424,15 @@ class GoogleHealthApiService(
                             resp.code,
                             user.id,
                         )
-                        return emptyResponse()
+                        return onSkip()
                     }
                 }
             }
         }
     }
+
+    private fun executeWithRetry(user: User, buildRequest: (String) -> Request): JsonNode =
+        executeWithRetry(user, buildRequest, { parseBody(it.body?.string()) }, { emptyResponse() })
 
     private fun buildFilterExpression(user: User, dataType: String, window: Pair<Instant, Instant>): String {
         val stem = dataType.replace('-', '_')
@@ -378,6 +444,7 @@ class GoogleHealthApiService(
             TimeAxis.INTERVAL -> "$stem.interval.start_time >= \"$startText\" AND $stem.interval.start_time < \"$endText\""
             TimeAxis.SLEEP_INTERVAL -> "$stem.interval.end_time >= \"$startText\" AND $stem.interval.end_time < \"$endText\""
             TimeAxis.SAMPLE -> "$stem.sample_time.physical_time >= \"$startText\" AND $stem.sample_time.physical_time < \"$endText\""
+            TimeAxis.ECG_START -> "$stem.interval.start_time >= \"$startText\""
 
             TimeAxis.CIVIL_INTERVAL -> {
                 val civilFmt = CIVIL_DT_FMT.withZone(userZoneId(user))
@@ -403,6 +470,8 @@ class GoogleHealthApiService(
     private fun timeAxisFor(dataType: String): TimeAxis = when (dataType) {
         "steps", "altitude", "distance", "floors", "total-calories" -> TimeAxis.INTERVAL
         "exercise" -> TimeAxis.CIVIL_INTERVAL
+        "irregular-rhythm-notification" -> TimeAxis.INTERVAL
+        "electrocardiogram" -> TimeAxis.ECG_START
         "sleep" -> TimeAxis.SLEEP_INTERVAL
         "heart-rate", "heart-rate-variability", "oxygen-saturation", "respiratory-rate-sleep-summary", "weight", "body-fat" -> TimeAxis.SAMPLE
         "daily-resting-heart-rate", "daily-sleep-temperature-derivations" -> TimeAxis.DAILY
@@ -515,6 +584,12 @@ class GoogleHealthApiService(
         "exercise" to listOf(
             ExerciseGoogleHealthAvroConverter(googleConfig.exerciseTopicName),
         ),
+        "electrocardiogram" to listOf(
+            ElectrocardiogramGoogleHealthAvroConverter(googleConfig.electrocardiogramTopicName),
+        ),
+        "irregular-rhythm-notification" to listOf(
+            IrregularRhythmNotificationGoogleHealthAvroConverter(googleConfig.irregularRhythmNotificationTopicName),
+        ),
     )
 
     private fun sleepWithJitter(base: Duration) {
@@ -529,7 +604,15 @@ class GoogleHealthApiService(
             fun isExpired(): Boolean = Instant.now().isAfter(expiresAt)
         }
 
-        private enum class TimeAxis { INTERVAL, CIVIL_INTERVAL, SLEEP_INTERVAL, SAMPLE, DAILY }
+        private enum class TimeAxis { INTERVAL, CIVIL_INTERVAL, SLEEP_INTERVAL, SAMPLE, DAILY, ECG_START }
+
+        /**
+         * ECG has no webhook and can only be filtered by `start_time >=` (no upper bound), so
+         * chunking would re-fetch its large waveforms on every chunk. It is therefore backfilled in
+         * a single non-chunked pass and excluded from the chunked backfill loop and per-ping
+         * catch-up.
+         */
+        val NON_CHUNKED_TYPES = setOf("electrocardiogram")
 
         private val logger = LoggerFactory.getLogger(GoogleHealthApiService::class.java)
 
@@ -540,6 +623,8 @@ class GoogleHealthApiService(
             .withZone(java.time.ZoneOffset.UTC)
 
         private const val PAGE_SIZE = 1000
+
+        private const val LIST_PAGE_SIZE = 25
         private const val MAX_CONCURRENT_PER_USER = 3
         private const val MAX_RATE_LIMIT_RETRIES = 3
         private const val MAX_5XX_RETRIES = 5
