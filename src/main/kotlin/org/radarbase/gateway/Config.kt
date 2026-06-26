@@ -158,7 +158,8 @@ data class GoogleHealthConfig(
      */
     val subscriptionReconcileMaxDeletesPerPass: Int = 50,
     val triggerDataTypes: List<String> = listOf(
-        "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations"
+        "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations",
+        "heart-rate-variability", "total-calories", "respiratory-rate-sleep-summary",
     ),
     val enabledDataTypes: List<String> = listOf(
         "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
