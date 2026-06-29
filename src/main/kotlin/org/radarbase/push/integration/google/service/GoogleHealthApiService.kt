@@ -89,7 +89,7 @@ class GoogleHealthApiService(
 
     private val converters: Map<String, List<GoogleHealthAvroConverter>> = buildConverters()
 
-    private val nonSubscribedTypes: List<String> = googleConfig.enabledDataTypes.filter {
+    private val nonSubscribedTypes: List<String> = googleConfig.effectiveEnabledDataTypes.filter {
         it !in googleConfig.triggerDataTypes && it !in NON_CHUNKED_TYPES
     }
 
@@ -123,7 +123,7 @@ class GoogleHealthApiService(
             return
         }
 
-        if (ping.dataType in googleConfig.enabledDataTypes) {
+        if (ping.dataType in googleConfig.effectiveEnabledDataTypes) {
             for (interval in intervals) {
                 val window = widenInterval(interval)
                 try {

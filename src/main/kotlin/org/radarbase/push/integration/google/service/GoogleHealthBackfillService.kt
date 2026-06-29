@@ -142,7 +142,7 @@ class GoogleHealthBackfillService(
             logger.debug("Skipping unauthorized user {} for backfill", user.versionedId)
             return
         }
-        for (dataType in ghConfig.enabledDataTypes) {
+        for (dataType in ghConfig.effectiveEnabledDataTypes) {
             try {
                 backfillOneDataType(user, dataType)
             } catch (ex: Throwable) {

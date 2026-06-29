@@ -183,9 +183,22 @@ data class GoogleHealthConfig(
     val exerciseTcxTopicName: String = "push_googlehealth_exercise_tcx",
 
     val exerciseTcxEnabled: Boolean = true,
+    // Electrocardiogram (ECG) waveforms are large and have no webhook; disabled by default.
+    val electrocardiogramEnabled: Boolean = false,
     val backfill: GoogleHealthBackfillConfig = GoogleHealthBackfillConfig(),
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
+
+    /**
+     * Data types actually fetched/produced, after applying per-type feature flags.
+     * Electrocardiogram is included only when [electrocardiogramEnabled] is true.
+     */
+    val effectiveEnabledDataTypes: List<String>
+        get() = if (electrocardiogramEnabled) {
+            enabledDataTypes
+        } else {
+            enabledDataTypes.filterNot { it == ELECTROCARDIOGRAM_TYPE }
+        }
 
     fun withEnv() = this.copyEnv("GOOGLE_HEALTH_SERVICE_ACCOUNT_PATH") {
         copy(serviceAccountKeyPath = it)
@@ -211,6 +224,10 @@ data class GoogleHealthConfig(
                 "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
             }
         }
+    }
+
+    companion object {
+        private const val ELECTROCARDIOGRAM_TYPE = "electrocardiogram"
     }
 }
 

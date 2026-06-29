@@ -91,6 +91,8 @@ pushIntegration:
             - electrocardiogram
             - irregular-rhythm-notification
         exerciseTcxEnabled: true
+        # Electrocardiogram (ECG): large waveforms, no webhook. Disabled by default; set true to collect.
+        electrocardiogramEnabled: false
 
         # --- Historical backfill ---
         backfill:
