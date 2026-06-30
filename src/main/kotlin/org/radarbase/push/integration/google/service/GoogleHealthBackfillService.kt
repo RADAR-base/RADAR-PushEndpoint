@@ -179,6 +179,10 @@ class GoogleHealthBackfillService(
         // Backfill covers [user.startDate, cutoff]; PING path owns [cutoff, now]. Once cursor
         // reaches cutoff, backfill is permanently done for this (user, dataType).
         val upTo = apiService.ensureHistoricalCutoff(user)
+        logger.info(
+            "[GH-TEST] backfill plan user={} dataType={} storedOffset={} startDate={} cursor={} upTo={}",
+            user.versionedId, dataType, storedOffset, user.startDate, cursor, upTo,
+        )
         if (!cursor.isBefore(upTo)) {
             logger.debug(
                 "Backfill complete for user={} dataType={} (cursor={} >= cutoff={})",

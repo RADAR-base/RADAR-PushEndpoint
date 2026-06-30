@@ -223,9 +223,20 @@ class GoogleHealthApiService(
             var pageToken: String? = null
             do {
                 val response = fetchDataPoints(user, dataType, window, pageToken)
+                logger.info(
+                    "[GH-TEST] fetched user={} dataType={} dataPoints={} window=[{},{})",
+                    user.id, dataType, response["dataPoints"]?.takeIf { it.isArray }?.size() ?: 0,
+                    window.first, window.second,
+                )
                 perType.forEach { conv ->
                     val records = conv.convert(response, user)
-                    if (records.isNotEmpty()) producerPool.produce(conv.topic, records)
+                    if (records.isNotEmpty()) {
+                        producerPool.produce(conv.topic, records)
+                        logger.info(
+                            "[GH-TEST] sent records user={} dataType={} topic={} count={}",
+                            user.id, dataType, conv.topic, records.size,
+                        )
+                    }
                 }
                 if (dataType == "exercise" && googleConfig.exerciseTcxEnabled) {
                     publishExerciseTcx(user, response)
