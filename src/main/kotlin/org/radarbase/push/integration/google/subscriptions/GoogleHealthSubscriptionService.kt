@@ -100,10 +100,22 @@ class GoogleHealthSubscriptionService(
         }
     }
 
-    fun patchSubscription(name: String, dataTypes: List<String>): SubscriptionResult {
+    /**
+     * Patches a subscription's data types. Google stores and returns data types as fully-qualified
+     * resource names (`users/{userId}/dataTypes/{type}`), and the patch body must send them in that
+     * same form (along with the resource [name] and [user]).
+     *
+     * @param user the subscription's user resource name, i.e. `users/{userId}`.
+     * @param dataTypes bare data-type tokens (e.g. "steps"); qualified here against [user].
+     */
+    fun patchSubscription(name: String, user: String, dataTypes: List<String>): SubscriptionResult {
         val url = "$baseUrl/$name?updateMask=dataTypes"
-        val body = objectMapper.writeValueAsString(mapOf("dataTypes" to dataTypes))
-            .toRequestBody(JSON_MEDIA_TYPE)
+        val payload = mapOf(
+            "name" to name,
+            "user" to user,
+            "dataTypes" to dataTypes.map { "$user/dataTypes/$it" },
+        )
+        val body = objectMapper.writeValueAsString(payload).toRequestBody(JSON_MEDIA_TYPE)
         return execute(name, "patch") { token ->
             Request.Builder()
                 .url(url)
