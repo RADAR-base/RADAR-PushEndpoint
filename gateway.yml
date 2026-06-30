@@ -69,7 +69,6 @@ pushIntegration:
             - steps
             - heart-rate
             - heart-rate-variability
-            - total-calories
             - daily-resting-heart-rate
             - respiratory-rate-sleep-summary
             - daily-sleep-temperature-derivations
