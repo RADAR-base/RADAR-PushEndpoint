@@ -34,16 +34,19 @@ import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
 import org.radarbase.googlehealth.user.User
+import org.radarbase.googlehealth.converter.ActivityLevelGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.DailyRestingHeartRateGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.DailySleepTemperatureDerivationsGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.ExerciseGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.ElectrocardiogramGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.FloorsGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.IrregularRhythmNotificationGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.HeartRateGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.HeartRateVariabilityGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.OxygenSaturationGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.RespiratoryRateSleepSummaryGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.SedentaryPeriodGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.SleepClassicGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.SleepStageGoogleHealthAvroConverter
 import org.radarbase.googlehealth.converter.StepsGoogleHealthAvroConverter
@@ -480,6 +483,7 @@ class GoogleHealthApiService(
 
     private fun timeAxisFor(dataType: String): TimeAxis = when (dataType) {
         "steps", "altitude", "distance", "floors", "total-calories" -> TimeAxis.INTERVAL
+        "sedentary-period", "activity-level" -> TimeAxis.INTERVAL
         "exercise" -> TimeAxis.CIVIL_INTERVAL
         "irregular-rhythm-notification" -> TimeAxis.INTERVAL
         "electrocardiogram" -> TimeAxis.ECG_START
@@ -565,6 +569,13 @@ class GoogleHealthApiService(
 
     private fun buildConverters(): Map<String, List<GoogleHealthAvroConverter>> = mapOf(
         "steps" to listOf(StepsGoogleHealthAvroConverter(googleConfig.stepsTopicName)),
+        "floors" to listOf(FloorsGoogleHealthAvroConverter(googleConfig.floorsTopicName)),
+        "sedentary-period" to listOf(
+            SedentaryPeriodGoogleHealthAvroConverter(googleConfig.sedentaryPeriodTopicName),
+        ),
+        "activity-level" to listOf(
+            ActivityLevelGoogleHealthAvroConverter(googleConfig.activityLevelTopicName),
+        ),
         "heart-rate" to listOf(HeartRateGoogleHealthAvroConverter(googleConfig.heartRateTopicName)),
         "heart-rate-variability" to listOf(
             HeartRateVariabilityGoogleHealthAvroConverter(googleConfig.heartRateVariabilityTopicName),
