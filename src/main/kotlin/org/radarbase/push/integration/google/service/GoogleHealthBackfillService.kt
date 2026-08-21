@@ -142,7 +142,7 @@ class GoogleHealthBackfillService(
             logger.debug("Skipping unauthorized user {} for backfill", user.versionedId)
             return
         }
-        for (dataType in ghConfig.enabledDataTypes) {
+        for (dataType in ghConfig.effectiveEnabledDataTypes) {
             try {
                 backfillOneDataType(user, dataType)
             } catch (ex: Throwable) {
@@ -162,10 +162,27 @@ class GoogleHealthBackfillService(
             ?.offsetsMap?.get(UserRoute(user.versionedId, route))
         val earliestAllowed = Instant.now().minus(bfConfig.maxBackfillPeriod)
         var cursor = (storedOffset ?: user.startDate).coerceAtLeast(earliestAllowed)
+
+        if (dataType in GoogleHealthApiService.NON_CHUNKED_TYPES) {
+            val now = Instant.now()
+            if (!cursor.isBefore(now)) return
+            logger.info(
+                "Backfilling user={} dataType={} (non-chunked) window=[{},{})",
+                user.versionedId, dataType, cursor, now,
+            )
+            apiService.fetchAndPublishBlocking(user, dataType, cursor to now)
+            offsets.add(Path.of(user.versionedId), UserRouteOffset(user.versionedId, route, now))
+            return
+        }
+
         // Historical cutoff is captured once per user and owned jointly with the PING path.
         // Backfill covers [user.startDate, cutoff]; PING path owns [cutoff, now]. Once cursor
         // reaches cutoff, backfill is permanently done for this (user, dataType).
         val upTo = apiService.ensureHistoricalCutoff(user)
+        logger.info(
+            "[GH-TEST] backfill plan user={} dataType={} storedOffset={} startDate={} cursor={} upTo={}",
+            user.versionedId, dataType, storedOffset, user.startDate, cursor, upTo,
+        )
         if (!cursor.isBefore(upTo)) {
             logger.debug(
                 "Backfill complete for user={} dataType={} (cursor={} >= cutoff={})",

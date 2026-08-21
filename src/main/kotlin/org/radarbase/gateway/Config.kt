@@ -158,27 +158,47 @@ data class GoogleHealthConfig(
      */
     val subscriptionReconcileMaxDeletesPerPass: Int = 50,
     val triggerDataTypes: List<String> = listOf(
-        "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations"
+        "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations",
+        "heart-rate-variability", "respiratory-rate-sleep-summary",
     ),
     val enabledDataTypes: List<String> = listOf(
         "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
         "total-calories", "daily-resting-heart-rate", "respiratory-rate-sleep-summary",
         "daily-sleep-temperature-derivations", "sleep", "exercise",
+        "electrocardiogram", "irregular-rhythm-notification",
     ),
-    val stepsTopicName: String = "connect_fitbit_intraday_steps",
-    val heartRateTopicName: String = "connect_fitbit_intraday_heart_rate",
-    val heartRateVariabilityTopicName: String = "connect_fitbit_intraday_heart_rate_variability",
-    val oxygenSaturationTopicName: String = "connect_fitbit_intraday_spo2",
-    val totalCaloriesTopicName: String = "connect_fitbit_intraday_calories",
-    val dailyRestingHeartRateTopicName: String = "connect_fitbit_resting_heart_rate",
-    val respiratoryRateSleepSummaryTopicName: String = "connect_fitbit_breathing_rate",
-    val dailySleepTemperatureDerivationsTopicName: String = "connect_fitbit_skin_temperature",
-    val sleepStagesTopicName: String = "connect_fitbit_sleep_stages",
-    val sleepClassicTopicName: String = "connect_fitbit_sleep_classic",
-    val exerciseTopicName: String = "connect_fitbit_activity_log",
+    val stepsTopicName: String = "push_googlehealth_steps",
+    val heartRateTopicName: String = "push_googlehealth_heart_rate",
+    val heartRateVariabilityTopicName: String = "push_googlehealth_heart_rate_variability",
+    val oxygenSaturationTopicName: String = "push_googlehealth_oxygen_saturation",
+    val totalCaloriesTopicName: String = "push_googlehealth_total_calories",
+    val dailyRestingHeartRateTopicName: String = "push_googlehealth_daily_resting_heart_rate",
+    val respiratoryRateSleepSummaryTopicName: String = "push_googlehealth_respiratory_rate_sleep_summary",
+    val dailySleepTemperatureDerivationsTopicName: String = "push_googlehealth_daily_sleep_temperature_derivations",
+    val sleepStagesTopicName: String = "push_googlehealth_sleep_stage",
+    val sleepClassicTopicName: String = "push_googlehealth_sleep_classic",
+    val exerciseTopicName: String = "push_googlehealth_exercise",
+    val electrocardiogramTopicName: String = "push_googlehealth_electrocardiogram",
+    val irregularRhythmNotificationTopicName: String = "push_googlehealth_irregular_rhythm_notification",
+    val exerciseTcxTopicName: String = "push_googlehealth_exercise_tcx",
+
+    val exerciseTcxEnabled: Boolean = true,
+    // Electrocardiogram (ECG) waveforms are large and have no webhook; disabled by default.
+    val electrocardiogramEnabled: Boolean = false,
     val backfill: GoogleHealthBackfillConfig = GoogleHealthBackfillConfig(),
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
+
+    /**
+     * Data types actually fetched/produced, after applying per-type feature flags.
+     * Electrocardiogram is included only when [electrocardiogramEnabled] is true.
+     */
+    val effectiveEnabledDataTypes: List<String>
+        get() = if (electrocardiogramEnabled) {
+            enabledDataTypes
+        } else {
+            enabledDataTypes.filterNot { it == ELECTROCARDIOGRAM_TYPE }
+        }
 
     fun withEnv() = this.copyEnv("GOOGLE_HEALTH_SERVICE_ACCOUNT_PATH") {
         copy(serviceAccountKeyPath = it)
@@ -204,6 +224,10 @@ data class GoogleHealthConfig(
                 "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
             }
         }
+    }
+
+    companion object {
+        private const val ELECTROCARDIOGRAM_TYPE = "electrocardiogram"
     }
 }
 

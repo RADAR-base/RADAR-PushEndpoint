@@ -29,6 +29,7 @@ import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator.Comp
 import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator.Companion.PING_PROPERTY
 import org.radarbase.googlehealth.model.GoogleHealthPing
 import org.radarbase.push.integration.google.service.GoogleHealthApiService
+import org.slf4j.LoggerFactory
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Singleton
@@ -44,8 +45,33 @@ class GoogleHealthPushEndpoint(
             return Response.ok().build()
         }
 
-        val ping = request.getProperty(PING_PROPERTY) as? GoogleHealthPing
-        if (ping != null) healthApiService.handlePing(ping)
+        val pings = extractPings(request.getProperty(PING_PROPERTY))
+        pings.forEach { healthApiService.handlePing(it) }
         return Response.noContent().build()
+    }
+
+    private fun extractPings(raw: Any?): List<GoogleHealthPing> = when (raw) {
+        null -> emptyList()
+        is List<*> -> {
+            val pings = raw.filterIsInstance<GoogleHealthPing>()
+            if (pings.size != raw.size) {
+                logger.warn(
+                    "Google Health {} held {} element(s); only {} were GoogleHealthPing, ignoring the rest",
+                    PING_PROPERTY, raw.size, pings.size,
+                )
+            }
+            pings
+        }
+        else -> {
+            logger.warn(
+                "Google Health {} was a {} but List<GoogleHealthPing> was expected; skipping push",
+                PING_PROPERTY, raw.javaClass.name,
+            )
+            emptyList()
+        }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(GoogleHealthPushEndpoint::class.java)
     }
 }

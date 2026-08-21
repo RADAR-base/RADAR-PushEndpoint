@@ -127,7 +127,7 @@ class SubscriberRegistrationService(
     }
 
     private fun getSubscriber(accessToken: String): Map<*, *>? {
-        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId"
+        val url = "$baseUrl/projects/$projectId/subscribers"
         val request = Request.Builder()
             .url(url)
             .get()
@@ -138,7 +138,11 @@ class SubscriberRegistrationService(
                 200 -> {
                     val body = response.body?.string() ?: return null
                     @Suppress("UNCHECKED_CAST")
-                    objectMapper.readValue(body, Map::class.java)
+                    val responseMap = objectMapper.readValue(body, Map::class.java)
+                    val subscribers = responseMap["subscribers"] as? List<Map<*, *>> ?: return null
+
+                    val expectedName = "projects/$projectId/subscribers/$subscriberId"
+                    subscribers.find { it["name"] == expectedName }
                 }
                 404 -> null
                 else -> {

@@ -67,11 +67,13 @@ pushIntegration:
         # Data types that drive PINGs (the subscriber config + each per-user subscription subscribe to these)
         triggerDataTypes:
             - steps
+            - heart-rate
+            - heart-rate-variability
+            - daily-resting-heart-rate
+            - respiratory-rate-sleep-summary
+            - daily-sleep-temperature-derivations
             - sleep
             - exercise
-            - daily-resting-heart-rate
-            - heart-rate
-            - daily-sleep-temperature-derivations
 
         # All data types fetched/produced (superset of triggerDataTypes; non-trigger ones are caught up via the offset cursor)
         enabledDataTypes:
@@ -85,6 +87,11 @@ pushIntegration:
             - daily-sleep-temperature-derivations
             - sleep
             - exercise
+            - electrocardiogram
+            - irregular-rhythm-notification
+        exerciseTcxEnabled: true
+        # Electrocardiogram (ECG): large waveforms, no webhook. Disabled by default; set true to collect.
+        electrocardiogramEnabled: false
 
         # --- Historical backfill ---
         backfill:

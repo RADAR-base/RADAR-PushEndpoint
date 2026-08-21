@@ -129,7 +129,7 @@ class GoogleHealthSubscriptionReconcileService(
         remote.forEach { sub ->
             val userId = sub.healthUserId ?: return@forEach
             if (userId in authorizedIds && sub.dataTypeIds.toSet() != desiredDataTypes) {
-                when (val result = subscriptionService.patchSubscription(sub.name, ghConfig.triggerDataTypes)) {
+                when (val result = subscriptionService.patchSubscription(sub.name, sub.user, ghConfig.triggerDataTypes)) {
                     is SubscriptionResult.Success -> logger.info("Patched dataTypes for user={}", userId)
                     else -> logger.warn("Reconcile patch failed for user={}: {}", userId, result)
                 }
