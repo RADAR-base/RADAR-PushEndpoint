@@ -56,15 +56,13 @@ pushIntegration:
         subscriberId: radar-pushendpoint-<deployment>-<study> # MUST be unique per deployment (and maybe study) (e.g. radar-pep-stage)
         subscriberEndpointUri: https://push-endpoint:8090/push/integrations/googlehealth/notifications
         subscriberSecret: ""   # 32+ byte random string; Google echoes it back as the Authorization header
-        serviceAccountKeyPath: ""      # REQUIRED — path to the Google service-account JSON. Empty/missing => subscriber registration AND reconcile do not run.
+        serviceAccountKeyPath: ""      # REQUIRED — path to the Google service-account JSON. Empty/missing => subscriber registration does not run.
 
-        # --- Per-user subscription reconcile ---
-        subscriptionCreatePolicy: MANUAL                 # default; MANUAL is what we want. AUTOMATIC would require subscriptionReconcileEnabled: false
-        subscriptionReconcileEnabled: true
-        subscriptionReconcileIntervalMinutes: 5
-        subscriptionReconcileMaxDeletesPerPass: 50       # skip + alarm if one pass would delete more than this (0 disables the cap)
+        subscriptionCreatePolicy: MANUAL
 
-        # Data types that drive PINGs (the subscriber config + each per-user subscription subscribe to these)
+        # Data types that drive PINGs (the subscriber config subscribes to these).
+        # MUST stay identical to googleHealth.dataTypes in RADAR-Rest-Source-Auth, which
+        # subscribes each user to the same set.
         triggerDataTypes:
             - steps
             - heart-rate
@@ -74,6 +72,9 @@ pushIntegration:
             - daily-sleep-temperature-derivations
             - sleep
             - exercise
+            - floors
+            - sedentary-period
+            - activity-level
 
         # All data types fetched/produced (superset of triggerDataTypes; non-trigger ones are caught up via the offset cursor)
         enabledDataTypes:
@@ -89,6 +90,9 @@ pushIntegration:
             - exercise
             - electrocardiogram
             - irregular-rhythm-notification
+            - floors
+            - sedentary-period
+            - activity-level
         exerciseTcxEnabled: true
         # Electrocardiogram (ECG): large waveforms, no webhook. Disabled by default; set true to collect.
         electrocardiogramEnabled: false

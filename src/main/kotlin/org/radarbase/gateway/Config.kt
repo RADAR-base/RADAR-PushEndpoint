@@ -133,7 +133,10 @@ data class UserBackfillConfig(
     val userId: String, val startDate: Instant, val endDate: Instant
 )
 
-/** How Google creates per-user subscriptions for this deployment's subscriber. */
+/**
+ * How Google creates per-user subscriptions for this deployment's subscriber. Part of the
+ * subscriber registration; the subscriptions themselves are managed by RADAR-Rest-Source-Auth.
+ */
 enum class SubscriptionCreatePolicy { MANUAL, AUTOMATIC }
 
 data class GoogleHealthConfig(
@@ -150,24 +153,28 @@ data class GoogleHealthConfig(
     val subscriberSecret: String = "",
     val serviceAccountKeyPath: String? = null,
     val subscriptionCreatePolicy: SubscriptionCreatePolicy = SubscriptionCreatePolicy.MANUAL,
-    val subscriptionReconcileEnabled: Boolean = true,
-    val subscriptionReconcileIntervalMinutes: Long = 5,
     /**
-     * If a single deletion would delete more subscriptions than this, it skips
-     * deletion and alarms instead
+     * Data types the subscriber config subscribes to, i.e. the ones that generate PINGs.
+     *
+     * Must stay identical to `googleHealth.dataTypes` in RADAR-Rest-Source-Auth, which manages
+     * per-user subscriptions.
      */
-    val subscriptionReconcileMaxDeletesPerPass: Int = 50,
     val triggerDataTypes: List<String> = listOf(
         "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations",
         "heart-rate-variability", "respiratory-rate-sleep-summary",
+        "floors", "sedentary-period", "activity-level",
     ),
     val enabledDataTypes: List<String> = listOf(
         "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
         "total-calories", "daily-resting-heart-rate", "respiratory-rate-sleep-summary",
         "daily-sleep-temperature-derivations", "sleep", "exercise",
         "electrocardiogram", "irregular-rhythm-notification",
+        "floors", "sedentary-period", "activity-level",
     ),
     val stepsTopicName: String = "push_googlehealth_steps",
+    val floorsTopicName: String = "push_googlehealth_floors",
+    val sedentaryPeriodTopicName: String = "push_googlehealth_sedentary_period",
+    val activityLevelTopicName: String = "push_googlehealth_activity_level",
     val heartRateTopicName: String = "push_googlehealth_heart_rate",
     val heartRateVariabilityTopicName: String = "push_googlehealth_heart_rate_variability",
     val oxygenSaturationTopicName: String = "push_googlehealth_oxygen_saturation",
@@ -214,11 +221,6 @@ data class GoogleHealthConfig(
             }
             check(subscriberSecret.isNotEmpty()) {
                 "subscriberSecret must be set when google health is enabled"
-            }
-            if (subscriptionCreatePolicy == SubscriptionCreatePolicy.AUTOMATIC) {
-                check(!subscriptionReconcileEnabled) {
-                    "subscriptionReconcileEnabled must be false with an AUTOMATIC subscriber — " + "automatic subscriptions can't be listed or deleted, so reconcile cannot manage them."
-                }
             }
             check(GoogleHealthUserRepository::class.java.isAssignableFrom(userRepository)) {
                 "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
