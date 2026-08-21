@@ -34,23 +34,23 @@ import org.radarbase.gateway.Config
 import org.radarbase.gateway.kafka.ProducerPool
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GOOGLE_HEALTH_QUALIFIER
 import org.radarbase.googlehealth.user.User
-import org.radarbase.googlehealth.converter.ActivityLevelGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.DailyRestingHeartRateGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.DailySleepTemperatureDerivationsGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.ExerciseGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.ElectrocardiogramGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.FloorsGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.IrregularRhythmNotificationGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthActivityLevelAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.HeartRateGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.HeartRateVariabilityGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.OxygenSaturationGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.RespiratoryRateSleepSummaryGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.SedentaryPeriodGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.SleepClassicGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.SleepStageGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.StepsGoogleHealthAvroConverter
-import org.radarbase.googlehealth.converter.TotalCaloriesGoogleHealthAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthDailyRestingHeartRateAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthDailySleepTemperatureDerivationsAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthElectrocardiogramAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthExerciseAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthFloorsAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthHeartRateAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthHeartRateVariabilityAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthIrregularRhythmNotificationAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthOxygenSaturationAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthRespiratoryRateSleepSummaryAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthSedentaryPeriodAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthSleepClassicAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthSleepStageAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthStepsAvroConverter
+import org.radarbase.googlehealth.converter.GoogleHealthTotalCaloriesAvroConverter
 import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
@@ -62,6 +62,7 @@ import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.radarbase.push.integration.google.tcx.TcxAvroConverter
 import org.radarbase.push.integration.google.tcx.TcxParser
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
@@ -292,8 +293,16 @@ class GoogleHealthApiService(
         val points = response["dataPoints"]?.takeIf { it.isArray } ?: return
         val records = mutableListOf<Pair<IndexedRecord, IndexedRecord>>()
         for (point in points) {
-            val exerciseId = (point["name"] ?: point["dataPointName"])?.asText()
-                ?.substringAfterLast('/')?.toLongOrNull() ?: continue
+            val idSegment = (point["name"] ?: point["dataPointName"])?.asText()
+                ?.substringAfterLast('/')
+                ?: throw IOException(
+                    "Exercise data point has no name or dataPointName to derive a log id from " +
+                        "for user=${user.versionedId}",
+                )
+            val exerciseId = idSegment.toLongOrNull()
+                ?: throw IOException(
+                    "Exercise data point log id '$idSegment' is not numeric for user=${user.versionedId}",
+                )
             val xml = exportExerciseTcx(user, exerciseId) ?: continue
             records += TcxAvroConverter.convert(TcxParser.parse(xml), exerciseId, user.observationKey)
         }
@@ -568,49 +577,49 @@ class GoogleHealthApiService(
     }
 
     private fun buildConverters(): Map<String, List<GoogleHealthAvroConverter>> = mapOf(
-        "steps" to listOf(StepsGoogleHealthAvroConverter(googleConfig.stepsTopicName)),
-        "floors" to listOf(FloorsGoogleHealthAvroConverter(googleConfig.floorsTopicName)),
+        "steps" to listOf(GoogleHealthStepsAvroConverter(googleConfig.stepsTopicName)),
+        "floors" to listOf(GoogleHealthFloorsAvroConverter(googleConfig.floorsTopicName)),
         "sedentary-period" to listOf(
-            SedentaryPeriodGoogleHealthAvroConverter(googleConfig.sedentaryPeriodTopicName),
+            GoogleHealthSedentaryPeriodAvroConverter(googleConfig.sedentaryPeriodTopicName),
         ),
         "activity-level" to listOf(
-            ActivityLevelGoogleHealthAvroConverter(googleConfig.activityLevelTopicName),
+            GoogleHealthActivityLevelAvroConverter(googleConfig.activityLevelTopicName),
         ),
-        "heart-rate" to listOf(HeartRateGoogleHealthAvroConverter(googleConfig.heartRateTopicName)),
+        "heart-rate" to listOf(GoogleHealthHeartRateAvroConverter(googleConfig.heartRateTopicName)),
         "heart-rate-variability" to listOf(
-            HeartRateVariabilityGoogleHealthAvroConverter(googleConfig.heartRateVariabilityTopicName),
+            GoogleHealthHeartRateVariabilityAvroConverter(googleConfig.heartRateVariabilityTopicName),
         ),
         "oxygen-saturation" to listOf(
-            OxygenSaturationGoogleHealthAvroConverter(googleConfig.oxygenSaturationTopicName),
+            GoogleHealthOxygenSaturationAvroConverter(googleConfig.oxygenSaturationTopicName),
         ),
         "total-calories" to listOf(
-            TotalCaloriesGoogleHealthAvroConverter(googleConfig.totalCaloriesTopicName),
+            GoogleHealthTotalCaloriesAvroConverter(googleConfig.totalCaloriesTopicName),
         ),
         "daily-resting-heart-rate" to listOf(
-            DailyRestingHeartRateGoogleHealthAvroConverter(googleConfig.dailyRestingHeartRateTopicName),
+            GoogleHealthDailyRestingHeartRateAvroConverter(googleConfig.dailyRestingHeartRateTopicName),
         ),
         "respiratory-rate-sleep-summary" to listOf(
-            RespiratoryRateSleepSummaryGoogleHealthAvroConverter(
+            GoogleHealthRespiratoryRateSleepSummaryAvroConverter(
                 googleConfig.respiratoryRateSleepSummaryTopicName,
             ),
         ),
         "daily-sleep-temperature-derivations" to listOf(
-            DailySleepTemperatureDerivationsGoogleHealthAvroConverter(
+            GoogleHealthDailySleepTemperatureDerivationsAvroConverter(
                 googleConfig.dailySleepTemperatureDerivationsTopicName,
             ),
         ),
         "sleep" to listOf(
-            SleepStageGoogleHealthAvroConverter(googleConfig.sleepStagesTopicName),
-            SleepClassicGoogleHealthAvroConverter(googleConfig.sleepClassicTopicName),
+            GoogleHealthSleepStageAvroConverter(googleConfig.sleepStagesTopicName),
+            GoogleHealthSleepClassicAvroConverter(googleConfig.sleepClassicTopicName),
         ),
         "exercise" to listOf(
-            ExerciseGoogleHealthAvroConverter(googleConfig.exerciseTopicName),
+            GoogleHealthExerciseAvroConverter(googleConfig.exerciseTopicName),
         ),
         "electrocardiogram" to listOf(
-            ElectrocardiogramGoogleHealthAvroConverter(googleConfig.electrocardiogramTopicName),
+            GoogleHealthElectrocardiogramAvroConverter(googleConfig.electrocardiogramTopicName),
         ),
         "irregular-rhythm-notification" to listOf(
-            IrregularRhythmNotificationGoogleHealthAvroConverter(googleConfig.irregularRhythmNotificationTopicName),
+            GoogleHealthIrregularRhythmNotificationAvroConverter(googleConfig.irregularRhythmNotificationTopicName),
         ),
     )
 
