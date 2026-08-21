@@ -66,6 +66,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
     val jacksonVersion: String by project
+    implementation(enforcedPlatform("com.fasterxml.jackson:jackson-bom:$jacksonVersion"))
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")

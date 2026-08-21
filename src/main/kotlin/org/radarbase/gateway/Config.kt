@@ -7,6 +7,8 @@ import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
+import org.radarbase.jersey.config.ConfigLoader.copyEnv
+import org.radarbase.jersey.config.ConfigLoader.copyOnChange
 import java.net.URI
 import java.time.Duration
 import java.time.Instant
@@ -32,12 +34,24 @@ data class Config(
         kafka.validate()
         pushIntegration.validate()
     }
+
+    fun withEnv() = this.copyOnChange(pushIntegration, {
+        it.withEnv()
+    }, {
+        copy(pushIntegration = it)
+    })
 }
 
 data class PushIntegrationConfig(
     val garmin: GarminConfig = GarminConfig(),
     val googlehealth: GoogleHealthConfig = GoogleHealthConfig(),
 ) {
+    fun withEnv() = this.copyOnChange(googlehealth, {
+        it.withEnv()
+    }, {
+        copy(googlehealth = it)
+    })
+
     fun validate() {
         garmin.validate()
         googlehealth.validate()
@@ -49,8 +63,7 @@ data class GarminConfig(
     val consumerKey: String = "",
     val consumerSecret: String = "",
     val backfill: BackfillConfig = BackfillConfig(),
-    val userRepositoryClass: String =
-        "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
+    val userRepositoryClass: String = "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
     val userRepositoryUrl: String = "http://localhost:8080/",
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
@@ -82,8 +95,7 @@ data class GarminConfig(
     fun validate() {
         if (enabled) {
             check(GarminUserRepository::class.java.isAssignableFrom(userRepository)) {
-                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
             }
         }
     }
@@ -114,20 +126,19 @@ data class BackfillConfig(
 )
 
 data class RedisConfig(
-    val uri: URI = URI("redis://localhost:6379"),
-    val lockPrefix: String = "radar-push-garmin/lock"
+    val uri: URI = URI("redis://localhost:6379"), val lockPrefix: String = "radar-push-garmin/lock"
 )
 
 data class UserBackfillConfig(
-    val userId: String,
-    val startDate: Instant,
-    val endDate: Instant
+    val userId: String, val startDate: Instant, val endDate: Instant
 )
+
+/** How Google creates per-user subscriptions for this deployment's subscriber. */
+enum class SubscriptionCreatePolicy { MANUAL, AUTOMATIC }
 
 data class GoogleHealthConfig(
     val enabled: Boolean = false,
-    val userRepositoryClass: String =
-        "org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository",
+    val userRepositoryClass: String = "org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository",
     val userRepositoryUrl: String = "http://localhost:8080/",
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
@@ -137,15 +148,17 @@ data class GoogleHealthConfig(
     val subscriberId: String = "radar-pep",
     val subscriberEndpointUri: String = "",
     val subscriberSecret: String = "",
-    val serviceAccountKeyPath: String = "",
+    val serviceAccountKeyPath: String? = null,
+    val subscriptionCreatePolicy: SubscriptionCreatePolicy = SubscriptionCreatePolicy.MANUAL,
+    val subscriptionReconcileEnabled: Boolean = true,
+    val subscriptionReconcileIntervalMinutes: Long = 5,
+    /**
+     * If a single deletion would delete more subscriptions than this, it skips
+     * deletion and alarms instead
+     */
+    val subscriptionReconcileMaxDeletesPerPass: Int = 50,
     val triggerDataTypes: List<String> = listOf(
-        "steps",
-        "sleep",
-        "exercise",
-        "daily-resting-heart-rate",
-        "total-calories",
-        "heart-rate",
-        "daily-sleep-temperature-derivations"
+        "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations"
     ),
     val enabledDataTypes: List<String> = listOf(
         "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
@@ -167,6 +180,10 @@ data class GoogleHealthConfig(
 ) {
     val userRepository: Class<*> = Class.forName(userRepositoryClass)
 
+    fun withEnv() = this.copyEnv("GOOGLE_HEALTH_SERVICE_ACCOUNT_PATH") {
+        copy(serviceAccountKeyPath = it)
+    }
+
     fun validate() {
         if (enabled) {
             check(googleCloudProjectId.isNotEmpty()) {
@@ -178,9 +195,13 @@ data class GoogleHealthConfig(
             check(subscriberSecret.isNotEmpty()) {
                 "subscriberSecret must be set when google health is enabled"
             }
+            if (subscriptionCreatePolicy == SubscriptionCreatePolicy.AUTOMATIC) {
+                check(!subscriptionReconcileEnabled) {
+                    "subscriptionReconcileEnabled must be false with an AUTOMATIC subscriber — " + "automatic subscriptions can't be listed or deleted, so reconcile cannot manage them."
+                }
+            }
             check(GoogleHealthUserRepository::class.java.isAssignableFrom(userRepository)) {
-                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
             }
         }
     }
@@ -193,10 +214,14 @@ data class GoogleHealthBackfillConfig(
         lockPrefix = "radar-push-googlehealth/lock",
     ),
     val maxThreads: Int = 4,
-    val maxBackfillPeriod: Duration = Duration.ofDays(365 * 2L),
+    val maxBackfillPeriod: Duration = Duration.ofDays(MAX_BACKFILL_DAYS),
     val chunkSizeDays: Long = 7,
     val iterationIntervalMinutes: Long = 10,
-)
+) {
+    companion object {
+        private const val MAX_BACKFILL_DAYS = 365 * 2L
+    }
+}
 
 data class GatewayServerConfig(
     /** Base URL to serve data with. This will determine the base path and the port. */
@@ -225,15 +250,13 @@ data class KafkaConfig(
     val serialization: Map<String, Any> = mapOf()
 ) {
     fun withDefaults(): KafkaConfig = copy(
-        producer = producerDefaults + producer,
-        admin = mutableMapOf<String, Any>().apply {
+        producer = producerDefaults + producer, admin = mutableMapOf<String, Any>().apply {
             producer[BOOTSTRAP_SERVERS_CONFIG]?.let {
                 this[BOOTSTRAP_SERVERS_CONFIG] = it
             }
             this += adminDefaults
             this += admin
-        },
-        serialization = serializationDefaults + serialization
+        }, serialization = serializationDefaults + serialization
     )
 
     fun validate() {
@@ -255,9 +278,7 @@ data class KafkaConfig(
             "delivery.timeout.ms" to 6000
         )
         private val adminDefaults = mapOf(
-            "default.api.timeout.ms" to 6000,
-            "request.timeout.ms" to 3000,
-            "retries" to 5
+            "default.api.timeout.ms" to 6000, "request.timeout.ms" to 3000, "retries" to 5
         )
 
         private val serializationDefaults = mapOf<String, Any>(

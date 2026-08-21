@@ -125,8 +125,7 @@ class GoogleHealthServiceUserRepository(
     }
 
     override fun deregisterUser(serviceUserId: String) {
-        val request =
-            requestFor("source-clients/$GOOGLEHEALTH_SOURCE/authorization/$serviceUserId")
+        val request = requestFor("source-clients/$GOOGLEHEALTH_SOURCE/authorization/$serviceUserId")
                 .method("DELETE", EMPTY_BODY).build()
         return makeRequest(request, null)
     }

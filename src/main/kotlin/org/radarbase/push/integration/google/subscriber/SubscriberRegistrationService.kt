@@ -1,20 +1,20 @@
-/*
- * Copyright 2026 King's College London
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/**
+* Copyright 2026 King's College London
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
-package org.radarbase.push.integration.google.service
+package org.radarbase.push.integration.google.subscriber
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.ws.rs.core.Context
@@ -23,14 +23,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.glassfish.jersey.server.monitoring.ApplicationEvent
-import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.DESTROY_FINISHED
-import org.glassfish.jersey.server.monitoring.ApplicationEvent.Type.INITIALIZATION_FINISHED
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener
 import org.glassfish.jersey.server.monitoring.RequestEvent
 import org.glassfish.jersey.server.monitoring.RequestEventListener
 import org.radarbase.gateway.Config
 import org.radarbase.push.integration.google.util.GoogleServiceAccountTokenProvider
 import org.slf4j.LoggerFactory
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.collections.get
 
 /**
  * Registers a Google Health webhook subscriber at application startup.
@@ -46,13 +47,15 @@ class SubscriberRegistrationService(
     private val projectId = ghConfig.googleCloudProjectId
     private val subscriberId = ghConfig.subscriberId
     private val baseUrl = ghConfig.apiBaseUrl
+    private val scheduler = Executors.newSingleThreadScheduledExecutor()
 
     override fun onEvent(event: ApplicationEvent?) {
         when (event?.type) {
-            INITIALIZATION_FINISHED -> registerSubscriber()
-            DESTROY_FINISHED -> {
+            ApplicationEvent.Type.INITIALIZATION_FINISHED -> scheduleRegistration()
+            ApplicationEvent.Type.DESTROY_FINISHED -> {
+                scheduler.shutdownNow()
                 // Intentionally not unsubscribing on shutdown. Keeping the subscription alive across
-                // restarts avoids a window where PINGs would be missed. If operators need to remove the subscriber.
+                // restarts avoids a window where PINGs would be missed.
                 logger.info("Application shutting down — subscriber {} left active", subscriberId)
             }
             else -> { /* no-op */ }
@@ -61,7 +64,7 @@ class SubscriberRegistrationService(
 
     override fun onRequest(requestEvent: RequestEvent?): RequestEventListener? = null
 
-    private fun registerSubscriber() {
+    private fun scheduleRegistration() {
         if (!tokenProvider.isConfigured) {
             logger.warn(
                 "Service account not configured -- skipping subscriber registration. " +
@@ -69,20 +72,57 @@ class SubscriberRegistrationService(
             )
             return
         }
-        try {
-            val accessToken = tokenProvider.getAccessToken()
-            val existing = getSubscriber(accessToken)
-            if (existing == null) {
-                createSubscriber(accessToken)
-            } else {
-                maybeUpdateSubscriber(existing, accessToken)
+        logger.info(
+            "Scheduling subscriber {} registration in {}s (waiting for the HTTP server to accept requests).",
+            subscriberId, REGISTRATION_INITIAL_DELAY_SECONDS,
+        )
+        scheduler.schedule(::registerWithRetry, REGISTRATION_INITIAL_DELAY_SECONDS, TimeUnit.SECONDS)
+    }
+
+    /**
+     * Ensures the subscriber exists, retrying a few times. The first attempt can fail because Google's
+     * create-time verification handshake reaches us before the server is fully ready,
+     * so we retry with a fixed delay rather than give up after one shot.
+     */
+    private fun registerWithRetry() {
+        for (attempt in 1..MAX_REGISTRATION_ATTEMPTS) {
+            val ok = try {
+                ensureSubscriber()
+            } catch (ex: Exception) {
+                logger.warn(
+                    "Subscriber {} registration attempt {}/{} errored",
+                    subscriberId, attempt, MAX_REGISTRATION_ATTEMPTS, ex,
+                )
+                false
             }
-        } catch (e: Exception) {
-            logger.error(
-                "Failed to register subscriber {} — PINGs will not be received until " +
-                    "the issue is resolved and PEP is restarted: {}",
-                subscriberId, e.message, e,
-            )
+            if (ok) {
+                logger.info("Subscriber {} ensured (attempt {}/{})", subscriberId, attempt, MAX_REGISTRATION_ATTEMPTS)
+                return
+            }
+            if (attempt < MAX_REGISTRATION_ATTEMPTS) {
+                try {
+                    TimeUnit.SECONDS.sleep(REGISTRATION_RETRY_DELAY_SECONDS)
+                } catch (ex: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return
+                }
+            }
+        }
+        logger.error(
+            "Subscriber {} could not be ensured after {} attempts. PINGs will not be received until the issue is" +
+                " resolved and the Push Endpoint is restarted.",
+            subscriberId, MAX_REGISTRATION_ATTEMPTS,
+        )
+    }
+
+    /** Creates or updates the subscriber. Returns true when it is in the desired state. */
+    private fun ensureSubscriber(): Boolean {
+        val accessToken = tokenProvider.getAccessToken()
+        val existing = getSubscriber(accessToken)
+        return if (existing == null) {
+            createSubscriber(accessToken)
+        } else {
+            maybeUpdateSubscriber(existing, accessToken)
         }
     }
 
@@ -110,7 +150,7 @@ class SubscriberRegistrationService(
         }
     }
 
-    private fun createSubscriber(accessToken: String) {
+    private fun createSubscriber(accessToken: String): Boolean {
         logger.info("Creating subscriber {} for project {}", subscriberId, projectId)
         val url = "$baseUrl/projects/$projectId/subscribers?subscriberId=$subscriberId"
         val payload = buildSubscriberPayload()
@@ -125,18 +165,23 @@ class SubscriberRegistrationService(
             val respBody = response.body?.string()
             if (response.isSuccessful) {
                 logger.info("Subscriber(ID: {}) created. Listening on {}", subscriberId, ghConfig.subscriberEndpointUri)
-            } else {
-                logger.error(
-                    "Failed to create subscriber {}: HTTP {} - {}. " +
-                        "If subscriberEndpointUri ({}) does not match the live deployment, " +
-                        "Google will reject the verification handshake.",
-                    subscriberId, response.code, respBody, ghConfig.subscriberEndpointUri,
-                )
+                return true
             }
+            if (response.code == 409) {
+                logger.info("Subscriber {} already exists (HTTP 409) — treating as success", subscriberId)
+                return true
+            }
+            logger.error(
+                "Failed to create subscriber {}: HTTP {} - {}. " +
+                    "If subscriberEndpointUri ({}) does not match the live deployment, " +
+                    "Google will reject the verification handshake.",
+                subscriberId, response.code, respBody, ghConfig.subscriberEndpointUri,
+            )
+            return false
         }
     }
 
-    private fun maybeUpdateSubscriber(existing: Map<*, *>, accessToken: String) {
+    private fun maybeUpdateSubscriber(existing: Map<*, *>, accessToken: String): Boolean {
         val existingUri = existing["endpointUri"] as? String
         val desiredUri = ghConfig.subscriberEndpointUri
 
@@ -148,12 +193,11 @@ class SubscriberRegistrationService(
 
         if (!needsUpdate) {
             logger.info("Subscriber {} already exists and is up-to-date — state ACTIVE", subscriberId)
-            return
+            return true
         }
 
-        logger.info("Subscriber {} exists but needs update — patching", subscriberId)
-        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId" +
-            "?updateMask=endpointUri,subscriberConfigs"
+        logger.info("Subscriber {} exists but needs update", subscriberId)
+        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId?updateMask=endpointUri,subscriberConfigs"
         val payload = mapOf(
             "endpointUri" to desiredUri,
             "subscriberConfigs" to desiredConfigs,
@@ -168,13 +212,14 @@ class SubscriberRegistrationService(
         httpClient.newCall(request).execute().use { response ->
             val respBody = response.body?.string()
             if (response.isSuccessful) {
-                logger.info("Subscriber {} patched successfully — state ACTIVE", subscriberId)
-            } else {
-                logger.error(
-                    "Failed to patch subscriber {}: HTTP {} — {}",
-                    subscriberId, response.code, respBody,
-                )
+                logger.info("Subscriber {} patched successfully", subscriberId)
+                return true
             }
+            logger.error(
+                "Failed to patch subscriber {}: HTTP {} — {}",
+                subscriberId, response.code, respBody,
+            )
+            return false
         }
     }
 
@@ -190,7 +235,7 @@ class SubscriberRegistrationService(
     private fun buildSubscriberConfigs(): List<Map<String, Any>> = listOf(
         mapOf(
             "dataTypes" to ghConfig.triggerDataTypes,
-            "subscriptionCreatePolicy" to "AUTOMATIC",
+            "subscriptionCreatePolicy" to ghConfig.subscriptionCreatePolicy.name,
         )
     )
 
@@ -199,12 +244,16 @@ class SubscriberRegistrationService(
         desired: List<Map<String, Any>>,
     ): Boolean {
         if (existing == null || existing.size != desired.size) return false
-        val existingDataTypes = existing.firstOrNull()?.get("dataTypes")
-        val desiredDataTypes = desired.firstOrNull()?.get("dataTypes")
-        return existingDataTypes == desiredDataTypes
+        val existingConfig = existing.firstOrNull()
+        val desiredConfig = desired.firstOrNull()
+        return existingConfig?.get("dataTypes") == desiredConfig?.get("dataTypes") &&
+            existingConfig?.get("subscriptionCreatePolicy") == desiredConfig?.get("subscriptionCreatePolicy")
     }
 
     companion object {
+        private const val REGISTRATION_INITIAL_DELAY_SECONDS = 60L
+        private const val REGISTRATION_RETRY_DELAY_SECONDS = 30L
+        private const val MAX_REGISTRATION_ATTEMPTS = 3
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
         private val logger = LoggerFactory.getLogger(SubscriberRegistrationService::class.java)
     }

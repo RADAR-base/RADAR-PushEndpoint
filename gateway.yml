@@ -39,24 +39,41 @@ pushIntegration:
                 # Key prefix for locks
                 lockPrefix: radar-push-garmin/lock/
     googlehealth:
-        enabled: false
+        enabled: true
+
+        # --- RADAR REST-source-auth (user repository) ---
+        userRepositoryClass: org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository
         userRepositoryUrl: http://rest-source-auth:8080/rest-sources/backend/
         userRepositoryClientId: radar_pushendpoint
         userRepositoryClientSecret: ""
         userRepositoryTokenUrl: http://rest-source-auth:8080/rest-sources/backend/token/
-        googleCloudProjectId:
-        subscriberId:
-        subscriberEndpointUri:
-        subscriberSecret: ""   # set to a 32+ byte random string; Google sends this back as Authorization
+
+        # --- Google Health API ---
+        apiBaseUrl: https://health.googleapis.com/v4
+        googleCloudProjectId: ""
+
+        # --- Subscriber ---
+        subscriberId: radar-pushendpoint-<deployment>-<study> # MUST be unique per deployment (and maybe study) (e.g. radar-pep-stage)
+        subscriberEndpointUri: https://push-endpoint:8090/push/integrations/googlehealth/notifications
+        subscriberSecret: ""   # 32+ byte random string; Google echoes it back as the Authorization header
+        serviceAccountKeyPath: ""      # REQUIRED — path to the Google service-account JSON. Empty/missing => subscriber registration AND reconcile do not run.
+
+        # --- Per-user subscription reconcile ---
+        subscriptionCreatePolicy: MANUAL                 # default; MANUAL is what we want. AUTOMATIC would require subscriptionReconcileEnabled: false
+        subscriptionReconcileEnabled: true
+        subscriptionReconcileIntervalMinutes: 5
+        subscriptionReconcileMaxDeletesPerPass: 50       # skip + alarm if one pass would delete more than this (0 disables the cap)
+
+        # Data types that drive PINGs (the subscriber config + each per-user subscription subscribe to these)
         triggerDataTypes:
             - steps
             - sleep
             - exercise
             - daily-resting-heart-rate
-            - total-calories
             - heart-rate
             - daily-sleep-temperature-derivations
 
+        # All data types fetched/produced (superset of triggerDataTypes; non-trigger ones are caught up via the offset cursor)
         enabledDataTypes:
             - steps
             - heart-rate
@@ -69,12 +86,12 @@ pushIntegration:
             - sleep
             - exercise
 
+        # --- Historical backfill ---
         backfill:
             enabled: true
             redis:
                 uri: redis://redis:6379
                 lockPrefix: radar-push-googlehealth/lock
             maxThreads: 4
-            maxBackfillPeriod: P730D
             chunkSizeDays: 7
             iterationIntervalMinutes: 10
