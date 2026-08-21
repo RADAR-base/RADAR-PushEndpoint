@@ -387,13 +387,14 @@ class GoogleHealthApiService(
             }
 
             TimeAxis.DAILY -> {
-                val startDate = window.first.atZone(java.time.ZoneOffset.UTC).toLocalDate()
-
                 /**
-                 * Google supports `>=` and `<` only for daily date filters. Advance endDate by one day so a same-day window still matches.
-                 * A PING interval that lives within 2026-04-17 becomes `date >= "2026-04-17" AND date < "2026-04-18"`.
+                 * Daily-summary types are filtered by `.date`, which Google stores as the calendar
+                 * date in the user's own timezone (civil date), not UTC. Derive the date in the
+                 * user's zone so a sync near local midnight maps to the right day.
                  */
-                val endDate = window.second.atZone(java.time.ZoneOffset.UTC).toLocalDate().plusDays(1)
+                val zone = userZoneId(user)
+                val startDate = window.first.atZone(zone).toLocalDate()
+                val endDate = window.second.atZone(zone).toLocalDate().plusDays(1)
                 "$stem.date >= \"$startDate\" AND $stem.date < \"$endDate\""
             }
         }

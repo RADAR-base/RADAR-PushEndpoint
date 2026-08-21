@@ -73,7 +73,8 @@ class GoogleHealthAuthValidator(
             return handleHandshake(token, request)
         }
 
-        // Not a handshake => a data push. Authenticate before doing any work on the payload.
+        // Not a handshake => a data push. Authenticate before doing any work on the payload: both the
+        // shared bearer secret and Google's cryptographic webhook signature must check out.
         verifyBearer(token)
 
         if (tree != null) {

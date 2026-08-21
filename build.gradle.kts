@@ -63,6 +63,9 @@ dependencies {
 
     implementation("com.google.auth:google-auth-library-oauth2-http:${project.property("googleAuthVersion")}")
 
+    val tinkVersion: String by project
+    implementation("com.google.crypto.tink:tink:$tinkVersion")
+
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
     val jacksonVersion: String by project
@@ -71,6 +74,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jacksonVersion")
 
     val grizzlyVersion: String by project
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
