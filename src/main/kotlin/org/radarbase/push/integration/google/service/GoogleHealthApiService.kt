@@ -103,7 +103,7 @@ class GoogleHealthApiService(
             return
         }
         val freshIntervals = ping.intervals.filter { interval ->
-            val dedupKey = dedupKeyFor(ping.healthUserId, interval)
+            val dedupKey = dedupKeyFor(ping.healthUserId, ping.dataType, interval)
             dedup.claim(dedupKey).also { claimed ->
                 if (!claimed) logger.info(
                     "Skipping duplicate PING interval {} for user {}", dedupKey, ping.healthUserId
@@ -204,8 +204,13 @@ class GoogleHealthApiService(
             }
     }
 
-    private fun dedupKeyFor(healthUserId: String, interval: PingInterval): String =
-        "$healthUserId:${interval.physicalStartTime}:${interval.physicalEndTime}"
+    /**
+     * A PING carries exactly one data type, and one push delivers a PING per changed type. The same
+     * user and interval therefore arrive legitimately once per data type, so the type belongs in the
+     * key -- without it the first type claims the interval and the rest are dropped as duplicates.
+     */
+    private fun dedupKeyFor(healthUserId: String, dataType: String, interval: PingInterval): String =
+        "$healthUserId:$dataType:${interval.physicalStartTime}:${interval.physicalEndTime}"
 
     private fun liveRouteFor(dataType: String): String = "$LIVE_ROUTE_PREFIX$dataType"
 
@@ -491,10 +496,9 @@ class GoogleHealthApiService(
     }
 
     private fun timeAxisFor(dataType: String): TimeAxis = when (dataType) {
-        "steps", "altitude", "distance", "floors", "total-calories" -> TimeAxis.INTERVAL
-        "sedentary-period", "activity-level" -> TimeAxis.INTERVAL
+        "steps", "altitude", "distance", "floors", "total-calories", "sedentary-period",
+        "activity-level", "irregular-rhythm-notification" -> TimeAxis.INTERVAL
         "exercise" -> TimeAxis.CIVIL_INTERVAL
-        "irregular-rhythm-notification" -> TimeAxis.INTERVAL
         "electrocardiogram" -> TimeAxis.ECG_START
         "sleep" -> TimeAxis.SLEEP_INTERVAL
         "heart-rate", "heart-rate-variability", "oxygen-saturation", "respiratory-rate-sleep-summary", "weight", "body-fat" -> TimeAxis.SAMPLE
