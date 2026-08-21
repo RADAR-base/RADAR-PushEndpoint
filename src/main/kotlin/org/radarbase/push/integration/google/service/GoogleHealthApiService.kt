@@ -56,6 +56,8 @@ import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
@@ -76,6 +78,7 @@ class GoogleHealthApiService(
     )
     private val dedup = GoogleHealthPingDedup(ttl = DEDUP_TTL)
     private val userSemaphores = ConcurrentHashMap<String, Semaphore>()
+    private val userZones = ConcurrentHashMap<String, CachedZone>()
     private val apiBaseUrl: HttpUrl = normalizedBaseUrl(googleConfig.apiBaseUrl)
 
     private val converters: Map<String, List<GoogleHealthAvroConverter>> = buildConverters()
@@ -243,7 +246,7 @@ class GoogleHealthApiService(
         window: Pair<Instant, Instant>,
         pageToken: String?,
     ): JsonNode {
-        val filter = buildFilterExpression(dataType, window)
+        val filter = buildFilterExpression(user, dataType, window)
         val urlBuilder = apiBaseUrl.newBuilder().addPathSegments("users/me/dataTypes/$dataType/dataPoints:reconcile")
             .addQueryParameter("dataSourceFamily", "users/me/dataSourceFamilies/google-wearables")
             .addQueryParameter("filter", filter).addQueryParameter("pageSize", PAGE_SIZE.toString())
@@ -365,7 +368,7 @@ class GoogleHealthApiService(
         }
     }
 
-    private fun buildFilterExpression(dataType: String, window: Pair<Instant, Instant>): String {
+    private fun buildFilterExpression(user: User, dataType: String, window: Pair<Instant, Instant>): String {
         val stem = dataType.replace('-', '_')
         val startText = ISO_FMT.format(window.first)
         val endText = ISO_FMT.format(window.second)
@@ -377,8 +380,9 @@ class GoogleHealthApiService(
             TimeAxis.SAMPLE -> "$stem.sample_time.physical_time >= \"$startText\" AND $stem.sample_time.physical_time < \"$endText\""
 
             TimeAxis.CIVIL_INTERVAL -> {
-                val civilStart = CIVIL_DT_FMT.format(window.first)
-                val civilEnd = CIVIL_DT_FMT.format(window.second)
+                val civilFmt = CIVIL_DT_FMT.withZone(userZoneId(user))
+                val civilStart = civilFmt.format(window.first)
+                val civilEnd = civilFmt.format(window.second)
                 "$stem.interval.civil_start_time >= \"$civilStart\" AND $stem.interval.civil_start_time < \"$civilEnd\""
             }
 
@@ -402,6 +406,55 @@ class GoogleHealthApiService(
         "heart-rate", "heart-rate-variability", "oxygen-saturation", "respiratory-rate-sleep-summary", "weight", "body-fat" -> TimeAxis.SAMPLE
         "daily-resting-heart-rate", "daily-sleep-temperature-derivations" -> TimeAxis.DAILY
         else -> TimeAxis.INTERVAL
+    }
+
+    /**
+     * The user's time zone, read once from `users/me/settings` and cached. Needed to convert
+     * physical (UTC) instants into the civil local-clock bounds that exercise's `civil_start_time`
+     * filter expects. A ZoneId (not the settings' fixed `utcOffset`) resolves the correct offset
+     * for each instant, keeping historical backfill correct.
+     */
+    private fun userZoneId(user: User): ZoneId {
+        userZones[user.id]?.let { if (!it.isExpired()) return it.zone }
+        val zone = try {
+            fetchUserZone(user)
+        } catch (ex: Exception) {
+            logger.warn(
+                "Could not read Google Health settings for user={}; civil filter falls back to UTC",
+                user.versionedId, ex,
+            )
+            null
+        }
+        return if (zone != null) {
+            userZones[user.id] = CachedZone(zone, Instant.now().plus(SETTINGS_CACHE_TTL))
+            zone
+        } else {
+            ZoneOffset.UTC
+        }
+    }
+
+    private fun fetchUserZone(user: User): ZoneId? {
+        val url = apiBaseUrl.newBuilder().addPathSegments("users/me/settings").build()
+        val settings = executeWithRetry(user) { token ->
+            Request.Builder().url(url)
+                .header("Authorization", "Bearer $token")
+                .header("Accept", "application/json")
+                .get()
+                .build()
+        }
+        return parseUserZone(settings)
+    }
+
+    private fun parseUserZone(settings: JsonNode): ZoneId? {
+        settings["timeZone"]?.asText()?.takeIf { it.isNotBlank() }?.let { tz ->
+            runCatching { ZoneId.of(tz) }.getOrNull()?.let { return it }
+        }
+        settings["utcOffset"]?.asText()?.takeIf { it.isNotBlank() }?.let { raw ->
+            raw.trim().removeSuffix("s").toLongOrNull()?.let { secs ->
+                runCatching { ZoneOffset.ofTotalSeconds(secs.toInt()) }.getOrNull()?.let { return it }
+            }
+        }
+        return null
     }
 
     private fun resolveUser(healthUserId: String): User? {
@@ -471,6 +524,10 @@ class GoogleHealthApiService(
     private fun normalizedBaseUrl(raw: String) = if (raw.endsWith("/")) raw.toHttpUrl() else "$raw/".toHttpUrl()
 
     companion object {
+        private data class CachedZone(val zone: ZoneId, val expiresAt: Instant) {
+            fun isExpired(): Boolean = Instant.now().isAfter(expiresAt)
+        }
+
         private enum class TimeAxis { INTERVAL, CIVIL_INTERVAL, SLEEP_INTERVAL, SAMPLE, DAILY }
 
         private val logger = LoggerFactory.getLogger(GoogleHealthApiService::class.java)
@@ -492,7 +549,8 @@ class GoogleHealthApiService(
         const val CUTOFF_ROUTE = "gh:_historical_cutoff"
 
         private val DEDUP_TTL: Duration = Duration.ofMinutes(5)
-        private val OVERLAP: Duration = Duration.ofMinutes(2)
+        private val SETTINGS_CACHE_TTL: Duration = Duration.ofHours(6)
+        private val OVERLAP: Duration = Duration.ofSeconds(10)
         private val CATCHUP_CHUNK: Duration = Duration.ofDays(1)
         private val CUTOFF_LAG: Duration = Duration.ofHours(1)
         private val RATE_LIMIT_INITIAL_BACKOFF: Duration = Duration.ofSeconds(30)
