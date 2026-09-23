@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import jakarta.inject.Singleton
 import jakarta.ws.rs.ext.ContextResolver
 import okhttp3.FormBody
 import okhttp3.Interceptor
@@ -16,6 +17,8 @@ import org.glassfish.jersey.server.ResourceConfig
 import org.radarbase.jersey.auth.filter.AuthenticationFilter
 import org.radarbase.jersey.auth.filter.AuthorizationFeature
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
+import org.radarbase.jersey.service.AsyncCoroutineService
+import org.radarbase.jersey.service.ScopedAsyncCoroutineService
 import java.util.concurrent.TimeUnit
 
 class RadarResourceEnhancer: JerseyResourceEnhancer {
@@ -63,5 +66,10 @@ class RadarResourceEnhancer: JerseyResourceEnhancer {
 
         bind(mapper)
             .to(ObjectMapper::class.java)
+
+        // Required by radar-jersey's HealthResource since radar-jersey 0.11 (normally bound by Enhancers.radar()).
+        bind(ScopedAsyncCoroutineService::class.java)
+            .to(AsyncCoroutineService::class.java)
+            .`in`(Singleton::class.java)
     }
 }
