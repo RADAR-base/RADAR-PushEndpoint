@@ -1,5 +1,5 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import org.jetbrains.kotlin.cli.common.toBooleanLenient
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Duration
 
@@ -98,10 +98,8 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        apiVersion = "1.8"
-        languageVersion = "1.8"
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -207,4 +205,13 @@ tasks.withType<DependencyUpdatesTask> {
 
 tasks.wrapper {
     gradleVersion = "8.3"
+}
+
+// Local copy of org.jetbrains.kotlin.cli.common.toBooleanLenient, which is no longer on the
+// build script classpath since Kotlin Gradle Plugin 2.x.
+fun String?.toBooleanLenient(): Boolean? = when (this?.lowercase()) {
+    null -> false
+    in listOf("", "yes", "true", "on", "y") -> true
+    in listOf("no", "false", "off", "n") -> false
+    else -> null
 }
