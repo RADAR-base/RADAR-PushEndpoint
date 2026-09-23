@@ -40,11 +40,19 @@ dependencies {
 
     val radarCommonsVersion: String by project
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
+    implementation("org.radarbase:radar-commons-kotlin:$radarCommonsVersion")
+    // radar-commons 1.x no longer brings in OkHttp; it is used directly for the Garmin API.
+    val okhttp3Version: String by project
+    implementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
+    // Schema registry client (radar-commons 1.x SchemaRetriever uses Ktor).
+    val ktorVersion: String by project
+    implementation(platform("io.ktor:ktor-bom:$ktorVersion"))
+    implementation("io.ktor:ktor-client-cio")
+    implementation("io.ktor:ktor-client-auth")
     val radarJerseyVersion: String by project
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
     val guavaVersion: String by project
     implementation("com.google.guava:guava:$guavaVersion")
-    val ktorVersion: String by project
     integrationTestImplementation("io.ktor:ktor-client-core:$ktorVersion")
     integrationTestImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     integrationTestImplementation(platform("io.ktor:ktor-bom:$ktorVersion"))
@@ -80,7 +88,6 @@ dependencies {
     implementation("redis.clients:jedis:$jedisVersion")
 
     val junitVersion: String by project
-    val okhttp3Version: String by project
     val radarSchemasVersion: String by project
     implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 

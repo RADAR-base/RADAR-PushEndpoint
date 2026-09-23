@@ -4,7 +4,7 @@ import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.UriInfo
 import org.glassfish.hk2.api.IterableProvider
-import org.radarbase.jersey.auth.Auth
+import org.radarbase.auth.token.RadarToken
 import org.radarbase.jersey.auth.AuthValidator
 
 class DelegatedAuthValidator(
@@ -29,7 +29,7 @@ class DelegatedAuthValidator(
         const val GARMIN_QUALIFIER = "garmin"
     }
 
-    override fun verify(token: String, request: ContainerRequestContext): Auth? =
+    override fun verify(token: String, request: ContainerRequestContext): RadarToken? =
         delegate().verify(token, request)
 
     override fun getToken(request: ContainerRequestContext): String? = delegate().getToken(request)

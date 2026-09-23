@@ -23,7 +23,7 @@ class RadarResourceEnhancer: JerseyResourceEnhancer {
     var mapper: ObjectMapper = ObjectMapper()
         .setSerializationInclusion(JsonInclude.Include.NON_NULL)
         .registerModule(JavaTimeModule())
-        .registerModule(KotlinModule())
+        .registerModule(KotlinModule.Builder().build())
         .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
