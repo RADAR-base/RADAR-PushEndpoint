@@ -105,6 +105,8 @@ dependencies {
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    // Gradle 9 no longer adds the JUnit Platform launcher to the test runtime classpath.
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
 
     testImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
@@ -221,7 +223,7 @@ tasks.withType<DependencyUpdatesTask> {
 }
 
 tasks.wrapper {
-    gradleVersion = "8.3"
+    gradleVersion = "9.6.0"
 }
 
 // Local copy of org.jetbrains.kotlin.cli.common.toBooleanLenient, which is no longer on the
