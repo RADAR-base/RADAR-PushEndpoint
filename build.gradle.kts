@@ -34,6 +34,15 @@ val integrationTestImplementation: Configuration by configurations.getting {
 
 configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 
+
+// org.lz4:lz4-java (e.g. from Confluent's kafka-clients) and at.yawk.lz4:lz4-java provide the same capability;
+// use the maintained fork everywhere.
+val lzVersion: String by project
+configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("org.lz4:lz4-java")).using(module("at.yawk.lz4:lz4-java:$lzVersion"))
+    }
+}
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
@@ -61,8 +70,9 @@ dependencies {
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
-    val lzVersion: String by project
-    implementation("net.jpountz.lz4:lz4:$lzVersion")
+    // LZ4 compression for the Kafka producer. net.jpountz.lz4:lz4 (1.3.0, CVE-2025-12183 and others) was
+    // discontinued; at.yawk.lz4:lz4-java is its maintained continuation, with the same net.jpountz.lz4 classes.
+    implementation("at.yawk.lz4:lz4-java:$lzVersion")
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
