@@ -11,7 +11,7 @@ import org.radarbase.jersey.config.ConfigLoader
 import org.radarbase.jersey.filter.Filters
 import org.radarbase.jersey.enhancer.JerseyResourceEnhancer
 import org.radarbase.jersey.service.HealthService
-import org.radarbase.producer.rest.SchemaRetriever
+import org.radarbase.producer.schema.SchemaRetriever
 
 class GatewayResourceEnhancer(private val config: Config): JerseyResourceEnhancer {
 

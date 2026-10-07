@@ -1,5 +1,5 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import org.jetbrains.kotlin.cli.common.toBooleanLenient
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Duration
 
@@ -34,17 +34,34 @@ val integrationTestImplementation: Configuration by configurations.getting {
 
 configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 
+
+// org.lz4:lz4-java (e.g. from Confluent's kafka-clients) and at.yawk.lz4:lz4-java provide the same capability;
+// use the maintained fork everywhere.
+val lzVersion: String by project
+configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("org.lz4:lz4-java")).using(module("at.yawk.lz4:lz4-java:$lzVersion"))
+    }
+}
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
 
     val radarCommonsVersion: String by project
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
+    implementation("org.radarbase:radar-commons-kotlin:$radarCommonsVersion")
+    // radar-commons 1.x no longer brings in OkHttp; it is used directly for the Garmin API.
+    val okhttp3Version: String by project
+    implementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
+    // Schema registry client (radar-commons 1.x SchemaRetriever uses Ktor).
+    val ktorVersion: String by project
+    implementation(platform("io.ktor:ktor-bom:$ktorVersion"))
+    implementation("io.ktor:ktor-client-cio")
+    implementation("io.ktor:ktor-client-auth")
     val radarJerseyVersion: String by project
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
     val guavaVersion: String by project
     implementation("com.google.guava:guava:$guavaVersion")
-    val ktorVersion: String by project
     integrationTestImplementation("io.ktor:ktor-client-core:$ktorVersion")
     integrationTestImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     integrationTestImplementation(platform("io.ktor:ktor-bom:$ktorVersion"))
@@ -53,8 +70,9 @@ dependencies {
 
     implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
-    val lzVersion: String by project
-    implementation("net.jpountz.lz4:lz4:$lzVersion")
+    // LZ4 compression for the Kafka producer. net.jpountz.lz4:lz4 (1.3.0, CVE-2025-12183 and others) was
+    // discontinued; at.yawk.lz4:lz4-java is its maintained continuation, with the same net.jpountz.lz4 classes.
+    implementation("at.yawk.lz4:lz4-java:$lzVersion")
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
@@ -80,7 +98,6 @@ dependencies {
     implementation("redis.clients:jedis:$jedisVersion")
 
     val junitVersion: String by project
-    val okhttp3Version: String by project
     val radarSchemasVersion: String by project
     implementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
 
@@ -88,6 +105,8 @@ dependencies {
     testImplementation("com.nhaarman.mockitokotlin2:mockito-kotlin:[2.2,3.0)")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttp3Version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    // Gradle 9 no longer adds the JUnit Platform launcher to the test runtime classpath.
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
 
     testImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
@@ -98,10 +117,8 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        apiVersion = "1.8"
-        languageVersion = "1.8"
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -206,5 +223,14 @@ tasks.withType<DependencyUpdatesTask> {
 }
 
 tasks.wrapper {
-    gradleVersion = "8.3"
+    gradleVersion = "9.6.0"
+}
+
+// Local copy of org.jetbrains.kotlin.cli.common.toBooleanLenient, which is no longer on the
+// build script classpath since Kotlin Gradle Plugin 2.x.
+fun String?.toBooleanLenient(): Boolean? = when (this?.lowercase()) {
+    null -> false
+    in listOf("", "yes", "true", "on", "y") -> true
+    in listOf("no", "false", "off", "n") -> false
+    else -> null
 }

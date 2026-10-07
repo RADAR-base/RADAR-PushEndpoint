@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.inject.Named
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.core.Context
-import org.radarbase.jersey.auth.Auth
+import org.radarbase.auth.token.DataRadarToken
+import org.radarbase.auth.token.RadarToken
 import org.radarbase.jersey.auth.AuthValidator
-import org.radarbase.jersey.auth.disabled.DisabledAuth
 import org.radarbase.jersey.exception.HttpUnauthorizedException
 import org.radarbase.push.integration.common.auth.DelegatedAuthValidator.Companion.GARMIN_QUALIFIER
 import org.radarbase.push.integration.common.user.User
@@ -24,7 +24,7 @@ class GarminAuthValidator(
 
     private var nextRetry: Instant = Instant.MIN
 
-    override fun verify(token: String, request: ContainerRequestContext): Auth {
+    override fun verify(token: String, request: ContainerRequestContext): RadarToken {
         return if (token.isBlank()) {
             throw HttpUnauthorizedException("invalid_token", "The token was empty")
         } else {
@@ -64,7 +64,14 @@ class GarminAuthValidator(
             request.removeProperty("tree")
 
             // Disable auth since we don't have proper auth support
-            DisabledAuth("res_gateway")
+            DataRadarToken(
+                audience = listOf("res_gateway"),
+                expiresAt = Instant.MAX,
+                roles = setOf(),
+                scopes = setOf(),
+                grantType = "disabled",
+                username = "anonymous",
+            )
         }
     }
 

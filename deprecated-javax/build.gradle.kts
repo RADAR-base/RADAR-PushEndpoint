@@ -1,6 +1,6 @@
 
 plugins {
-    id("com.github.johnrengelman.shadow") version "7.0.0"
+    id("com.gradleup.shadow") version "9.6.1"
     java
 }
 
@@ -9,6 +9,11 @@ repositories {
 }
 
 dependencies {
+    val lzVersion: String by project
+    constraints {
+        // kafka-clients pulls in lz4-java 1.10.1 (CVE-2026-59949).
+        implementation("at.yawk.lz4:lz4-java:$lzVersion")
+    }
     val kafkaVersion: String by project
     implementation("org.apache.kafka:kafka-clients:$kafkaVersion") {
         isTransitive = true
