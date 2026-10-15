@@ -39,7 +39,6 @@ class GoogleHealthCivilFilterTest {
 
     @Test
     fun `exercise filters on the local start time of the session`() {
-        // returned nothing. This filter returns the ride.
         assertEquals(
             "exercise.interval.civil_start_time >= \"2026-06-03T20:23:36\" AND " +
                 "exercise.interval.civil_start_time < \"2026-06-03T20:47:49\"",
