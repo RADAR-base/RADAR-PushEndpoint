@@ -90,6 +90,7 @@ class GoogleHealthApiService(
     )
     private val dedup = GoogleHealthPingDedup(ttl = DEDUP_TTL)
     private val userSemaphores = ConcurrentHashMap<String, Semaphore>()
+    private val catchUpLocks = ConcurrentHashMap<String, Any>()
     private val userZones = ConcurrentHashMap<String, CachedZone>()
     private val apiBaseUrl: HttpUrl = normalizedBaseUrl(googleConfig.apiBaseUrl)
 
@@ -154,14 +155,18 @@ class GoogleHealthApiService(
 
         if (nonSubscribedTypes.isEmpty()) return
         val target = intervals.mapNotNull { widenInterval(it)?.second }.maxOrNull() ?: return
-        for (dataType in nonSubscribedTypes) {
-            try {
-                catchUpFetch(user, dataType, target)
-            } catch (ex: Exception) {
-                logger.error(
-                    "Catch-up fetch failed for {} user={} target={}",
-                    dataType, user.versionedId, target, ex,
-                )
+        // One catch-up at a time per user. Each reads the stored offset only once it holds the lock, so
+        // notifications that arrive together do not fetch and publish the same window twice.
+        synchronized(catchUpLocks.computeIfAbsent(user.id) { Any() }) {
+            for (dataType in nonSubscribedTypes) {
+                try {
+                    catchUpFetch(user, dataType, target)
+                } catch (ex: Exception) {
+                    logger.error(
+                        "Catch-up fetch failed for {} user={} target={}",
+                        dataType, user.versionedId, target, ex,
+                    )
+                }
             }
         }
     }
