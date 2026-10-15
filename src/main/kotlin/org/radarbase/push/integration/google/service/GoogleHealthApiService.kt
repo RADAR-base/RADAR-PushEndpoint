@@ -58,6 +58,7 @@ import org.radarbase.googlehealth.exception.TransientGoogleHealthException
 import org.radarbase.googlehealth.model.GoogleHealthPing
 import org.radarbase.googlehealth.model.PingInterval
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
+import org.radarbase.push.integration.google.util.GoogleHealthCivilFilter
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.radarbase.push.integration.google.tcx.TcxAvroConverter
 import org.radarbase.push.integration.google.tcx.TcxParser
@@ -66,6 +67,7 @@ import java.io.IOException
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -130,15 +132,20 @@ class GoogleHealthApiService(
         if (ping.dataType in googleConfig.effectiveEnabledDataTypes) {
             for (interval in intervals) {
                 val window = widenInterval(interval)
+                val civil = civilIntervalFor(ping.dataType, interval)
+                if (window == null && civil == null) {
+                    logger.info("[GH-TEST] Skipping Google Health interval without physicalTimeInterval: {}", interval)
+                    continue
+                }
                 try {
-                    fetchAndPublishBlocking(user, ping.dataType, window)
+                    fetchAndPublishBlocking(user, ping.dataType, window, civil)
                 } catch (ex: Exception) {
                     logger.error(
                         "Failed to fetch {} for user {} interval=[{},{})",
                         ping.dataType,
                         user.userId,
-                        interval.physicalStartTime,
-                        interval.physicalEndTime,
+                        civil?.first ?: window?.first,
+                        civil?.second ?: window?.second,
                         ex,
                     )
                 }
@@ -146,7 +153,7 @@ class GoogleHealthApiService(
         }
 
         if (nonSubscribedTypes.isEmpty()) return
-        val target = intervals.maxOf { widenInterval(it).second }
+        val target = intervals.mapNotNull { widenInterval(it)?.second }.maxOrNull() ?: return
         for (dataType in nonSubscribedTypes) {
             try {
                 catchUpFetch(user, dataType, target)
@@ -210,7 +217,8 @@ class GoogleHealthApiService(
      * key -- without it the first type claims the interval and the rest are dropped as duplicates.
      */
     private fun dedupKeyFor(healthUserId: String, dataType: String, interval: PingInterval): String =
-        "$healthUserId:$dataType:${interval.physicalStartTime}:${interval.physicalEndTime}"
+        "$healthUserId:$dataType:${interval.physicalStartTime}:${interval.physicalEndTime}:" +
+            "${interval.civilStartTime}:${interval.civilEndTime}"
 
     private fun liveRouteFor(dataType: String): String = "$LIVE_ROUTE_PREFIX$dataType"
 
@@ -219,8 +227,15 @@ class GoogleHealthApiService(
      * pages are exhausted.
      * Per-user concurrency is bounded by [MAX_CONCURRENT_PER_USER] so simultaneous PING and backfill
      * traffic for the same user cannot exceed it.
+     * [civil] is only used by webhooks for daily summaries and exercise, which are then filtered by those
+     * local clock times instead of [window].
      */
-    fun fetchAndPublishBlocking(user: User, dataType: String, window: Pair<Instant, Instant>) {
+    fun fetchAndPublishBlocking(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>?,
+        civil: Pair<LocalDateTime, LocalDateTime>? = null,
+    ) {
         val perType = converters[dataType]
         if (perType.isNullOrEmpty()) {
             logger.debug("No converter registered for dataType={}", dataType)
@@ -231,11 +246,11 @@ class GoogleHealthApiService(
         try {
             var pageToken: String? = null
             do {
-                val response = fetchDataPoints(user, dataType, window, pageToken)
+                val response = fetchDataPoints(user, dataType, window, civil, pageToken)
                 logger.info(
                     "[GH-TEST] fetched user={} dataType={} dataPoints={} window=[{},{})",
                     user.id, dataType, response["dataPoints"]?.takeIf { it.isArray }?.size() ?: 0,
-                    window.first, window.second,
+                    civil?.first ?: window?.first, civil?.second ?: window?.second,
                 )
                 perType.forEach { conv ->
                     val records = conv.convert(response, user)
@@ -260,24 +275,26 @@ class GoogleHealthApiService(
     private fun fetchDataPoints(
         user: User,
         dataType: String,
-        window: Pair<Instant, Instant>,
+        window: Pair<Instant, Instant>?,
+        civil: Pair<LocalDateTime, LocalDateTime>?,
         pageToken: String?,
     ): JsonNode {
         return when (dataType) {
-            "total-calories" -> rollUpDataPoints(user, dataType, window, pageToken)
+            "total-calories" -> rollUpDataPoints(user, dataType, requireNotNull(window), pageToken)
             "exercise", "electrocardiogram", "irregular-rhythm-notification" ->
-                listDataPoints(user, dataType, window, pageToken)
-            else -> reconcileDataPoints(user, dataType, window, pageToken)
+                listDataPoints(user, dataType, window, civil, pageToken)
+            else -> reconcileDataPoints(user, dataType, window, civil, pageToken)
         }
     }
 
     private fun listDataPoints(
         user: User,
         dataType: String,
-        window: Pair<Instant, Instant>,
+        window: Pair<Instant, Instant>?,
+        civil: Pair<LocalDateTime, LocalDateTime>?,
         pageToken: String?,
     ): JsonNode {
-        val filter = buildFilterExpression(user, dataType, window)
+        val filter = buildFilterExpression(user, dataType, window, civil)
         val urlBuilder = apiBaseUrl.newBuilder().addPathSegments("users/me/dataTypes/$dataType/dataPoints")
             .addQueryParameter("filter", filter).addQueryParameter("pageSize", LIST_PAGE_SIZE.toString())
         if (!pageToken.isNullOrEmpty()) urlBuilder.addQueryParameter("pageToken", pageToken)
@@ -329,10 +346,11 @@ class GoogleHealthApiService(
     private fun reconcileDataPoints(
         user: User,
         dataType: String,
-        window: Pair<Instant, Instant>,
+        window: Pair<Instant, Instant>?,
+        civil: Pair<LocalDateTime, LocalDateTime>?,
         pageToken: String?,
     ): JsonNode {
-        val filter = buildFilterExpression(user, dataType, window)
+        val filter = buildFilterExpression(user, dataType, window, civil)
         val urlBuilder = apiBaseUrl.newBuilder().addPathSegments("users/me/dataTypes/$dataType/dataPoints:reconcile")
             .addQueryParameter("dataSourceFamily", "users/me/dataSourceFamilies/google-wearables")
             .addQueryParameter("filter", filter).addQueryParameter("pageSize", PAGE_SIZE.toString())
@@ -462,7 +480,21 @@ class GoogleHealthApiService(
     private fun executeWithRetry(user: User, buildRequest: (String) -> Request): JsonNode =
         executeWithRetry(user, buildRequest, { parseBody(it.body?.string()) }, { emptyResponse() })
 
-    private fun buildFilterExpression(user: User, dataType: String, window: Pair<Instant, Instant>): String {
+    private fun buildFilterExpression(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>?,
+        civil: Pair<LocalDateTime, LocalDateTime>?,
+    ): String {
+        // Only daily summaries and exercise use the webhook's local times. Every other type stays on physical time.
+        val axis = timeAxisFor(dataType)
+        if (civil != null && axis == TimeAxis.DAILY) {
+            return GoogleHealthCivilFilter.dailyDate(dataType, civil.first, civil.second)
+        }
+        if (civil != null && axis == TimeAxis.CIVIL_INTERVAL) {
+            return GoogleHealthCivilFilter.civilStartTime(dataType, civil.first, civil.second, OVERLAP)
+        }
+        requireNotNull(window) { "No time window to filter $dataType by" }
         val stem = dataType.replace('-', '_')
         val startText = ISO_FMT.format(window.first)
         val endText = ISO_FMT.format(window.second)
@@ -576,8 +608,22 @@ class GoogleHealthApiService(
 
     private fun emptyResponse(): JsonNode = objectMapper.createObjectNode()
 
-    private fun widenInterval(interval: PingInterval): Pair<Instant, Instant> {
-        return interval.physicalStartTime.minus(OVERLAP) to interval.physicalEndTime.plus(OVERLAP)
+    private fun widenInterval(interval: PingInterval): Pair<Instant, Instant>? {
+        val start = interval.physicalStartTime ?: return null
+        val end = interval.physicalEndTime ?: return null
+        return start.minus(OVERLAP) to end.plus(OVERLAP)
+    }
+
+    /**
+     * The notification's local clock window, for the types Google stores by local time (daily
+     * summaries and exercise), so their filter does not depend on the user's time zone setting.
+     */
+    private fun civilIntervalFor(dataType: String, interval: PingInterval): Pair<LocalDateTime, LocalDateTime>? {
+        val axis = timeAxisFor(dataType)
+        if (axis != TimeAxis.DAILY && axis != TimeAxis.CIVIL_INTERVAL) return null
+        val start = interval.civilStartTime ?: return null
+        val end = interval.civilEndTime ?: return null
+        return start to end
     }
 
     private fun buildConverters(): Map<String, List<GoogleHealthAvroConverter>> = mapOf(
