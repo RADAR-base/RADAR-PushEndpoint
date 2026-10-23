@@ -63,7 +63,6 @@ import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.radarbase.push.integration.google.tcx.TcxAvroConverter
 import org.radarbase.push.integration.google.tcx.TcxParser
 import org.slf4j.LoggerFactory
-import java.io.IOException
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
@@ -322,14 +321,16 @@ class GoogleHealthApiService(
         for (point in points) {
             val idSegment = (point["name"] ?: point["dataPointName"])?.asText()
                 ?.substringAfterLast('/')
-                ?: throw IOException(
-                    "Exercise data point has no name or dataPointName to derive a log id from " +
-                        "for user=${user.versionedId}",
+            // Skip only this session. Throwing would stop paging, and backfill would retry the
+            // same window forever. The converter skips the same point.
+            val exerciseId = idSegment?.toLongOrNull()
+            if (exerciseId == null) {
+                logger.warn(
+                    "Skipping TCX export for user={}: exercise id '{}' is missing or not numeric",
+                    user.versionedId, idSegment,
                 )
-            val exerciseId = idSegment.toLongOrNull()
-                ?: throw IOException(
-                    "Exercise data point log id '$idSegment' is not numeric for user=${user.versionedId}",
-                )
+                continue
+            }
             val xml = exportExerciseTcx(user, exerciseId) ?: continue
             records += TcxAvroConverter.convert(TcxParser.parse(xml), exerciseId, user.observationKey)
         }
