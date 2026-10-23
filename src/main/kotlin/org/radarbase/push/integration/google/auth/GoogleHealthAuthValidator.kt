@@ -70,7 +70,7 @@ class GoogleHealthAuthValidator(
         }
 
         if (isVerificationHandshake(tree)) {
-            logger.info("GH-TEST Google Health verification handshake received (userAgent={})", userAgent)
+            logger.info("Google Health verification handshake received (userAgent={})", userAgent)
             return handleHandshake(token, request)
         }
 
@@ -94,8 +94,6 @@ class GoogleHealthAuthValidator(
      * notification objects, each shaped `{ "data": { ... } }`.
      */
     private fun parsePings(tree: JsonNode): List<GoogleHealthPing> {
-        logger.info("[GH-TEST] Raw Google Health payload received: {}", tree.toPrettyString())
-
         if (!tree.isArray) {
             logger.warn("Expected a JSON array of Google Health notifications but got {}", tree.nodeType)
             return emptyList()

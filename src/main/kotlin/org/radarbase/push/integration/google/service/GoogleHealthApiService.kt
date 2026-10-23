@@ -152,7 +152,7 @@ class GoogleHealthApiService(
                 val window = widenInterval(interval)
                 val civil = civilIntervalFor(ping.dataType, interval)
                 if (window == null && civil == null) {
-                    logger.info("[GH-TEST] Skipping Google Health interval without physicalTimeInterval: {}", interval)
+                    logger.info("Skipping Google Health interval without physicalTimeInterval: {}", interval)
                     continue
                 }
                 try {
@@ -279,17 +279,12 @@ class GoogleHealthApiService(
             var pageToken: String? = null
             do {
                 val response = fetchDataPoints(user, dataType, window, civil, pageToken)
-                logger.info(
-                    "[GH-TEST] fetched user={} dataType={} dataPoints={} window=[{},{})",
-                    user.id, dataType, response["dataPoints"]?.takeIf { it.isArray }?.size() ?: 0,
-                    civil?.first ?: window?.first, civil?.second ?: window?.second,
-                )
                 perType.forEach { conv ->
                     val records = conv.convert(response, user)
                     if (records.isNotEmpty()) {
                         producerPool.produce(conv.topic, records)
-                        logger.info(
-                            "[GH-TEST] sent records user={} dataType={} topic={} count={}",
+                        logger.debug(
+                            "Sent records user={} dataType={} topic={} count={}",
                             user.id, dataType, conv.topic, records.size,
                         )
                     }
