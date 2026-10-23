@@ -171,7 +171,14 @@ class GoogleHealthApiService(
         }
 
         if (nonSubscribedTypes.isEmpty()) return
-        val target = pings.flatMap { it.intervals }.mapNotNull { widenInterval(it)?.second }.maxOrNull()
+        // Daily summaries carry a fake physical window at UTC midnight of their date, which lies
+        // in the future for users east of UTC. A target in the future would store the live offset
+        // there and skip the data recorded until then, so leave daily types out and stop at now.
+        val target = pings.filter { timeAxisFor(it.dataType) != TimeAxis.DAILY }
+            .flatMap { it.intervals }
+            .mapNotNull { widenInterval(it)?.second }
+            .maxOrNull()
+            ?.let { minOf(it, Instant.now()) }
             ?: return
         // One catch-up at a time per user. Each reads the stored offset only once it holds the lock, so
         // notifications that arrive together do not fetch and publish the same window twice.
