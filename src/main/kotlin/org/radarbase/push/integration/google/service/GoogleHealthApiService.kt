@@ -101,10 +101,32 @@ class GoogleHealthApiService(
         it !in googleConfig.triggerDataTypes && it !in NON_CHUNKED_TYPES
     }
 
-    fun handlePing(ping: GoogleHealthPing) {
+    /**
+     * One task per user per push. A push can hold up to 99 PINGs of one user, and one task per PING
+     * would fill the shared pool with that user's work while other users wait. It also resolves
+     * the user and runs catch-up once per push instead of once per PING.
+     */
+    fun handlePings(pings: List<GoogleHealthPing>) {
+        pings.groupBy { it.healthUserId }.forEach { (healthUserId, userPings) ->
+            val freshPings = userPings.mapNotNull { freshPing(it) }
+            if (freshPings.isEmpty()) return@forEach
+            executor.submit {
+                try {
+                    fetchAllForUser(healthUserId, freshPings)
+                } catch (ex: Exception) {
+                    logger.error(
+                        "Unhandled error while processing PING for user {}", healthUserId, ex,
+                    )
+                }
+            }
+        }
+    }
+
+    /** The PING with only the intervals not seen within [DEDUP_TTL], or null if none are left. */
+    private fun freshPing(ping: GoogleHealthPing): GoogleHealthPing? {
         if (ping.intervals.isEmpty()) {
             logger.info("Ignoring PING with no intervals for user {}", ping.healthUserId)
-            return
+            return null
         }
         val freshIntervals = ping.intervals.filter { interval ->
             val dedupKey = dedupKeyFor(ping.healthUserId, ping.dataType, interval)
@@ -114,25 +136,19 @@ class GoogleHealthApiService(
                 )
             }
         }
-        if (freshIntervals.isEmpty()) return
-        executor.submit {
-            try {
-                fetchAllForUser(ping, freshIntervals)
-            } catch (ex: Exception) {
-                logger.error("Unhandled error while processing PING for user {}", ping.healthUserId, ex)
-            }
-        }
+        return if (freshIntervals.isEmpty()) null else ping.copy(intervals = freshIntervals)
     }
 
-    private fun fetchAllForUser(ping: GoogleHealthPing, intervals: List<PingInterval>) {
-        val user = resolveUser(ping.healthUserId) ?: return
+    private fun fetchAllForUser(healthUserId: String, pings: List<GoogleHealthPing>) {
+        val user = resolveUser(healthUserId) ?: return
         if (!user.isAuthorized) {
             logger.info("Skipping PING for unauthorized user {}", user.id)
             return
         }
 
-        if (ping.dataType in googleConfig.effectiveEnabledDataTypes) {
-            for (interval in intervals) {
+        for (ping in pings) {
+            if (ping.dataType !in googleConfig.effectiveEnabledDataTypes) continue
+            for (interval in ping.intervals) {
                 val window = widenInterval(interval)
                 val civil = civilIntervalFor(ping.dataType, interval)
                 if (window == null && civil == null) {
@@ -155,7 +171,8 @@ class GoogleHealthApiService(
         }
 
         if (nonSubscribedTypes.isEmpty()) return
-        val target = intervals.mapNotNull { widenInterval(it)?.second }.maxOrNull() ?: return
+        val target = pings.flatMap { it.intervals }.mapNotNull { widenInterval(it)?.second }.maxOrNull()
+            ?: return
         // One catch-up at a time per user. Each reads the stored offset only once it holds the lock, so
         // notifications that arrive together do not fetch and publish the same window twice.
         synchronized(catchUpLocks.computeIfAbsent(user.id) { Any() }) {

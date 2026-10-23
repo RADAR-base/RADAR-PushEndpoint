@@ -46,7 +46,7 @@ class GoogleHealthPushEndpoint(
         }
 
         val pings = extractPings(request.getProperty(PING_PROPERTY))
-        pings.forEach { healthApiService.handlePing(it) }
+        healthApiService.handlePings(pings)
         return Response.noContent().build()
     }
 
