@@ -67,7 +67,7 @@ class GoogleHealthBackfillService(
     private val bfConfig = ghConfig.backfill
     private val scheduler = Executors.newSingleThreadScheduledExecutor()
     private val workerPool = Executors.newFixedThreadPool(bfConfig.maxThreads)
-    private val futures: MutableList<Future<*>> = mutableListOf()
+    private val futures: MutableMap<String, Future<*>> = mutableMapOf()
 
     override fun onEvent(event: ApplicationEvent?) {
         when (event?.type) {
@@ -110,15 +110,22 @@ class GoogleHealthBackfillService(
         }
     }
 
+    /**
+     * Starts a backfill for every user whose previous one has finished. A user with a long history
+     * keeps running across iterations without holding up the users that come after.
+     */
     private fun iterate() {
-        if (futures.any { !it.isDone }) {
-            logger.info("Previous Google Health backfill iteration is still running; skipping.")
-            return
-        }
-        futures.clear()
+        futures.values.removeIf { it.isDone }
         try {
             userRepository.stream().forEach { user ->
-                futures += workerPool.submit {
+                if (user.versionedId in futures) {
+                    logger.info(
+                        "Google Health backfill for user={} is still running, skipping it.",
+                        user.versionedId,
+                    )
+                    return@forEach
+                }
+                futures[user.versionedId] = workerPool.submit {
                     try {
                         locks.tryRunLocked(user.versionedId) { backfillOneUser(user) }
                     } catch (ex: Throwable) {
