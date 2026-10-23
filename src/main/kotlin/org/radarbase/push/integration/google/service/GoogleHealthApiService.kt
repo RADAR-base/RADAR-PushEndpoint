@@ -231,12 +231,14 @@ class GoogleHealthApiService(
     /**
      * Read or establish the user's historical-cutoff timestamp. This is the boundary between the
      * backfill service (owns `[user.startDate, cutoff]`) and the PING path (owns `[cutoff, now]`).
-     * Captured lazily on first access by whichever path runs first.
+     * Captured lazily on first access by whichever path runs first. It is set to now, not earlier:
+     * Google sends no webhook for data uploaded before the subscription existed, so only backfill
+     * fetches that data, and a cutoff in the past would leave it out.
      */
     fun ensureHistoricalCutoff(user: User): Instant {
         val path = Path.of(user.versionedId)
         return offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
-            ?: Instant.now().minus(CUTOFF_LAG).also { cutoff ->
+            ?: Instant.now().also { cutoff ->
                 offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
             }
     }
@@ -764,7 +766,6 @@ class GoogleHealthApiService(
         private val SETTINGS_CACHE_TTL: Duration = Duration.ofHours(6)
         private val OVERLAP: Duration = Duration.ofSeconds(10)
         private val CATCHUP_CHUNK: Duration = Duration.ofDays(1)
-        private val CUTOFF_LAG: Duration = Duration.ofHours(1)
         private val RATE_LIMIT_INITIAL_BACKOFF: Duration = Duration.ofSeconds(30)
         private val RATE_LIMIT_MAX_BACKOFF: Duration = Duration.ofMinutes(10)
         private val SERVER_ERROR_INITIAL_BACKOFF: Duration = Duration.ofSeconds(2)
