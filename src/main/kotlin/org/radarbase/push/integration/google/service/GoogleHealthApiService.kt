@@ -62,7 +62,9 @@ import org.radarbase.push.integration.google.util.GoogleHealthCivilFilter
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.radarbase.push.integration.google.tcx.TcxAvroConverter
 import org.radarbase.push.integration.google.tcx.TcxParser
+import org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
@@ -382,8 +384,10 @@ class GoogleHealthApiService(
          * pageSize >= ceil(range_seconds / windowSize_seconds). With windowSize=60s a
          * 7-day chunk requires 10080 buckets.
          */
-        val rangeSeconds = window.second.epochSecond - window.first.epochSecond
-        val minBuckets = ((rangeSeconds + 59) / 60).toInt()  // ceil(range / 60s)
+        // Count in nanoseconds: 20h00m00.5s needs 1201 buckets, whole seconds would give 1200.
+        val rangeNanos = Duration.between(window.first, window.second).toNanos()
+        val bucketNanos = Duration.ofSeconds(60).toNanos()
+        val minBuckets = ((rangeNanos + bucketNanos - 1) / bucketNanos).toInt() // ceil(range / 60s)
         val effectivePageSize = maxOf(PAGE_SIZE, minBuckets)
         val bodyNode = objectMapper.createObjectNode().apply {
             putObject("range").apply {
@@ -406,7 +410,7 @@ class GoogleHealthApiService(
         user: User,
         buildRequest: (String) -> Request,
         onSuccess: (Response) -> T,
-        onSkip: () -> T,
+        onSkip: (Int) -> T,
     ): T {
         var token = userRepository.getOAuth2AccessToken(user)
         var tokenRefreshed = false
@@ -422,16 +426,20 @@ class GoogleHealthApiService(
                     resp.isSuccessful -> return onSuccess(resp)
                     resp.code == 401 && !tokenRefreshed -> {
                         logger.info("401 from Google Health — refreshing token for {}", user.id)
-                        token = userRepository.getOAuth2AccessToken(user)
+                        // A plain token request returns the same cached token until it expires,
+                        // so ask RSA to refresh it at Google.
+                        token = (userRepository as? GoogleHealthServiceUserRepository)
+                            ?.refreshOAuth2AccessToken(user)
+                            ?: userRepository.getOAuth2AccessToken(user)
                         tokenRefreshed = true
                     }
 
                     resp.code == 403 -> {
-                        logger.info("403 from Google Health — skipping request for user={}", user.id)
-                        return onSkip()
+                        logger.info("403 from Google Health for user={}", user.id)
+                        return onSkip(resp.code)
                     }
 
-                    resp.code == 404 -> return onSkip()
+                    resp.code == 404 -> return onSkip(resp.code)
                     resp.code == 400 -> {
                         // Surface filter-shape mismatches loudly — silent empty responses
                         // hide bugs like "Member 'X' is not supported for filtering".
@@ -441,7 +449,7 @@ class GoogleHealthApiService(
                             request.url,
                             resp.peekBody(MAX_ERROR_BODY_BYTES).string(),
                         )
-                        return onSkip()
+                        return onSkip(resp.code)
                     }
 
                     resp.code == 429 -> {
@@ -476,15 +484,22 @@ class GoogleHealthApiService(
                             resp.code,
                             user.id,
                         )
-                        return onSkip()
+                        return onSkip(resp.code)
                     }
                 }
             }
         }
     }
 
+    /**
+     * Any error that is not retried throws instead of returning an empty response. An empty
+     * response means "no data", so backfill and catch-up would store their offset past data that
+     * was never fetched.
+     */
     private fun executeWithRetry(user: User, buildRequest: (String) -> Request): JsonNode =
-        executeWithRetry(user, buildRequest, { parseBody(it.body?.string()) }, { emptyResponse() })
+        executeWithRetry(user, buildRequest, { parseBody(it.body?.string()) }) { code ->
+            throw IOException("Google Health request failed with HTTP $code for user=${user.id}")
+        }
 
     private fun buildFilterExpression(
         user: User,

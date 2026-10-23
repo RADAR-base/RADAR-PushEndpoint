@@ -109,7 +109,20 @@ class GoogleHealthServiceUserRepository(
         if (cached != null && !cached.isExpired()) {
             return cached.accessToken
         }
-        val request = requestFor("users/${user.id}/token").build()
+        return requestToken(user, requestFor("users/${user.id}/token").build())
+    }
+
+    /**
+     * Make RSA refresh the user's token at Google, even if the cached or stored token has not
+     * expired. Used after Google answered 401, for example because the user revoked access or
+     * authorized again. If RSA cannot refresh, it answers 407 and marks the user unauthorized.
+     */
+    @Throws(IOException::class)
+    fun refreshOAuth2AccessToken(user: User): String =
+        requestToken(user, requestFor("users/${user.id}/token").method("POST", EMPTY_BODY).build())
+
+    @Throws(IOException::class)
+    private fun requestToken(user: User, request: Request): String {
         val token = makeRequest<RestOauth2AccessToken>(request, tokenReader)
         cachedTokens[user.id] = CachedAccessToken(
             accessToken = token.accessToken,
