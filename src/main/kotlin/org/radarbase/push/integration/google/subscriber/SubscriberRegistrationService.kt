@@ -195,24 +195,39 @@ class SubscriberRegistrationService(
         // Google never returns the secret, so it is only patched when a rotation is configured.
         val rotateSecret = !ghConfig.previousSubscriberSecret.isNullOrEmpty()
 
-        // Patch only what changed: a new endpointUri or secret makes Google run the handshake
-        // again.
-        val payload = buildMap {
-            if (existingUri != desiredUri) put("endpointUri", desiredUri)
-            if (!configsMatch(existingConfigs, desiredConfigs)) {
-                put("subscriberConfigs", desiredConfigs)
-            }
-            if (rotateSecret) put("endpointAuthorization", endpointAuthorization())
-        }
-
-        if (payload.isEmpty()) {
+        val needsUpdate = existingUri != desiredUri ||
+            !configsMatch(existingConfigs, desiredConfigs) || rotateSecret
+        if (!needsUpdate) {
             logger.info("Subscriber {} already exists and is up-to-date — state ACTIVE", subscriberId)
             return true
         }
 
-        logger.info("Subscriber {} exists but needs update of {}", subscriberId, payload.keys)
+        // The full subscriber with endpointUri in the mask: the request shape Google accepts. A
+        // body and mask with only subscriberConfigs got INVALID_ARGUMENT. Google runs the
+        // handshake again for every patch.
+        val updateMask = buildList {
+            add("endpointUri")
+            add("subscriberConfigs")
+            if (rotateSecret) add("endpointAuthorization")
+        }
+        logger.info("Subscriber {} exists but needs update, patching {}", subscriberId, updateMask)
+        val payload = buildMap {
+            put("name", "projects/$projectId/subscribers/$subscriberId")
+            put("endpointUri", desiredUri)
+            put("subscriberConfigs", desiredConfigs)
+            if (rotateSecret) put("endpointAuthorization", endpointAuthorization())
+        }
+        return patchSubscriber(payload, updateMask, accessToken) == 200
+    }
+
+    /** Sends the PATCH and returns 200 on success, otherwise the HTTP status. */
+    private fun patchSubscriber(
+        payload: Map<String, Any>,
+        updateMask: List<String>,
+        accessToken: String,
+    ): Int {
         val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId" +
-            "?updateMask=${payload.keys.joinToString(",")}"
+            "?updateMask=${updateMask.joinToString(",")}"
         val body = objectMapper.writeValueAsString(payload).toRequestBody(JSON_MEDIA_TYPE)
         val request = Request.Builder()
             .url(url)
@@ -223,14 +238,16 @@ class SubscriberRegistrationService(
         httpClient.newCall(request).execute().use { response ->
             val respBody = response.body?.string()
             if (response.isSuccessful) {
-                logger.info("Subscriber {} patched successfully", subscriberId)
-                return true
+                logger.info(
+                    "Subscriber {} patched successfully (updateMask={})", subscriberId, updateMask,
+                )
+                return 200
             }
             logger.error(
-                "Failed to patch subscriber {}: HTTP {} — {}",
-                subscriberId, response.code, respBody,
+                "Failed to patch subscriber {} (updateMask={}): HTTP {} — {}",
+                subscriberId, updateMask, response.code, respBody,
             )
-            return false
+            return response.code
         }
     }
 
