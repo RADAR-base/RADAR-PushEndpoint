@@ -51,6 +51,8 @@ import org.radarbase.googlehealth.converter.GoogleHealthSleepClassicAvroConverte
 import org.radarbase.googlehealth.converter.GoogleHealthSleepStageAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthStepsAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthTotalCaloriesAvroConverter
+import org.radarbase.push.integration.garmin.util.RedisHolder
+import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
 import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
@@ -64,6 +66,7 @@ import org.radarbase.push.integration.google.tcx.TcxAvroConverter
 import org.radarbase.push.integration.google.tcx.TcxParser
 import org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository
 import org.slf4j.LoggerFactory
+import redis.clients.jedis.params.SetParams
 import java.io.IOException
 import java.nio.file.Path
 import java.time.Duration
@@ -83,6 +86,7 @@ class GoogleHealthApiService(
     @param:Context private val httpClient: OkHttpClient,
     @param:Context private val config: Config,
     @param:Context private val offsets: OffsetRedisPersistence,
+    @param:Context private val redisHolder: RedisHolder,
 ) {
     private val googleConfig = config.pushIntegration.googlehealth
     private val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
@@ -91,7 +95,10 @@ class GoogleHealthApiService(
     )
     private val dedup = GoogleHealthPingDedup(ttl = DEDUP_TTL)
     private val userSemaphores = ConcurrentHashMap<String, Semaphore>()
-    private val catchUpLocks = ConcurrentHashMap<String, Any>()
+    private val catchUpLocks = RedisRemoteLockManager(
+        redisHolder, googleConfig.backfill.redis.lockPrefix, CATCH_UP_LOCK_TTL,
+    )
+    private val pendingPings = ConcurrentHashMap<String, MutableList<GoogleHealthPing>>()
     private val userZones = ConcurrentHashMap<String, CachedZone>()
     private val apiBaseUrl: HttpUrl = normalizedBaseUrl(googleConfig.apiBaseUrl)
 
@@ -102,41 +109,98 @@ class GoogleHealthApiService(
     }
 
     /**
-     * One task per user per push. A push can hold up to 99 PINGs of one user, and one task per PING
-     * would fill the shared pool with that user's work while other users wait. It also resolves
-     * the user and runs catch-up once per push instead of once per PING.
+     * Queues the new intervals of a push per user. A push holds up to 99 notifications (Google's
+     * batch limit), possibly all of one user, and Google splits one sync into several pushes. Each
+     * user has at most one task in the shared pool, which works through that user's queue, so one
+     * user's sync cannot fill the pool while other users wait. The task resolves the user and runs
+     * catch-up once per round instead of once per notification.
      */
     fun handlePings(pings: List<GoogleHealthPing>) {
-        pings.groupBy { it.healthUserId }.forEach { (healthUserId, userPings) ->
-            val freshPings = userPings.mapNotNull { freshPing(it) }
-            if (freshPings.isEmpty()) return@forEach
-            executor.submit {
-                try {
-                    fetchAllForUser(healthUserId, freshPings)
-                } catch (ex: Exception) {
-                    logger.error(
-                        "Unhandled error while processing PING for user {}", healthUserId, ex,
-                    )
-                }
+        freshPings(pings).groupBy { it.healthUserId }.forEach { (healthUserId, userPings) ->
+            var startTask = false
+            pendingPings.compute(healthUserId) { _, pending ->
+                (pending ?: mutableListOf<GoogleHealthPing>().also { startTask = true })
+                    .apply { addAll(userPings) }
+            }
+            if (startTask) executor.submit { drainPings(healthUserId) }
+        }
+    }
+
+    /**
+     * Processes the user's queued PINGs until the queue is empty, then removes it, so the next push
+     * starts a new task. The queue stays in the map while the task runs, which tells [handlePings]
+     * to only add to it.
+     */
+    private fun drainPings(healthUserId: String) {
+        while (true) {
+            var round: List<GoogleHealthPing> = emptyList()
+            pendingPings.compute(healthUserId) { _, pending ->
+                round = pending.orEmpty().toList()
+                if (round.isEmpty()) null else mutableListOf()
+            }
+            if (round.isEmpty()) return
+            try {
+                fetchAllForUser(healthUserId, round)
+            } catch (ex: Throwable) {
+                logger.error("Unhandled error while processing PING for user {}", healthUserId, ex)
             }
         }
     }
 
-    /** The PING with only the intervals not seen within [DEDUP_TTL], or null if none are left. */
-    private fun freshPing(ping: GoogleHealthPing): GoogleHealthPing? {
-        if (ping.intervals.isEmpty()) {
-            logger.info("Ignoring PING with no intervals for user {}", ping.healthUserId)
-            return null
+    /**
+     * The PINGs with only the intervals not seen within [DEDUP_TTL], without PINGs left empty.
+     * Deletions are dropped: fetching would only miss the deleted data, and they are not forwarded.
+     */
+    private fun freshPings(pings: List<GoogleHealthPing>): List<GoogleHealthPing> {
+        pings.filter { it.intervals.isEmpty() }.forEach {
+            logger.info("Ignoring PING with no intervals for user {}", it.healthUserId)
         }
-        val freshIntervals = ping.intervals.filter { interval ->
-            val dedupKey = dedupKeyFor(ping.healthUserId, ping.dataType, interval)
-            dedup.claim(dedupKey).also { claimed ->
-                if (!claimed) logger.info(
-                    "Skipping duplicate PING interval {} for user {}", dedupKey, ping.healthUserId
-                )
+        val (deletions, upserts) = pings.partition { it.operation == DELETE_OPERATION }
+        deletions.forEach {
+            logger.info(
+                "Ignoring DELETE notification for user {} dataType={}",
+                it.healthUserId, it.dataType,
+            )
+        }
+        val keyed = upserts.map { ping ->
+            ping to ping.intervals.map { dedupKeyFor(ping.healthUserId, ping.dataType, it) }
+        }
+        val claimed = claimDedupKeys(keyed.flatMap { it.second }).iterator()
+        return keyed.mapNotNull { (ping, keys) ->
+            val freshIntervals = ping.intervals.zip(keys).filter { (_, key) ->
+                claimed.next().also { isNew ->
+                    if (!isNew) logger.info(
+                        "Skipping duplicate PING interval {} for user {}", key, ping.healthUserId
+                    )
+                }
+            }.map { it.first }
+            if (freshIntervals.isEmpty()) null else ping.copy(intervals = freshIntervals)
+        }
+    }
+
+    /**
+     * Claims the keys in Redis, so a repeat that Google delivers to another replica is dropped too.
+     * Without Redis it falls back to this instance's memory: a repeated fetch only sends records
+     * twice, while dropping a notification would lose data.
+     */
+    private fun claimDedupKeys(keys: List<String>): List<Boolean> {
+        if (keys.isEmpty()) return emptyList()
+        return try {
+            redisHolder.execute { redis ->
+                redis.pipelined().use { pipeline ->
+                    val replies = keys.map {
+                        pipeline.set(DEDUP_KEY_PREFIX + it, "1", DEDUP_SET_PARAMS)
+                    }
+                    pipeline.sync()
+                    replies.map { it.get() != null }
+                }
             }
+        } catch (ex: IOException) {
+            logger.warn(
+                "Redis unavailable for Google Health dedup, using local memory: {}", ex.toString(),
+            )
+            keys.map { dedup.claim(it) }
         }
-        return if (freshIntervals.isEmpty()) null else ping.copy(intervals = freshIntervals)
     }
 
     private fun fetchAllForUser(healthUserId: String, pings: List<GoogleHealthPing>) {
@@ -180,9 +244,10 @@ class GoogleHealthApiService(
             .maxOrNull()
             ?.let { minOf(it, Instant.now()) }
             ?: return
-        // One catch-up at a time per user. Each reads the stored offset only once it holds the lock, so
-        // notifications that arrive together do not fetch and publish the same window twice.
-        synchronized(catchUpLocks.computeIfAbsent(user.id) { Any() }) {
+        // One catch-up at a time per user, also across replicas. Each reads the stored offset only
+        // once it holds the lock, so pushes that arrive together do not fetch and publish the same
+        // window twice. If another replica holds it, that one catches up and a later push goes on.
+        val ran = catchUpLocks.tryRunLocked("catch-up-${user.versionedId}") {
             for (dataType in nonSubscribedTypes) {
                 try {
                     catchUpFetch(user, dataType, target)
@@ -194,6 +259,7 @@ class GoogleHealthApiService(
                 }
             }
         }
+        if (ran == null) logger.info("Catch-up for user={} is running elsewhere", user.versionedId)
     }
 
     /**
@@ -743,7 +809,6 @@ class GoogleHealthApiService(
 
         private val ISO_FMT: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
         private val CIVIL_DT_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-            .withZone(java.time.ZoneOffset.UTC)
 
         private const val PAGE_SIZE = 1000
 
@@ -758,6 +823,12 @@ class GoogleHealthApiService(
         const val CUTOFF_ROUTE = "gh:_historical_cutoff"
 
         private val DEDUP_TTL: Duration = Duration.ofMinutes(5)
+        private const val DEDUP_KEY_PREFIX = "radar-push-googlehealth/dedup/"
+        private const val DELETE_OPERATION = "DELETE"
+        private val DEDUP_SET_PARAMS: SetParams = SetParams().nx().px(DEDUP_TTL.toMillis())
+
+        /** Far longer than a catch-up takes, short enough that a crashed instance delays little. */
+        private val CATCH_UP_LOCK_TTL: Duration = Duration.ofMinutes(15)
         private val SETTINGS_CACHE_TTL: Duration = Duration.ofHours(6)
         private val OVERLAP: Duration = Duration.ofSeconds(10)
         private val CATCHUP_CHUNK: Duration = Duration.ofDays(1)
