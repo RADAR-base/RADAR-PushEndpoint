@@ -31,7 +31,6 @@ import org.radarbase.push.integration.google.util.GoogleServiceAccountTokenProvi
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.collections.get
 
 /**
  * Registers a Google Health webhook subscriber at application startup.
@@ -193,19 +192,27 @@ class SubscriberRegistrationService(
         val existingConfigs = existing["subscriberConfigs"] as? List<Map<String, Any>>
         val desiredConfigs = buildSubscriberConfigs()
 
-        val needsUpdate = existingUri != desiredUri || !configsMatch(existingConfigs, desiredConfigs)
+        // Google never returns the secret, so it is only patched when a rotation is configured.
+        val rotateSecret = !ghConfig.previousSubscriberSecret.isNullOrEmpty()
 
-        if (!needsUpdate) {
+        // Patch only what changed: a new endpointUri or secret makes Google run the handshake
+        // again.
+        val payload = buildMap {
+            if (existingUri != desiredUri) put("endpointUri", desiredUri)
+            if (!configsMatch(existingConfigs, desiredConfigs)) {
+                put("subscriberConfigs", desiredConfigs)
+            }
+            if (rotateSecret) put("endpointAuthorization", endpointAuthorization())
+        }
+
+        if (payload.isEmpty()) {
             logger.info("Subscriber {} already exists and is up-to-date — state ACTIVE", subscriberId)
             return true
         }
 
-        logger.info("Subscriber {} exists but needs update", subscriberId)
-        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId?updateMask=endpointUri,subscriberConfigs"
-        val payload = mapOf(
-            "endpointUri" to desiredUri,
-            "subscriberConfigs" to desiredConfigs,
-        )
+        logger.info("Subscriber {} exists but needs update of {}", subscriberId, payload.keys)
+        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId" +
+            "?updateMask=${payload.keys.joinToString(",")}"
         val body = objectMapper.writeValueAsString(payload).toRequestBody(JSON_MEDIA_TYPE)
         val request = Request.Builder()
             .url(url)
@@ -230,11 +237,11 @@ class SubscriberRegistrationService(
     private fun buildSubscriberPayload(): Map<String, Any> = mapOf(
         "endpointUri" to ghConfig.subscriberEndpointUri,
         "subscriberConfigs" to buildSubscriberConfigs(),
-        "endpointAuthorization" to mapOf(
-            "secret" to "Bearer ${ghConfig.subscriberSecret}",
-            "secretSet" to false,
-        ),
+        "endpointAuthorization" to endpointAuthorization(),
     )
+
+    private fun endpointAuthorization(): Map<String, Any> =
+        mapOf("secret" to "Bearer ${ghConfig.subscriberSecret}")
 
     private fun buildSubscriberConfigs(): List<Map<String, Any>> = listOf(
         mapOf(
@@ -243,15 +250,19 @@ class SubscriberRegistrationService(
         )
     )
 
+    /** Compares the configs as sets, so a different order of configs or data types is no change. */
     private fun configsMatch(
         existing: List<Map<String, Any>>?,
         desired: List<Map<String, Any>>,
-    ): Boolean {
-        if (existing == null || existing.size != desired.size) return false
-        val existingConfig = existing.firstOrNull()
-        val desiredConfig = desired.firstOrNull()
-        return existingConfig?.get("dataTypes") == desiredConfig?.get("dataTypes") &&
-            existingConfig?.get("subscriptionCreatePolicy") == desiredConfig?.get("subscriptionCreatePolicy")
+    ): Boolean = existing != null &&
+        existing.map(::configKey).toSet() == desired.map(::configKey).toSet()
+
+    private fun configKey(config: Map<String, Any>): Pair<Set<String>, Any?> {
+        // Bare ids like "steps", also if Google ever returns names like "users/x/dataTypes/steps".
+        val dataTypes = (config["dataTypes"] as? List<*>).orEmpty()
+            .map { it.toString().substringAfterLast('/') }
+            .toSet()
+        return dataTypes to config["subscriptionCreatePolicy"]
     }
 
     companion object {

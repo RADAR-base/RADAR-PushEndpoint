@@ -35,6 +35,7 @@ import java.io.ByteArrayInputStream
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.format.DateTimeParseException
 
 @Suppress("unused")
 class GoogleHealthAuthValidator(
@@ -44,6 +45,11 @@ class GoogleHealthAuthValidator(
 ) : AuthValidator {
 
     private val expectedSecret: String = config.pushIntegration.googlehealth.subscriberSecret
+
+    // Only set while the secret is rotated: Google keeps sending the old one until the subscriber
+    // is patched to the new one.
+    private val previousSecret: String? =
+        config.pushIntegration.googlehealth.previousSubscriberSecret?.takeIf { it.isNotEmpty() }
 
     override fun getToken(request: ContainerRequestContext): String {
         if (request.hasEntity()) {
@@ -74,8 +80,8 @@ class GoogleHealthAuthValidator(
             return handleHandshake(token, request)
         }
 
-        // Not a handshake => a data push. Authenticate before doing any work on the payload: both the
-        // shared bearer secret and Google's cryptographic webhook signature must check out.
+        // Not a handshake => a data push. Check the shared bearer secret before doing any work on
+        // the payload.
         verifyBearer(token)
 
         if (tree != null) {
@@ -149,12 +155,19 @@ class GoogleHealthAuthValidator(
             logger.warn("Skipping Google Health interval without physical or civil times: {}", node)
             return null
         }
-        return PingInterval(
-            physicalStartTime = if (hasPhysical) Instant.parse(physicalStart) else null,
-            physicalEndTime = if (hasPhysical) Instant.parse(physicalEnd) else null,
-            civilStartTime = if (hasCivil) LocalDateTime.parse(civilStart) else null,
-            civilEndTime = if (hasCivil) LocalDateTime.parse(civilEnd) else null,
-        )
+        // An unreadable time skips only this interval. Throwing would fail the whole push with a
+        // 500, and Google would retry the same body for days.
+        return try {
+            PingInterval(
+                physicalStartTime = if (hasPhysical) Instant.parse(physicalStart) else null,
+                physicalEndTime = if (hasPhysical) Instant.parse(physicalEnd) else null,
+                civilStartTime = if (hasCivil) LocalDateTime.parse(civilStart) else null,
+                civilEndTime = if (hasCivil) LocalDateTime.parse(civilEnd) else null,
+            )
+        } catch (ex: DateTimeParseException) {
+            logger.warn("Skipping Google Health interval with an unreadable time: {}", node, ex)
+            null
+        }
     }
 
     private fun handleHandshake(token: String, request: ContainerRequestContext): Auth {
@@ -175,8 +188,9 @@ class GoogleHealthAuthValidator(
         if (token.isEmpty()) {
             throw HttpUnauthorizedException("missing_token", "Authorization header is missing")
         }
-        val expected = "Bearer $expectedSecret"
-        if (!constantTimeEquals(token, expected)) {
+        val matches = constantTimeEquals(token, "Bearer $expectedSecret") ||
+            (previousSecret != null && constantTimeEquals(token, "Bearer $previousSecret"))
+        if (!matches) {
             logger.warn("Bearer token mismatch")
             throw HttpUnauthorizedException("invalid_token", "Bearer token does not match")
         }
