@@ -57,6 +57,7 @@ import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
 import org.radarbase.googlehealth.exception.TransientGoogleHealthException
+import org.radarbase.googlehealth.exception.UserNotAuthorizedException
 import org.radarbase.googlehealth.model.GoogleHealthPing
 import org.radarbase.googlehealth.model.PingInterval
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
@@ -221,6 +222,9 @@ class GoogleHealthApiService(
                 }
                 try {
                     fetchAndPublishBlocking(user, ping.dataType, window, civil)
+                } catch (ex: UserNotAuthorizedException) {
+                    logger.info("User {} is no longer authorized, skipping notifications", user.id)
+                    return
                 } catch (ex: Exception) {
                     logger.error(
                         "Failed to fetch {} for user {} interval=[{},{})",
@@ -251,6 +255,9 @@ class GoogleHealthApiService(
             for (dataType in nonSubscribedTypes) {
                 try {
                     catchUpFetch(user, dataType, target)
+                } catch (ex: UserNotAuthorizedException) {
+                    logger.info("User {} is no longer authorized, skipping catch-up", user.id)
+                    break
                 } catch (ex: Exception) {
                     logger.error(
                         "Catch-up fetch failed for {} user={} target={}",
@@ -303,10 +310,39 @@ class GoogleHealthApiService(
      */
     fun ensureHistoricalCutoff(user: User): Instant {
         val path = Path.of(user.versionedId)
-        return offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
-            ?: Instant.now().also { cutoff ->
-                offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
-            }
+        offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
+            ?.let { return it }
+        // Backfill and catch-up can see a new user at the same moment. Claim the cutoff with
+        // SET NX first, so both use the same value instead of each writing its own.
+        val cutoff = redisHolder.execute { redis ->
+            val key = CUTOFF_KEY_PREFIX + user.versionedId
+            redis.set(key, Instant.now().toString(), CUTOFF_SET_PARAMS)
+            Instant.parse(redis.get(key))
+        }
+        offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
+        return cutoff
+    }
+
+    /**
+     * The local days a backfill window of a daily-summary type covers, as midnights, or null for
+     * other types. A day belongs to the window its local midnight falls in, so consecutive windows
+     * never fetch the same date twice. The first is equal to the second when no midnight falls in
+     * the window.
+     */
+    fun dailyBackfillDays(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>,
+    ): Pair<LocalDateTime, LocalDateTime>? {
+        if (timeAxisFor(dataType) != TimeAxis.DAILY) return null
+        val zone = userZoneId(user)
+        fun firstMidnightFrom(at: Instant): LocalDateTime {
+            val date = at.atZone(zone).toLocalDate()
+            val startsBefore = date.atStartOfDay(zone).toInstant().isBefore(at)
+            val day = if (startsBefore) date.plusDays(1) else date
+            return day.atStartOfDay()
+        }
+        return firstMidnightFrom(window.first) to firstMidnightFrom(window.second)
     }
 
     /**
@@ -343,6 +379,7 @@ class GoogleHealthApiService(
         sem.acquire()
         try {
             var pageToken: String? = null
+            val seenPageTokens = HashSet<String>()
             do {
                 val response = fetchDataPoints(user, dataType, window, civil, pageToken)
                 perType.forEach { conv ->
@@ -359,6 +396,9 @@ class GoogleHealthApiService(
                     publishExerciseTcx(user, response)
                 }
                 pageToken = response["nextPageToken"]?.asText()?.takeIf { it.isNotEmpty() }
+                if (pageToken != null && !seenPageTokens.add(pageToken)) {
+                    throw IOException("Google Health repeated a page token for user=${user.id}")
+                }
             } while (pageToken != null)
         } finally {
             sem.release()
@@ -825,6 +865,9 @@ class GoogleHealthApiService(
         private val DEDUP_TTL: Duration = Duration.ofMinutes(5)
         private const val DEDUP_KEY_PREFIX = "radar-push-googlehealth/dedup/"
         private const val DELETE_OPERATION = "DELETE"
+        private const val CUTOFF_KEY_PREFIX = "radar-push-googlehealth/cutoff/"
+        private val CUTOFF_SET_PARAMS: SetParams =
+            SetParams().nx().px(Duration.ofDays(1).toMillis())
         private val DEDUP_SET_PARAMS: SetParams = SetParams().nx().px(DEDUP_TTL.toMillis())
 
         /** Far longer than a catch-up takes, short enough that a crashed instance delays little. */

@@ -32,6 +32,7 @@ import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.exception.UserNotAuthorizedException
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.nio.file.Path
@@ -152,6 +153,9 @@ class GoogleHealthBackfillService(
         for (dataType in ghConfig.effectiveEnabledDataTypes) {
             try {
                 backfillOneDataType(user, dataType)
+            } catch (ex: UserNotAuthorizedException) {
+                logger.info("User {} is no longer authorized, stopping backfill", user.versionedId)
+                return
             } catch (ex: Throwable) {
                 logger.warn(
                     "Google Health backfill failed for user={} dataType={}",
@@ -207,7 +211,12 @@ class GoogleHealthBackfillService(
                 cursor,
                 windowEnd,
             )
-            apiService.fetchAndPublishBlocking(user, dataType, cursor to windowEnd)
+            val window = cursor to windowEnd
+            val days = apiService.dailyBackfillDays(user, dataType, window)
+            // A window without a local midnight holds no day of its own: the next one fetches it.
+            if (days == null || days.first < days.second) {
+                apiService.fetchAndPublishBlocking(user, dataType, window, days)
+            }
             offsets.add(
                 Path.of(user.versionedId),
                 UserRouteOffset(user.versionedId, route, windowEnd),
