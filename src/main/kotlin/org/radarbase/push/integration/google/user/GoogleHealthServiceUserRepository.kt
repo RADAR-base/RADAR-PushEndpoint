@@ -37,6 +37,7 @@ import org.radarbase.oauth.OAuth2Client
 import org.radarbase.push.integration.common.inject.ObjectReaderFactory
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.ProtocolException
 import java.net.URL
 import java.time.Duration
 import java.time.Instant
@@ -109,7 +110,20 @@ class GoogleHealthServiceUserRepository(
         if (cached != null && !cached.isExpired()) {
             return cached.accessToken
         }
-        val request = requestFor("users/${user.id}/token").build()
+        return requestToken(user, requestFor("users/${user.id}/token").build())
+    }
+
+    /**
+     * Make RSA refresh the user's token at Google, even if the cached or stored token has not
+     * expired. Used after Google answered 401, for example because the user revoked access or
+     * authorized again. If RSA cannot refresh, it answers 407 and marks the user unauthorized.
+     */
+    @Throws(IOException::class)
+    fun refreshOAuth2AccessToken(user: User): String =
+        requestToken(user, requestFor("users/${user.id}/token").method("POST", EMPTY_BODY).build())
+
+    @Throws(IOException::class)
+    private fun requestToken(user: User, request: Request): String {
         val token = makeRequest<RestOauth2AccessToken>(request, tokenReader)
         cachedTokens[user.id] = CachedAccessToken(
             accessToken = token.accessToken,
@@ -167,7 +181,19 @@ class GoogleHealthServiceUserRepository(
     @Throws(IOException::class)
     private fun <T> makeRequest(request: Request, reader: ObjectReader?): T {
         logger.info("Requesting info from {}", request.url)
-        client.newCall(request).execute().use { response ->
+        val call = try {
+            client.newCall(request).execute()
+        } catch (ex: ProtocolException) {
+            // RSA answers 407 when it could not refresh the token at Google and marked the user
+            // unauthorized. Without a proxy, OkHttp turns that 407 into this exception.
+            if (ex.message?.contains("407") == true) {
+                throw UserNotAuthorizedException(
+                    "RSA reports the user unauthorized: ${request.url}",
+                )
+            }
+            throw ex
+        }
+        call.use { response ->
             val body: ResponseBody? = response.body
             if (response.code == 404) {
                 throw NoSuchElementException("URL " + request.url + " does not exist")

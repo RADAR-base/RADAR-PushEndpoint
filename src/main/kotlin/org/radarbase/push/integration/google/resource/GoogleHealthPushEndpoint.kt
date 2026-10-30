@@ -20,6 +20,7 @@ import jakarta.inject.Singleton
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.MediaType
@@ -32,6 +33,7 @@ import org.radarbase.push.integration.google.service.GoogleHealthApiService
 import org.slf4j.LoggerFactory
 
 @Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
 @Singleton
 @Path("googlehealth")
 @Authenticated
@@ -46,7 +48,7 @@ class GoogleHealthPushEndpoint(
         }
 
         val pings = extractPings(request.getProperty(PING_PROPERTY))
-        pings.forEach { healthApiService.handlePing(it) }
+        healthApiService.handlePings(pings)
         return Response.noContent().build()
     }
 
