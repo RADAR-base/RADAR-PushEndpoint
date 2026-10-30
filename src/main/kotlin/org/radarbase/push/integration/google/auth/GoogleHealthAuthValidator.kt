@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
 import java.time.Instant
+import java.time.LocalDateTime
 
 @Suppress("unused")
 class GoogleHealthAuthValidator(
@@ -120,16 +121,7 @@ class GoogleHealthAuthValidator(
 
         val operation = data["operation"]?.asText() ?: "UPSERT"
         val dataType = data["dataType"]?.asText() ?: "UNKNOWN"
-        val rawIntervals = data["intervals"]
-        val intervals = rawIntervals?.mapNotNull(::parseInterval) ?: emptyList()
-        val skipped = (rawIntervals?.size() ?: 0) - intervals.size
-        if (skipped > 0) {
-            logger.info(
-                "[GH-TEST] dataType={} healthUserId={}: {} of {} interval(s) had no physicalTimeInterval " +
-                    "(civil-only) and were skipped",
-                dataType, healthUserId, skipped, rawIntervals?.size() ?: 0,
-            )
-        }
+        val intervals = data["intervals"]?.mapNotNull(::parseInterval) ?: emptyList()
 
         return GoogleHealthPing(
             healthUserId = healthUserId,
@@ -140,20 +132,31 @@ class GoogleHealthAuthValidator(
     }
 
     /**
-     * Resolve a single interval to its physical (UTC) window. Civil-only intervals (e.g. the
-     * daily-aggregate notifications that omit `physicalTimeInterval`) are skipped: their times are
-     * the device's local, zoneless times, and the same change also arrives with a physical interval
-     * and is covered by the backfill / catch-up paths.
+     * Read one interval: the physical (UTC) window from `physicalTimeInterval` and the user's
+     * local window from `civilIso8601TimeInterval`. Google leaves out the physical window for some
+     * intervals, such as full-day step totals, so either side may be missing. The service decides
+     * per data type which side it needs. Returns null only when both are missing.
      */
-    private fun parseInterval(node: JsonNode): PingInterval? {
+    internal fun parseInterval(node: JsonNode): PingInterval? {
         val physical = node["physicalTimeInterval"]
-        val start = physical?.get("startTime")?.asText()
-        val end = physical?.get("endTime")?.asText()
-        if (start.isNullOrEmpty() || end.isNullOrEmpty()) {
-            logger.info("[GH-TEST] Skipping Google Health interval without physicalTimeInterval: {}", node)
+        val physicalStart = physical?.get("startTime")?.asText()?.takeIf { it.isNotEmpty() }
+        val physicalEnd = physical?.get("endTime")?.asText()?.takeIf { it.isNotEmpty() }
+        val civil = node["civilIso8601TimeInterval"]
+        val civilStart = civil?.get("startTime")?.asText()?.takeIf { it.isNotEmpty() }
+        val civilEnd = civil?.get("endTime")?.asText()?.takeIf { it.isNotEmpty() }
+
+        val hasPhysical = physicalStart != null && physicalEnd != null
+        val hasCivil = civilStart != null && civilEnd != null
+        if (!hasPhysical && !hasCivil) {
+            logger.warn("Skipping Google Health interval without physical or civil times: {}", node)
             return null
         }
-        return PingInterval(Instant.parse(start), Instant.parse(end))
+        return PingInterval(
+            physicalStartTime = if (hasPhysical) Instant.parse(physicalStart) else null,
+            physicalEndTime = if (hasPhysical) Instant.parse(physicalEnd) else null,
+            civilStartTime = if (hasCivil) LocalDateTime.parse(civilStart) else null,
+            civilEndTime = if (hasCivil) LocalDateTime.parse(civilEnd) else null,
+        )
     }
 
     private fun handleHandshake(token: String, request: ContainerRequestContext): Auth {
