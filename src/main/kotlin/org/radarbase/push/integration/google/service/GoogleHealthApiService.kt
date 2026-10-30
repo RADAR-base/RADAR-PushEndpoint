@@ -450,8 +450,10 @@ class GoogleHealthApiService(
         for (point in points) {
             val idSegment = (point["name"] ?: point["dataPointName"])?.asText()
                 ?.substringAfterLast('/')
-            // Skip only this session. Throwing would stop paging, and backfill would retry the
-            // same window forever. The converter skips the same point.
+            // The id is numeric in all real data so far, but Google does not document its format.
+            // Skip only this session if it is not. Throwing would stop paging, and backfill would
+            // retry the same window forever. The converter skips the same point. If this warning
+            // ever shows up, switch to a string id field in the exercise and TCX schemas.
             val exerciseId = idSegment?.toLongOrNull()
             if (exerciseId == null) {
                 logger.warn(
