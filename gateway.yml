@@ -50,18 +50,23 @@ pushIntegration:
 
         # --- Google Health API ---
         apiBaseUrl: https://health.googleapis.com/v4
-        googleCloudProjectId: ""
+        googleCloudProjectId: ""   # the project NUMBER (digits only), a project id gives 403
 
         # --- Subscriber ---
-        subscriberId: radar-pushendpoint-<deployment>-<study> # MUST be unique per deployment (and maybe study) (e.g. radar-pep-stage)
+        # MUST be unique per deployment, e.g. radar-pushendpoint-stage. 4 to 36 characters:
+        # lowercase letters, digits and hyphens, starting with a letter, not ending with a hyphen.
+        subscriberId: radar-pushendpoint-<deployment>
         subscriberEndpointUri: https://push-endpoint:8090/push/integrations/googlehealth/notifications
         subscriberSecret: ""   # 32+ byte random string; Google echoes it back as the Authorization header
+        # Only while rotating subscriberSecret: the old secret. Pushes with either are accepted and
+        # the subscriber is patched to the new one at startup. Remove it afterwards.
+        #previousSubscriberSecret: ""
         serviceAccountKeyPath: ""      # REQUIRED — path to the Google service-account JSON. Empty/missing => subscriber registration does not run.
 
         subscriptionCreatePolicy: MANUAL
 
         # Data types that drive PINGs (the subscriber config subscribes to these).
-        # MUST stay identical to googleHealth.dataTypes in RADAR-Rest-Source-Auth, which
+        # MUST stay identical to restSourceClientSubscriptions.googlehealth.dataTypes in RADAR-Rest-Source-Auth, which
         # subscribes each user to the same set.
         triggerDataTypes:
             - steps
