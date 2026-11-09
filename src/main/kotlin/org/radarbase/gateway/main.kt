@@ -22,6 +22,7 @@ fun main(args: Array<String>) {
                 .registerModule(JavaTimeModule())
         )
             .withDefaults()
+            .withEnv()
     } catch (ex: IllegalArgumentException) {
         logger.error("No configuration file was found.")
         logger.error("Usage: radar-gateway <config-file>")

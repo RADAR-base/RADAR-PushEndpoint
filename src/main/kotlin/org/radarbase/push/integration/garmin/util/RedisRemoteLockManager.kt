@@ -7,9 +7,13 @@ import java.util.*
 
 class RedisRemoteLockManager(
         private val redisHolder: RedisHolder,
-        private val keyPrefix: String
+        private val keyPrefix: String,
+        lockDuration: Duration = Duration.ofDays(1),
 ) : RemoteLockManager {
     private val uuid: String = UUID.randomUUID().toString()
+    private val setParams = SetParams()
+            .nx() // only set if not already set
+            .px(lockDuration.toMillis()) // limit the duration of a lock, 24 hours by default
 
     init {
         logger.info("Managing locks as ID {}", uuid)
@@ -38,8 +42,5 @@ class RedisRemoteLockManager(
 
     companion object {
         private val logger = LoggerFactory.getLogger(RedisRemoteLockManager::class.java)
-        private val setParams = SetParams()
-                .nx() // only set if not already set
-                .px(Duration.ofDays(1).toMillis()) // limit the duration of a lock to 24 hours
     }
 }
