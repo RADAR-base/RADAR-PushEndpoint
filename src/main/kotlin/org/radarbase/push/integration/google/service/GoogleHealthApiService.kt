@@ -16,6 +16,7 @@
 
 package org.radarbase.push.integration.google.service
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -375,6 +376,13 @@ class GoogleHealthApiService(
             logger.debug("No converter registered for dataType={}", dataType)
             return
         }
+        if (civil == null && window != null && hasNoCivilRange(user, dataType, window)) {
+            logger.info(
+                "Skipping {} window=[{},{}) for user={}: local end is not after local start",
+                dataType, window.first, window.second, user.versionedId,
+            )
+            return
+        }
         val sem = userSemaphores.computeIfAbsent(user.id) { Semaphore(MAX_CONCURRENT_PER_USER) }
         sem.acquire()
         try {
@@ -403,6 +411,21 @@ class GoogleHealthApiService(
         } finally {
             sem.release()
         }
+    }
+
+    /**
+     * Exercise is filtered by local time, and Google answers 400 when the end is not after the
+     * start. A short window can do that when the clocks go back, or when it is under a second, as
+     * the filter uses whole seconds. Retrying gives the same 400, and the offset would never move.
+     */
+    private fun hasNoCivilRange(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>,
+    ): Boolean {
+        if (timeAxisFor(dataType) != TimeAxis.CIVIL_INTERVAL) return false
+        val civilFmt = CIVIL_DT_FMT.withZone(userZoneId(user))
+        return civilFmt.format(window.second) <= civilFmt.format(window.first)
     }
 
     private fun fetchDataPoints(
@@ -463,7 +486,18 @@ class GoogleHealthApiService(
                 continue
             }
             val xml = exportExerciseTcx(user, exerciseId) ?: continue
-            records += TcxAvroConverter.convert(TcxParser.parse(xml), exerciseId, user.observationKey)
+            // Skip only this session. Throwing would keep the offset, and every retry would send
+            // the exercises of this window to Kafka again without ever getting past this answer.
+            val trackpoints = try {
+                TcxParser.parse(xml)
+            } catch (ex: JsonProcessingException) {
+                logger.warn(
+                    "Skipping TCX of exercise {} for user={}: not readable as TCX: {}",
+                    exerciseId, user.versionedId, ex.originalMessage,
+                )
+                continue
+            }
+            records += TcxAvroConverter.convert(trackpoints, exerciseId, user.observationKey)
         }
         if (records.isNotEmpty()) producerPool.produce(googleConfig.exerciseTcxTopicName, records)
     }
@@ -693,35 +727,42 @@ class GoogleHealthApiService(
      * physical (UTC) instants into the civil local-clock bounds that exercise's `civil_start_time`
      * filter expects. A ZoneId (not the settings' fixed `utcOffset`) resolves the correct offset
      * for each instant, keeping historical backfill correct.
+     *
+     * A failed settings call throws, so backfill keeps its offset and retries. One chunk in UTC
+     * between chunks in the real zone would skip the data at their boundary. Only a 403 (the user
+     * did not grant that scope) or a zone that Google does not send uses UTC, which then stays the
+     * same for all of this user's chunks.
      */
     private fun userZoneId(user: User): ZoneId {
         userZones[user.id]?.let { if (!it.isExpired()) return it.zone }
-        val zone = try {
-            fetchUserZone(user)
-        } catch (ex: Exception) {
-            logger.warn(
-                "Could not read Google Health settings for user={}; civil filter falls back to UTC",
-                user.versionedId, ex,
-            )
-            null
+        val zone = fetchUserZone(user)
+        if (zone == null) {
+            logger.warn("No Google Health time zone for user={}, using UTC", user.versionedId)
+            return ZoneOffset.UTC
         }
-        return if (zone != null) {
-            userZones[user.id] = CachedZone(zone, Instant.now().plus(SETTINGS_CACHE_TTL))
-            zone
-        } else {
-            ZoneOffset.UTC
-        }
+        userZones[user.id] = CachedZone(zone, Instant.now().plus(SETTINGS_CACHE_TTL))
+        return zone
     }
 
     private fun fetchUserZone(user: User): ZoneId? {
         val url = apiBaseUrl.newBuilder().addPathSegments("users/me/settings").build()
-        val settings = executeWithRetry(user) { token ->
+        val buildRequest = { token: String ->
             Request.Builder().url(url)
                 .header("Authorization", "Bearer $token")
                 .header("Accept", "application/json")
                 .get()
                 .build()
         }
+        val settings = executeWithRetry<JsonNode?>(
+            user,
+            buildRequest,
+            { parseBody(it.body?.string()) },
+        ) { code ->
+            if (code != 403) {
+                throw IOException("Google Health settings: HTTP $code for user=${user.id}")
+            }
+            null
+        } ?: return null
         return parseUserZone(settings)
     }
 
