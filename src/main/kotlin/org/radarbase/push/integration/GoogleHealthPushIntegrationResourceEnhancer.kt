@@ -29,8 +29,6 @@ import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.google.auth.GoogleHealthAuthValidator
 import org.radarbase.push.integration.google.service.GoogleHealthApiService
 import org.radarbase.push.integration.google.service.GoogleHealthBackfillService
-import org.radarbase.push.integration.google.subscriptions.GoogleHealthSubscriptionReconcileService
-import org.radarbase.push.integration.google.subscriptions.GoogleHealthSubscriptionService
 import org.radarbase.push.integration.google.subscriber.SubscriberRegistrationService
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
 import org.radarbase.push.integration.google.util.GoogleServiceAccountTokenProvider
@@ -51,9 +49,6 @@ class GoogleHealthPushIntegrationResourceEnhancer(private val config: Config) :
             val services = mutableListOf<Class<*>>(SubscriberRegistrationService::class.java)
             if (ghConfig.backfill.enabled) {
                 services += GoogleHealthBackfillService::class.java
-            }
-            if (ghConfig.subscriptionReconcileEnabled) {
-                services += GoogleHealthSubscriptionReconcileService::class.java
             }
             return services.toTypedArray()
         }
@@ -83,10 +78,6 @@ class GoogleHealthPushIntegrationResourceEnhancer(private val config: Config) :
 
         bind(GoogleServiceAccountTokenProvider::class.java)
             .to(GoogleServiceAccountTokenProvider::class.java)
-            .`in`(Singleton::class.java)
-
-        bind(GoogleHealthSubscriptionService::class.java)
-            .to(GoogleHealthSubscriptionService::class.java)
             .`in`(Singleton::class.java)
     }
 }

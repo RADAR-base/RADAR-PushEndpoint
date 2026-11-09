@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.format.DateTimeParseException
 
 @Suppress("unused")
 class GoogleHealthAuthValidator(
@@ -43,6 +45,11 @@ class GoogleHealthAuthValidator(
 ) : AuthValidator {
 
     private val expectedSecret: String = config.pushIntegration.googlehealth.subscriberSecret
+
+    // Only set while the secret is rotated: Google keeps sending the old one until the subscriber
+    // is patched to the new one.
+    private val previousSecret: String? =
+        config.pushIntegration.googlehealth.previousSubscriberSecret?.takeIf { it.isNotEmpty() }
 
     override fun getToken(request: ContainerRequestContext): String {
         if (request.hasEntity()) {
@@ -69,11 +76,12 @@ class GoogleHealthAuthValidator(
         }
 
         if (isVerificationHandshake(tree)) {
-            logger.info("GH-TEST Google Health verification handshake received (userAgent={})", userAgent)
+            logger.info("Google Health verification handshake received (userAgent={})", userAgent)
             return handleHandshake(token, request)
         }
 
-        // Not a handshake => a data push. Authenticate before doing any work on the payload.
+        // Not a handshake => a data push. Check the shared bearer secret before doing any work on
+        // the payload.
         verifyBearer(token)
 
         if (tree != null) {
@@ -92,8 +100,6 @@ class GoogleHealthAuthValidator(
      * notification objects, each shaped `{ "data": { ... } }`.
      */
     private fun parsePings(tree: JsonNode): List<GoogleHealthPing> {
-        logger.info("[GH-TEST] Raw Google Health payload received: {}", tree.toPrettyString())
-
         if (!tree.isArray) {
             logger.warn("Expected a JSON array of Google Health notifications but got {}", tree.nodeType)
             return emptyList()
@@ -119,16 +125,7 @@ class GoogleHealthAuthValidator(
 
         val operation = data["operation"]?.asText() ?: "UPSERT"
         val dataType = data["dataType"]?.asText() ?: "UNKNOWN"
-        val rawIntervals = data["intervals"]
-        val intervals = rawIntervals?.mapNotNull(::parseInterval) ?: emptyList()
-        val skipped = (rawIntervals?.size() ?: 0) - intervals.size
-        if (skipped > 0) {
-            logger.info(
-                "[GH-TEST] dataType={} healthUserId={}: {} of {} interval(s) had no physicalTimeInterval " +
-                    "(civil-only) and were skipped",
-                dataType, healthUserId, skipped, rawIntervals?.size() ?: 0,
-            )
-        }
+        val intervals = data["intervals"]?.mapNotNull(::parseInterval) ?: emptyList()
 
         return GoogleHealthPing(
             healthUserId = healthUserId,
@@ -139,20 +136,38 @@ class GoogleHealthAuthValidator(
     }
 
     /**
-     * Resolve a single interval to its physical (UTC) window. Civil-only intervals (e.g. the
-     * daily-aggregate notifications that omit `physicalTimeInterval`) are skipped: their times are
-     * the device's local, zoneless times, and the same change also arrives with a physical interval
-     * and is covered by the backfill / catch-up paths.
+     * Read one interval: the physical (UTC) window from `physicalTimeInterval` and the user's
+     * local window from `civilIso8601TimeInterval`. Google leaves out the physical window for some
+     * intervals, such as full-day step totals, so either side may be missing. The service decides
+     * per data type which side it needs. Returns null only when both are missing.
      */
-    private fun parseInterval(node: JsonNode): PingInterval? {
+    internal fun parseInterval(node: JsonNode): PingInterval? {
         val physical = node["physicalTimeInterval"]
-        val start = physical?.get("startTime")?.asText()
-        val end = physical?.get("endTime")?.asText()
-        if (start.isNullOrEmpty() || end.isNullOrEmpty()) {
-            logger.info("[GH-TEST] Skipping Google Health interval without physicalTimeInterval: {}", node)
+        val physicalStart = physical?.get("startTime")?.asText()?.takeIf { it.isNotEmpty() }
+        val physicalEnd = physical?.get("endTime")?.asText()?.takeIf { it.isNotEmpty() }
+        val civil = node["civilIso8601TimeInterval"]
+        val civilStart = civil?.get("startTime")?.asText()?.takeIf { it.isNotEmpty() }
+        val civilEnd = civil?.get("endTime")?.asText()?.takeIf { it.isNotEmpty() }
+
+        val hasPhysical = physicalStart != null && physicalEnd != null
+        val hasCivil = civilStart != null && civilEnd != null
+        if (!hasPhysical && !hasCivil) {
+            logger.warn("Skipping Google Health interval without physical or civil times: {}", node)
             return null
         }
-        return PingInterval(Instant.parse(start), Instant.parse(end))
+        // An unreadable time skips only this interval. Throwing would fail the whole push with a
+        // 500, and Google would retry the same body for days.
+        return try {
+            PingInterval(
+                physicalStartTime = if (hasPhysical) Instant.parse(physicalStart) else null,
+                physicalEndTime = if (hasPhysical) Instant.parse(physicalEnd) else null,
+                civilStartTime = if (hasCivil) LocalDateTime.parse(civilStart) else null,
+                civilEndTime = if (hasCivil) LocalDateTime.parse(civilEnd) else null,
+            )
+        } catch (ex: DateTimeParseException) {
+            logger.warn("Skipping Google Health interval with an unreadable time: {}", node, ex)
+            null
+        }
     }
 
     private fun handleHandshake(token: String, request: ContainerRequestContext): Auth {
@@ -173,8 +188,9 @@ class GoogleHealthAuthValidator(
         if (token.isEmpty()) {
             throw HttpUnauthorizedException("missing_token", "Authorization header is missing")
         }
-        val expected = "Bearer $expectedSecret"
-        if (!constantTimeEquals(token, expected)) {
+        val matches = constantTimeEquals(token, "Bearer $expectedSecret") ||
+            (previousSecret != null && constantTimeEquals(token, "Bearer $previousSecret"))
+        if (!matches) {
             logger.warn("Bearer token mismatch")
             throw HttpUnauthorizedException("invalid_token", "Bearer token does not match")
         }

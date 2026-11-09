@@ -1,5 +1,4 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import org.jetbrains.kotlin.cli.common.toBooleanLenient
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Duration
 
@@ -59,9 +58,10 @@ dependencies {
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
-    implementation("org.radarbase:google-health-library:0.7.3")
+    implementation("org.radarbase:google-health-library:0.7.6")
 
     implementation("com.google.auth:google-auth-library-oauth2-http:${project.property("googleAuthVersion")}")
+
 
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
@@ -71,6 +71,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jacksonVersion")
 
     val grizzlyVersion: String by project
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
@@ -104,10 +105,8 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        apiVersion = "1.8"
-        languageVersion = "1.8"
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -152,12 +151,12 @@ application {
 dockerCompose {
     useComposeFiles = listOf("src/integrationTest/docker/docker-compose.yml")
     val dockerComposeBuild: String? by project
-    val doBuild = dockerComposeBuild?.toBooleanLenient() ?: true
+    val doBuild = dockerComposeBuild?.toBoolean() ?: true
     buildBeforeUp.set(doBuild)
     buildBeforePull.set(doBuild)
     buildAdditionalArgs.set(emptyList<String>())
     val dockerComposeStopContainers: String? by project
-    stopContainers.set(dockerComposeStopContainers?.toBooleanLenient() ?: true)
+    stopContainers.set(dockerComposeStopContainers?.toBoolean() ?: true)
     waitForTcpPortsTimeout.set(Duration.ofMinutes(3))
     environment.put("SERVICES_HOST", "localhost")
     captureContainersOutputToFiles = project.file("build/container-logs")
