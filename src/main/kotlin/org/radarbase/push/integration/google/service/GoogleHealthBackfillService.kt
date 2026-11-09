@@ -32,6 +32,7 @@ import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
+import org.radarbase.googlehealth.exception.UserNotAuthorizedException
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.nio.file.Path
@@ -67,7 +68,7 @@ class GoogleHealthBackfillService(
     private val bfConfig = ghConfig.backfill
     private val scheduler = Executors.newSingleThreadScheduledExecutor()
     private val workerPool = Executors.newFixedThreadPool(bfConfig.maxThreads)
-    private val futures: MutableList<Future<*>> = mutableListOf()
+    private val futures: MutableMap<String, Future<*>> = mutableMapOf()
 
     override fun onEvent(event: ApplicationEvent?) {
         when (event?.type) {
@@ -110,15 +111,22 @@ class GoogleHealthBackfillService(
         }
     }
 
+    /**
+     * Starts a backfill for every user whose previous one has finished. A user with a long history
+     * keeps running across iterations without holding up the users that come after.
+     */
     private fun iterate() {
-        if (futures.any { !it.isDone }) {
-            logger.info("Previous Google Health backfill iteration is still running; skipping.")
-            return
-        }
-        futures.clear()
+        futures.values.removeIf { it.isDone }
         try {
             userRepository.stream().forEach { user ->
-                futures += workerPool.submit {
+                if (user.versionedId in futures) {
+                    logger.info(
+                        "Google Health backfill for user={} is still running, skipping it.",
+                        user.versionedId,
+                    )
+                    return@forEach
+                }
+                futures[user.versionedId] = workerPool.submit {
                     try {
                         locks.tryRunLocked(user.versionedId) { backfillOneUser(user) }
                     } catch (ex: Throwable) {
@@ -145,6 +153,9 @@ class GoogleHealthBackfillService(
         for (dataType in ghConfig.effectiveEnabledDataTypes) {
             try {
                 backfillOneDataType(user, dataType)
+            } catch (ex: UserNotAuthorizedException) {
+                logger.info("User {} is no longer authorized, stopping backfill", user.versionedId)
+                return
             } catch (ex: Throwable) {
                 logger.warn(
                     "Google Health backfill failed for user={} dataType={}",
@@ -179,10 +190,6 @@ class GoogleHealthBackfillService(
         // Backfill covers [user.startDate, cutoff]; PING path owns [cutoff, now]. Once cursor
         // reaches cutoff, backfill is permanently done for this (user, dataType).
         val upTo = apiService.ensureHistoricalCutoff(user)
-        logger.info(
-            "[GH-TEST] backfill plan user={} dataType={} storedOffset={} startDate={} cursor={} upTo={}",
-            user.versionedId, dataType, storedOffset, user.startDate, cursor, upTo,
-        )
         if (!cursor.isBefore(upTo)) {
             logger.debug(
                 "Backfill complete for user={} dataType={} (cursor={} >= cutoff={})",
@@ -204,7 +211,12 @@ class GoogleHealthBackfillService(
                 cursor,
                 windowEnd,
             )
-            apiService.fetchAndPublishBlocking(user, dataType, cursor to windowEnd)
+            val window = cursor to windowEnd
+            val days = apiService.dailyBackfillDays(user, dataType, window)
+            // A window without a local midnight holds no day of its own: the next one fetches it.
+            if (days == null || days.first < days.second) {
+                apiService.fetchAndPublishBlocking(user, dataType, window, days)
+            }
             offsets.add(
                 Path.of(user.versionedId),
                 UserRouteOffset(user.versionedId, route, windowEnd),
