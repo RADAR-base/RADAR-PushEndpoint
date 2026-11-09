@@ -31,7 +31,6 @@ import org.radarbase.push.integration.google.util.GoogleServiceAccountTokenProvi
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.collections.get
 
 /**
  * Registers a Google Health webhook subscriber at application startup.
@@ -127,7 +126,7 @@ class SubscriberRegistrationService(
     }
 
     private fun getSubscriber(accessToken: String): Map<*, *>? {
-        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId"
+        val url = "$baseUrl/projects/$projectId/subscribers"
         val request = Request.Builder()
             .url(url)
             .get()
@@ -138,7 +137,11 @@ class SubscriberRegistrationService(
                 200 -> {
                     val body = response.body?.string() ?: return null
                     @Suppress("UNCHECKED_CAST")
-                    objectMapper.readValue(body, Map::class.java)
+                    val responseMap = objectMapper.readValue(body, Map::class.java)
+                    val subscribers = responseMap["subscribers"] as? List<Map<*, *>> ?: return null
+
+                    val expectedName = "projects/$projectId/subscribers/$subscriberId"
+                    subscribers.find { it["name"] == expectedName }
                 }
                 404 -> null
                 else -> {
@@ -189,19 +192,42 @@ class SubscriberRegistrationService(
         val existingConfigs = existing["subscriberConfigs"] as? List<Map<String, Any>>
         val desiredConfigs = buildSubscriberConfigs()
 
-        val needsUpdate = existingUri != desiredUri || !configsMatch(existingConfigs, desiredConfigs)
+        // Google never returns the secret, so it is only patched when a rotation is configured.
+        val rotateSecret = !ghConfig.previousSubscriberSecret.isNullOrEmpty()
 
+        val needsUpdate = existingUri != desiredUri ||
+            !configsMatch(existingConfigs, desiredConfigs) || rotateSecret
         if (!needsUpdate) {
             logger.info("Subscriber {} already exists and is up-to-date — state ACTIVE", subscriberId)
             return true
         }
 
-        logger.info("Subscriber {} exists but needs update", subscriberId)
-        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId?updateMask=endpointUri,subscriberConfigs"
-        val payload = mapOf(
-            "endpointUri" to desiredUri,
-            "subscriberConfigs" to desiredConfigs,
-        )
+        // The full subscriber with endpointUri in the mask: the request shape Google accepts. A
+        // body and mask with only subscriberConfigs got INVALID_ARGUMENT. Google runs the
+        // handshake again for every patch.
+        val updateMask = buildList {
+            add("endpointUri")
+            add("subscriberConfigs")
+            if (rotateSecret) add("endpointAuthorization")
+        }
+        logger.info("Subscriber {} exists but needs update, patching {}", subscriberId, updateMask)
+        val payload = buildMap {
+            put("name", "projects/$projectId/subscribers/$subscriberId")
+            put("endpointUri", desiredUri)
+            put("subscriberConfigs", desiredConfigs)
+            if (rotateSecret) put("endpointAuthorization", endpointAuthorization())
+        }
+        return patchSubscriber(payload, updateMask, accessToken) == 200
+    }
+
+    /** Sends the PATCH and returns 200 on success, otherwise the HTTP status. */
+    private fun patchSubscriber(
+        payload: Map<String, Any>,
+        updateMask: List<String>,
+        accessToken: String,
+    ): Int {
+        val url = "$baseUrl/projects/$projectId/subscribers/$subscriberId" +
+            "?updateMask=${updateMask.joinToString(",")}"
         val body = objectMapper.writeValueAsString(payload).toRequestBody(JSON_MEDIA_TYPE)
         val request = Request.Builder()
             .url(url)
@@ -212,25 +238,27 @@ class SubscriberRegistrationService(
         httpClient.newCall(request).execute().use { response ->
             val respBody = response.body?.string()
             if (response.isSuccessful) {
-                logger.info("Subscriber {} patched successfully", subscriberId)
-                return true
+                logger.info(
+                    "Subscriber {} patched successfully (updateMask={})", subscriberId, updateMask,
+                )
+                return 200
             }
             logger.error(
-                "Failed to patch subscriber {}: HTTP {} — {}",
-                subscriberId, response.code, respBody,
+                "Failed to patch subscriber {} (updateMask={}): HTTP {} — {}",
+                subscriberId, updateMask, response.code, respBody,
             )
-            return false
+            return response.code
         }
     }
 
     private fun buildSubscriberPayload(): Map<String, Any> = mapOf(
         "endpointUri" to ghConfig.subscriberEndpointUri,
         "subscriberConfigs" to buildSubscriberConfigs(),
-        "endpointAuthorization" to mapOf(
-            "secret" to "Bearer ${ghConfig.subscriberSecret}",
-            "secretSet" to false,
-        ),
+        "endpointAuthorization" to endpointAuthorization(),
     )
+
+    private fun endpointAuthorization(): Map<String, Any> =
+        mapOf("secret" to "Bearer ${ghConfig.subscriberSecret}")
 
     private fun buildSubscriberConfigs(): List<Map<String, Any>> = listOf(
         mapOf(
@@ -239,15 +267,19 @@ class SubscriberRegistrationService(
         )
     )
 
+    /** Compares the configs as sets, so a different order of configs or data types is no change. */
     private fun configsMatch(
         existing: List<Map<String, Any>>?,
         desired: List<Map<String, Any>>,
-    ): Boolean {
-        if (existing == null || existing.size != desired.size) return false
-        val existingConfig = existing.firstOrNull()
-        val desiredConfig = desired.firstOrNull()
-        return existingConfig?.get("dataTypes") == desiredConfig?.get("dataTypes") &&
-            existingConfig?.get("subscriptionCreatePolicy") == desiredConfig?.get("subscriptionCreatePolicy")
+    ): Boolean = existing != null &&
+        existing.map(::configKey).toSet() == desired.map(::configKey).toSet()
+
+    private fun configKey(config: Map<String, Any>): Pair<Set<String>, Any?> {
+        // Bare ids like "steps", also if Google ever returns names like "users/x/dataTypes/steps".
+        val dataTypes = (config["dataTypes"] as? List<*>).orEmpty()
+            .map { it.toString().substringAfterLast('/') }
+            .toSet()
+        return dataTypes to config["subscriptionCreatePolicy"]
     }
 
     companion object {
