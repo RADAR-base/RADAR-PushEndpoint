@@ -14,12 +14,12 @@ description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
     group = "org.radarbase"
-    version = "0.4.0"
+    version = "1.0.0"
 
     repositories {
-        mavenLocal()
         mavenCentral()
         maven(url = "https://packages.confluent.io/maven/")
+        mavenLocal()
     }
 }
 
