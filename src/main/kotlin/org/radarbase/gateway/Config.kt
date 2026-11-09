@@ -3,7 +3,6 @@ package org.radarbase.gateway
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG
 import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
-import org.radarbase.gateway.KafkaConfig.Companion.copyOnChange
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
@@ -27,9 +26,10 @@ data class Config(
     /** Fill in some default values for the configuration. */
     fun withDefaults(): Config = copy(kafka = kafka.withDefaults())
 
-    // For now, we only configure KafkaConfig from environment variables.
+    /** Read the Kafka and push integration settings that can come from environment variables. */
     fun withEnv(): Config = this
         .copyOnChange(kafka, { it.withEnv("KAFKA_") }) { copy(kafka = it) }
+        .copyOnChange(pushIntegration, { it.withEnv() }) { copy(pushIntegration = it) }
 
     /**
      * Validate the configuration.
@@ -39,12 +39,6 @@ data class Config(
         kafka.validate()
         pushIntegration.validate()
     }
-
-    fun withEnv() = this.copyOnChange(pushIntegration, {
-        it.withEnv()
-    }, {
-        copy(pushIntegration = it)
-    })
 }
 
 data class PushIntegrationConfig(
