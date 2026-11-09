@@ -6,7 +6,11 @@ import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
 import org.radarbase.gateway.inject.PushIntegrationEnhancerFactory
 import org.radarbase.jersey.enhancer.EnhancerFactory
 import org.radarbase.push.integration.garmin.user.GarminUserRepository
+import org.radarbase.googlehealth.user.GoogleHealthUserRepository
+import org.radarbase.jersey.config.ConfigLoader.copyEnv
+import org.radarbase.jersey.config.ConfigLoader.copyOnChange
 import java.net.URI
+import java.time.Duration
 import java.time.Instant
 
 data class Config(
@@ -30,14 +34,27 @@ data class Config(
         kafka.validate()
         pushIntegration.validate()
     }
+
+    fun withEnv() = this.copyOnChange(pushIntegration, {
+        it.withEnv()
+    }, {
+        copy(pushIntegration = it)
+    })
 }
 
 data class PushIntegrationConfig(
-    val garmin: GarminConfig = GarminConfig()
+    val garmin: GarminConfig = GarminConfig(),
+    val googlehealth: GoogleHealthConfig = GoogleHealthConfig(),
 ) {
+    fun withEnv() = this.copyOnChange(googlehealth, {
+        it.withEnv()
+    }, {
+        copy(googlehealth = it)
+    })
+
     fun validate() {
         garmin.validate()
-        // Add more validations as services are added
+        googlehealth.validate()
     }
 }
 
@@ -46,8 +63,7 @@ data class GarminConfig(
     val consumerKey: String = "",
     val consumerSecret: String = "",
     val backfill: BackfillConfig = BackfillConfig(),
-    val userRepositoryClass: String =
-        "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
+    val userRepositoryClass: String = "org.radarbase.push.integration.garmin.user.GarminServiceUserRepository",
     val userRepositoryUrl: String = "http://localhost:8080/",
     val userRepositoryClientId: String = "radar_pushendpoint",
     val userRepositoryClientSecret: String = "",
@@ -79,8 +95,7 @@ data class GarminConfig(
     fun validate() {
         if (enabled) {
             check(GarminUserRepository::class.java.isAssignableFrom(userRepository)) {
-                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" +
-                    " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.push.integration.garmin.user.GarminUserRepository`"
             }
         }
     }
@@ -111,15 +126,147 @@ data class BackfillConfig(
 )
 
 data class RedisConfig(
-    val uri: URI = URI("redis://localhost:6379"),
-    val lockPrefix: String = "radar-push-garmin/lock"
+    val uri: URI = URI("redis://localhost:6379"), val lockPrefix: String = "radar-push-garmin/lock"
 )
 
 data class UserBackfillConfig(
-    val userId: String,
-    val startDate: Instant,
-    val endDate: Instant
+    val userId: String, val startDate: Instant, val endDate: Instant
 )
+
+/**
+ * How Google creates per-user subscriptions for this deployment's subscriber. Part of the
+ * subscriber registration; the subscriptions themselves are managed by RADAR-Rest-Source-Auth.
+ */
+enum class SubscriptionCreatePolicy { MANUAL, AUTOMATIC }
+
+data class GoogleHealthConfig(
+    val enabled: Boolean = false,
+    val userRepositoryClass: String = "org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository",
+    val userRepositoryUrl: String = "http://localhost:8080/",
+    val userRepositoryClientId: String = "radar_pushendpoint",
+    val userRepositoryClientSecret: String = "",
+    val userRepositoryTokenUrl: String = "http://localhost:8080/token/",
+    val apiBaseUrl: String = "https://health.googleapis.com/v4",
+    val googleCloudProjectId: String = "",
+    val subscriberId: String = "radar-pep",
+    val subscriberEndpointUri: String = "",
+    val subscriberSecret: String = "",
+    /**
+     * Set only while rotating [subscriberSecret], to the secret Google still has. Data pushes with
+     * either secret are accepted, and at startup the subscriber is patched to [subscriberSecret].
+     * Remove it once the patch succeeded. Google never returns the stored secret, so a change of
+     * [subscriberSecret] alone is not noticed.
+     */
+    val previousSubscriberSecret: String? = null,
+    val serviceAccountKeyPath: String? = null,
+    val subscriptionCreatePolicy: SubscriptionCreatePolicy = SubscriptionCreatePolicy.MANUAL,
+    /**
+     * Data types the subscriber config subscribes to, i.e. the ones that generate PINGs.
+     *
+     * Must stay identical to `restSourceClientSubscriptions.googlehealth.dataTypes` in
+     * RADAR-Rest-Source-Auth, which manages per-user subscriptions.
+     */
+    val triggerDataTypes: List<String> = listOf(
+        "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations",
+        "heart-rate-variability", "respiratory-rate-sleep-summary",
+        "floors", "sedentary-period", "activity-level",
+    ),
+    val enabledDataTypes: List<String> = listOf(
+        "steps", "heart-rate", "heart-rate-variability", "oxygen-saturation",
+        "total-calories", "daily-resting-heart-rate", "respiratory-rate-sleep-summary",
+        "daily-sleep-temperature-derivations", "sleep", "exercise",
+        "electrocardiogram", "irregular-rhythm-notification",
+        "floors", "sedentary-period", "activity-level",
+    ),
+    val stepsTopicName: String = "push_googlehealth_steps",
+    val floorsTopicName: String = "push_googlehealth_floors",
+    val sedentaryPeriodTopicName: String = "push_googlehealth_sedentary_period",
+    val activityLevelTopicName: String = "push_googlehealth_activity_level",
+    val heartRateTopicName: String = "push_googlehealth_heart_rate",
+    val heartRateVariabilityTopicName: String = "push_googlehealth_heart_rate_variability",
+    val oxygenSaturationTopicName: String = "push_googlehealth_oxygen_saturation",
+    val totalCaloriesTopicName: String = "push_googlehealth_total_calories",
+    val dailyRestingHeartRateTopicName: String = "push_googlehealth_daily_resting_heart_rate",
+    val respiratoryRateSleepSummaryTopicName: String = "push_googlehealth_respiratory_rate_sleep_summary",
+    val dailySleepTemperatureDerivationsTopicName: String = "push_googlehealth_daily_sleep_temperature_derivations",
+    val sleepStagesTopicName: String = "push_googlehealth_sleep_stage",
+    val sleepClassicTopicName: String = "push_googlehealth_sleep_classic",
+    val exerciseTopicName: String = "push_googlehealth_exercise",
+    val electrocardiogramTopicName: String = "push_googlehealth_electrocardiogram",
+    val irregularRhythmNotificationTopicName: String = "push_googlehealth_irregular_rhythm_notification",
+    val exerciseTcxTopicName: String = "push_googlehealth_exercise_tcx",
+
+    val exerciseTcxEnabled: Boolean = true,
+    // Electrocardiogram (ECG) waveforms are large and have no webhook; disabled by default.
+    val electrocardiogramEnabled: Boolean = false,
+    val backfill: GoogleHealthBackfillConfig = GoogleHealthBackfillConfig(),
+) {
+    val userRepository: Class<*> = Class.forName(userRepositoryClass)
+
+    /**
+     * Data types actually fetched/produced, after applying per-type feature flags.
+     * Electrocardiogram is included only when [electrocardiogramEnabled] is true.
+     */
+    val effectiveEnabledDataTypes: List<String>
+        get() = if (electrocardiogramEnabled) {
+            enabledDataTypes
+        } else {
+            enabledDataTypes.filterNot { it == ELECTROCARDIOGRAM_TYPE }
+        }
+
+    fun withEnv() = this.copyEnv("GOOGLE_HEALTH_SERVICE_ACCOUNT_PATH") {
+        copy(serviceAccountKeyPath = it)
+    }
+
+    fun validate() {
+        if (enabled) {
+            check(googleCloudProjectId.isNotEmpty()) {
+                "googleCloudProjectId must be set when google health is enabled"
+            }
+            check(googleCloudProjectId.all { it.isDigit() }) {
+                "googleCloudProjectId must be the Google Cloud project number, not the project id"
+            }
+            check(SUBSCRIBER_ID_PATTERN.matches(subscriberId)) {
+                "subscriberId must be 4 to 36 lowercase letters, digits or hyphens, start with a " +
+                    "letter and not end with a hyphen"
+            }
+            check(subscriptionCreatePolicy == SubscriptionCreatePolicy.MANUAL) {
+                "subscriptionCreatePolicy must be MANUAL: AUTOMATIC subscribes every user of the " +
+                    "shared OAuth client to this deployment"
+            }
+            check(subscriberEndpointUri.isNotEmpty()) {
+                "subscriberEndpointUri must be set when google health is enabled"
+            }
+            check(subscriberSecret.isNotEmpty()) {
+                "subscriberSecret must be set when google health is enabled"
+            }
+            check(GoogleHealthUserRepository::class.java.isAssignableFrom(userRepository)) {
+                "$userRepositoryClass is not valid. Please specify a class that is a subclass of" + " `org.radarbase.googlehealth.user.GoogleHealthUserRepository`"
+            }
+        }
+    }
+
+    companion object {
+        private const val ELECTROCARDIOGRAM_TYPE = "electrocardiogram"
+        private val SUBSCRIBER_ID_PATTERN = Regex("[a-z][a-z0-9-]{2,34}[a-z0-9]")
+    }
+}
+
+data class GoogleHealthBackfillConfig(
+    val enabled: Boolean = false,
+    val redis: RedisConfig = RedisConfig(
+        uri = URI("redis://localhost:6379"),
+        lockPrefix = "radar-push-googlehealth/lock",
+    ),
+    val maxThreads: Int = 4,
+    val maxBackfillPeriod: Duration = Duration.ofDays(MAX_BACKFILL_DAYS),
+    val chunkSizeDays: Long = 7,
+    val iterationIntervalMinutes: Long = 10,
+) {
+    companion object {
+        private const val MAX_BACKFILL_DAYS = 365 * 2L
+    }
+}
 
 data class GatewayServerConfig(
     /** Base URL to serve data with. This will determine the base path and the port. */
@@ -148,15 +295,13 @@ data class KafkaConfig(
     val serialization: Map<String, Any> = mapOf()
 ) {
     fun withDefaults(): KafkaConfig = copy(
-        producer = producerDefaults + producer,
-        admin = mutableMapOf<String, Any>().apply {
+        producer = producerDefaults + producer, admin = mutableMapOf<String, Any>().apply {
             producer[BOOTSTRAP_SERVERS_CONFIG]?.let {
                 this[BOOTSTRAP_SERVERS_CONFIG] = it
             }
             this += adminDefaults
             this += admin
-        },
-        serialization = serializationDefaults + serialization
+        }, serialization = serializationDefaults + serialization
     )
 
     fun validate() {
@@ -178,9 +323,7 @@ data class KafkaConfig(
             "delivery.timeout.ms" to 6000
         )
         private val adminDefaults = mapOf(
-            "default.api.timeout.ms" to 6000,
-            "request.timeout.ms" to 3000,
-            "retries" to 5
+            "default.api.timeout.ms" to 6000, "request.timeout.ms" to 3000, "retries" to 5
         )
 
         private val serializationDefaults = mapOf<String, Any>(
