@@ -151,13 +151,20 @@ data class GoogleHealthConfig(
     val subscriberId: String = "radar-pep",
     val subscriberEndpointUri: String = "",
     val subscriberSecret: String = "",
+    /**
+     * Set only while rotating [subscriberSecret], to the secret Google still has. Data pushes with
+     * either secret are accepted, and at startup the subscriber is patched to [subscriberSecret].
+     * Remove it once the patch succeeded. Google never returns the stored secret, so a change of
+     * [subscriberSecret] alone is not noticed.
+     */
+    val previousSubscriberSecret: String? = null,
     val serviceAccountKeyPath: String? = null,
     val subscriptionCreatePolicy: SubscriptionCreatePolicy = SubscriptionCreatePolicy.MANUAL,
     /**
      * Data types the subscriber config subscribes to, i.e. the ones that generate PINGs.
      *
-     * Must stay identical to `googleHealth.dataTypes` in RADAR-Rest-Source-Auth, which manages
-     * per-user subscriptions.
+     * Must stay identical to `restSourceClientSubscriptions.googlehealth.dataTypes` in
+     * RADAR-Rest-Source-Auth, which manages per-user subscriptions.
      */
     val triggerDataTypes: List<String> = listOf(
         "steps", "sleep", "exercise", "daily-resting-heart-rate", "heart-rate", "daily-sleep-temperature-derivations",
@@ -216,6 +223,17 @@ data class GoogleHealthConfig(
             check(googleCloudProjectId.isNotEmpty()) {
                 "googleCloudProjectId must be set when google health is enabled"
             }
+            check(googleCloudProjectId.all { it.isDigit() }) {
+                "googleCloudProjectId must be the Google Cloud project number, not the project id"
+            }
+            check(SUBSCRIBER_ID_PATTERN.matches(subscriberId)) {
+                "subscriberId must be 4 to 36 lowercase letters, digits or hyphens, start with a " +
+                    "letter and not end with a hyphen"
+            }
+            check(subscriptionCreatePolicy == SubscriptionCreatePolicy.MANUAL) {
+                "subscriptionCreatePolicy must be MANUAL: AUTOMATIC subscribes every user of the " +
+                    "shared OAuth client to this deployment"
+            }
             check(subscriberEndpointUri.isNotEmpty()) {
                 "subscriberEndpointUri must be set when google health is enabled"
             }
@@ -230,6 +248,7 @@ data class GoogleHealthConfig(
 
     companion object {
         private const val ELECTROCARDIOGRAM_TYPE = "electrocardiogram"
+        private val SUBSCRIBER_ID_PATTERN = Regex("[a-z][a-z0-9-]{2,34}[a-z0-9]")
     }
 }
 

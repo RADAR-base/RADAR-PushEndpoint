@@ -16,6 +16,7 @@
 
 package org.radarbase.push.integration.google.service
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -51,10 +52,13 @@ import org.radarbase.googlehealth.converter.GoogleHealthSleepClassicAvroConverte
 import org.radarbase.googlehealth.converter.GoogleHealthSleepStageAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthStepsAvroConverter
 import org.radarbase.googlehealth.converter.GoogleHealthTotalCaloriesAvroConverter
+import org.radarbase.push.integration.garmin.util.RedisHolder
+import org.radarbase.push.integration.garmin.util.RedisRemoteLockManager
 import org.radarbase.push.integration.garmin.util.offset.OffsetRedisPersistence
 import org.radarbase.push.integration.garmin.util.offset.UserRoute
 import org.radarbase.push.integration.garmin.util.offset.UserRouteOffset
 import org.radarbase.googlehealth.exception.TransientGoogleHealthException
+import org.radarbase.googlehealth.exception.UserNotAuthorizedException
 import org.radarbase.googlehealth.model.GoogleHealthPing
 import org.radarbase.googlehealth.model.PingInterval
 import org.radarbase.googlehealth.user.GoogleHealthUserRepository
@@ -62,7 +66,9 @@ import org.radarbase.push.integration.google.util.GoogleHealthCivilFilter
 import org.radarbase.push.integration.google.util.GoogleHealthPingDedup
 import org.radarbase.push.integration.google.tcx.TcxAvroConverter
 import org.radarbase.push.integration.google.tcx.TcxParser
+import org.radarbase.push.integration.google.user.GoogleHealthServiceUserRepository
 import org.slf4j.LoggerFactory
+import redis.clients.jedis.params.SetParams
 import java.io.IOException
 import java.nio.file.Path
 import java.time.Duration
@@ -82,6 +88,7 @@ class GoogleHealthApiService(
     @param:Context private val httpClient: OkHttpClient,
     @param:Context private val config: Config,
     @param:Context private val offsets: OffsetRedisPersistence,
+    @param:Context private val redisHolder: RedisHolder,
 ) {
     private val googleConfig = config.pushIntegration.googlehealth
     private val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
@@ -90,6 +97,10 @@ class GoogleHealthApiService(
     )
     private val dedup = GoogleHealthPingDedup(ttl = DEDUP_TTL)
     private val userSemaphores = ConcurrentHashMap<String, Semaphore>()
+    private val catchUpLocks = RedisRemoteLockManager(
+        redisHolder, googleConfig.backfill.redis.lockPrefix, CATCH_UP_LOCK_TTL,
+    )
+    private val pendingPings = ConcurrentHashMap<String, MutableList<GoogleHealthPing>>()
     private val userZones = ConcurrentHashMap<String, CachedZone>()
     private val apiBaseUrl: HttpUrl = normalizedBaseUrl(googleConfig.apiBaseUrl)
 
@@ -99,46 +110,122 @@ class GoogleHealthApiService(
         it !in googleConfig.triggerDataTypes && it !in NON_CHUNKED_TYPES
     }
 
-    fun handlePing(ping: GoogleHealthPing) {
-        if (ping.intervals.isEmpty()) {
-            logger.info("Ignoring PING with no intervals for user {}", ping.healthUserId)
-            return
-        }
-        val freshIntervals = ping.intervals.filter { interval ->
-            val dedupKey = dedupKeyFor(ping.healthUserId, ping.dataType, interval)
-            dedup.claim(dedupKey).also { claimed ->
-                if (!claimed) logger.info(
-                    "Skipping duplicate PING interval {} for user {}", dedupKey, ping.healthUserId
-                )
+    /**
+     * Queues the new intervals of a push per user. A push holds up to 99 notifications (Google's
+     * batch limit), possibly all of one user, and Google splits one sync into several pushes. Each
+     * user has at most one task in the shared pool, which works through that user's queue, so one
+     * user's sync cannot fill the pool while other users wait. The task resolves the user and runs
+     * catch-up once per round instead of once per notification.
+     */
+    fun handlePings(pings: List<GoogleHealthPing>) {
+        freshPings(pings).groupBy { it.healthUserId }.forEach { (healthUserId, userPings) ->
+            var startTask = false
+            pendingPings.compute(healthUserId) { _, pending ->
+                (pending ?: mutableListOf<GoogleHealthPing>().also { startTask = true })
+                    .apply { addAll(userPings) }
             }
+            if (startTask) executor.submit { drainPings(healthUserId) }
         }
-        if (freshIntervals.isEmpty()) return
-        executor.submit {
+    }
+
+    /**
+     * Processes the user's queued PINGs until the queue is empty, then removes it, so the next push
+     * starts a new task. The queue stays in the map while the task runs, which tells [handlePings]
+     * to only add to it.
+     */
+    private fun drainPings(healthUserId: String) {
+        while (true) {
+            var round: List<GoogleHealthPing> = emptyList()
+            pendingPings.compute(healthUserId) { _, pending ->
+                round = pending.orEmpty().toList()
+                if (round.isEmpty()) null else mutableListOf()
+            }
+            if (round.isEmpty()) return
             try {
-                fetchAllForUser(ping, freshIntervals)
-            } catch (ex: Exception) {
-                logger.error("Unhandled error while processing PING for user {}", ping.healthUserId, ex)
+                fetchAllForUser(healthUserId, round)
+            } catch (ex: Throwable) {
+                logger.error("Unhandled error while processing PING for user {}", healthUserId, ex)
             }
         }
     }
 
-    private fun fetchAllForUser(ping: GoogleHealthPing, intervals: List<PingInterval>) {
-        val user = resolveUser(ping.healthUserId) ?: return
+    /**
+     * The PINGs with only the intervals not seen within [DEDUP_TTL], without PINGs left empty.
+     * Deletions are dropped: fetching would only miss the deleted data, and they are not forwarded.
+     */
+    private fun freshPings(pings: List<GoogleHealthPing>): List<GoogleHealthPing> {
+        pings.filter { it.intervals.isEmpty() }.forEach {
+            logger.info("Ignoring PING with no intervals for user {}", it.healthUserId)
+        }
+        val (deletions, upserts) = pings.partition { it.operation == DELETE_OPERATION }
+        deletions.forEach {
+            logger.info(
+                "Ignoring DELETE notification for user {} dataType={}",
+                it.healthUserId, it.dataType,
+            )
+        }
+        val keyed = upserts.map { ping ->
+            ping to ping.intervals.map { dedupKeyFor(ping.healthUserId, ping.dataType, it) }
+        }
+        val claimed = claimDedupKeys(keyed.flatMap { it.second }).iterator()
+        return keyed.mapNotNull { (ping, keys) ->
+            val freshIntervals = ping.intervals.zip(keys).filter { (_, key) ->
+                claimed.next().also { isNew ->
+                    if (!isNew) logger.info(
+                        "Skipping duplicate PING interval {} for user {}", key, ping.healthUserId
+                    )
+                }
+            }.map { it.first }
+            if (freshIntervals.isEmpty()) null else ping.copy(intervals = freshIntervals)
+        }
+    }
+
+    /**
+     * Claims the keys in Redis, so a repeat that Google delivers to another replica is dropped too.
+     * Without Redis it falls back to this instance's memory: a repeated fetch only sends records
+     * twice, while dropping a notification would lose data.
+     */
+    private fun claimDedupKeys(keys: List<String>): List<Boolean> {
+        if (keys.isEmpty()) return emptyList()
+        return try {
+            redisHolder.execute { redis ->
+                redis.pipelined().use { pipeline ->
+                    val replies = keys.map {
+                        pipeline.set(DEDUP_KEY_PREFIX + it, "1", DEDUP_SET_PARAMS)
+                    }
+                    pipeline.sync()
+                    replies.map { it.get() != null }
+                }
+            }
+        } catch (ex: IOException) {
+            logger.warn(
+                "Redis unavailable for Google Health dedup, using local memory: {}", ex.toString(),
+            )
+            keys.map { dedup.claim(it) }
+        }
+    }
+
+    private fun fetchAllForUser(healthUserId: String, pings: List<GoogleHealthPing>) {
+        val user = resolveUser(healthUserId) ?: return
         if (!user.isAuthorized) {
             logger.info("Skipping PING for unauthorized user {}", user.id)
             return
         }
 
-        if (ping.dataType in googleConfig.effectiveEnabledDataTypes) {
-            for (interval in intervals) {
+        for (ping in pings) {
+            if (ping.dataType !in googleConfig.effectiveEnabledDataTypes) continue
+            for (interval in ping.intervals) {
                 val window = widenInterval(interval)
                 val civil = civilIntervalFor(ping.dataType, interval)
                 if (window == null && civil == null) {
-                    logger.info("[GH-TEST] Skipping Google Health interval without physicalTimeInterval: {}", interval)
+                    logger.info("Skipping Google Health interval without physicalTimeInterval: {}", interval)
                     continue
                 }
                 try {
                     fetchAndPublishBlocking(user, ping.dataType, window, civil)
+                } catch (ex: UserNotAuthorizedException) {
+                    logger.info("User {} is no longer authorized, skipping notifications", user.id)
+                    return
                 } catch (ex: Exception) {
                     logger.error(
                         "Failed to fetch {} for user {} interval=[{},{})",
@@ -153,17 +240,34 @@ class GoogleHealthApiService(
         }
 
         if (nonSubscribedTypes.isEmpty()) return
-        val target = intervals.mapNotNull { widenInterval(it)?.second }.maxOrNull() ?: return
-        for (dataType in nonSubscribedTypes) {
-            try {
-                catchUpFetch(user, dataType, target)
-            } catch (ex: Exception) {
-                logger.error(
-                    "Catch-up fetch failed for {} user={} target={}",
-                    dataType, user.versionedId, target, ex,
-                )
+        // Daily summaries carry a fake physical window at UTC midnight of their date, which lies
+        // in the future for users east of UTC. A target in the future would store the live offset
+        // there and skip the data recorded until then, so leave daily types out and stop at now.
+        val target = pings.filter { timeAxisFor(it.dataType) != TimeAxis.DAILY }
+            .flatMap { it.intervals }
+            .mapNotNull { widenInterval(it)?.second }
+            .maxOrNull()
+            ?.let { minOf(it, Instant.now()) }
+            ?: return
+        // One catch-up at a time per user, also across replicas. Each reads the stored offset only
+        // once it holds the lock, so pushes that arrive together do not fetch and publish the same
+        // window twice. If another replica holds it, that one catches up and a later push goes on.
+        val ran = catchUpLocks.tryRunLocked("catch-up-${user.versionedId}") {
+            for (dataType in nonSubscribedTypes) {
+                try {
+                    catchUpFetch(user, dataType, target)
+                } catch (ex: UserNotAuthorizedException) {
+                    logger.info("User {} is no longer authorized, skipping catch-up", user.id)
+                    break
+                } catch (ex: Exception) {
+                    logger.error(
+                        "Catch-up fetch failed for {} user={} target={}",
+                        dataType, user.versionedId, target, ex,
+                    )
+                }
             }
         }
+        if (ran == null) logger.info("Catch-up for user={} is running elsewhere", user.versionedId)
     }
 
     /**
@@ -201,14 +305,45 @@ class GoogleHealthApiService(
     /**
      * Read or establish the user's historical-cutoff timestamp. This is the boundary between the
      * backfill service (owns `[user.startDate, cutoff]`) and the PING path (owns `[cutoff, now]`).
-     * Captured lazily on first access by whichever path runs first.
+     * Captured lazily on first access by whichever path runs first. It is set to now, not earlier:
+     * Google sends no webhook for data uploaded before the subscription existed, so only backfill
+     * fetches that data, and a cutoff in the past would leave it out.
      */
     fun ensureHistoricalCutoff(user: User): Instant {
         val path = Path.of(user.versionedId)
-        return offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
-            ?: Instant.now().minus(CUTOFF_LAG).also { cutoff ->
-                offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
-            }
+        offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, CUTOFF_ROUTE))
+            ?.let { return it }
+        // Backfill and catch-up can see a new user at the same moment. Claim the cutoff with
+        // SET NX first, so both use the same value instead of each writing its own.
+        val cutoff = redisHolder.execute { redis ->
+            val key = CUTOFF_KEY_PREFIX + user.versionedId
+            redis.set(key, Instant.now().toString(), CUTOFF_SET_PARAMS)
+            Instant.parse(redis.get(key))
+        }
+        offsets.add(path, UserRouteOffset(user.versionedId, CUTOFF_ROUTE, cutoff))
+        return cutoff
+    }
+
+    /**
+     * The local days a backfill window of a daily-summary type covers, as midnights, or null for
+     * other types. A day belongs to the window its local midnight falls in, so consecutive windows
+     * never fetch the same date twice. The first is equal to the second when no midnight falls in
+     * the window.
+     */
+    fun dailyBackfillDays(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>,
+    ): Pair<LocalDateTime, LocalDateTime>? {
+        if (timeAxisFor(dataType) != TimeAxis.DAILY) return null
+        val zone = userZoneId(user)
+        fun firstMidnightFrom(at: Instant): LocalDateTime {
+            val date = at.atZone(zone).toLocalDate()
+            val startsBefore = date.atStartOfDay(zone).toInstant().isBefore(at)
+            val day = if (startsBefore) date.plusDays(1) else date
+            return day.atStartOfDay()
+        }
+        return firstMidnightFrom(window.first) to firstMidnightFrom(window.second)
     }
 
     /**
@@ -241,23 +376,26 @@ class GoogleHealthApiService(
             logger.debug("No converter registered for dataType={}", dataType)
             return
         }
+        if (civil == null && window != null && hasNoCivilRange(user, dataType, window)) {
+            logger.info(
+                "Skipping {} window=[{},{}) for user={}: local end is not after local start",
+                dataType, window.first, window.second, user.versionedId,
+            )
+            return
+        }
         val sem = userSemaphores.computeIfAbsent(user.id) { Semaphore(MAX_CONCURRENT_PER_USER) }
         sem.acquire()
         try {
             var pageToken: String? = null
+            val seenPageTokens = HashSet<String>()
             do {
                 val response = fetchDataPoints(user, dataType, window, civil, pageToken)
-                logger.info(
-                    "[GH-TEST] fetched user={} dataType={} dataPoints={} window=[{},{})",
-                    user.id, dataType, response["dataPoints"]?.takeIf { it.isArray }?.size() ?: 0,
-                    civil?.first ?: window?.first, civil?.second ?: window?.second,
-                )
                 perType.forEach { conv ->
                     val records = conv.convert(response, user)
                     if (records.isNotEmpty()) {
                         producerPool.produce(conv.topic, records)
-                        logger.info(
-                            "[GH-TEST] sent records user={} dataType={} topic={} count={}",
+                        logger.debug(
+                            "Sent records user={} dataType={} topic={} count={}",
                             user.id, dataType, conv.topic, records.size,
                         )
                     }
@@ -266,10 +404,28 @@ class GoogleHealthApiService(
                     publishExerciseTcx(user, response)
                 }
                 pageToken = response["nextPageToken"]?.asText()?.takeIf { it.isNotEmpty() }
+                if (pageToken != null && !seenPageTokens.add(pageToken)) {
+                    throw IOException("Google Health repeated a page token for user=${user.id}")
+                }
             } while (pageToken != null)
         } finally {
             sem.release()
         }
+    }
+
+    /**
+     * Exercise is filtered by local time, and Google answers 400 when the end is not after the
+     * start. A short window can do that when the clocks go back, or when it is under a second, as
+     * the filter uses whole seconds. Retrying gives the same 400, and the offset would never move.
+     */
+    private fun hasNoCivilRange(
+        user: User,
+        dataType: String,
+        window: Pair<Instant, Instant>,
+    ): Boolean {
+        if (timeAxisFor(dataType) != TimeAxis.CIVIL_INTERVAL) return false
+        val civilFmt = CIVIL_DT_FMT.withZone(userZoneId(user))
+        return civilFmt.format(window.second) <= civilFmt.format(window.first)
     }
 
     private fun fetchDataPoints(
@@ -317,16 +473,31 @@ class GoogleHealthApiService(
         for (point in points) {
             val idSegment = (point["name"] ?: point["dataPointName"])?.asText()
                 ?.substringAfterLast('/')
-                ?: throw IOException(
-                    "Exercise data point has no name or dataPointName to derive a log id from " +
-                        "for user=${user.versionedId}",
+            // The id is numeric in all real data so far, but Google does not document its format.
+            // Skip only this session if it is not. Throwing would stop paging, and backfill would
+            // retry the same window forever. The converter skips the same point. If this warning
+            // ever shows up, switch to a string id field in the exercise and TCX schemas.
+            val exerciseId = idSegment?.toLongOrNull()
+            if (exerciseId == null) {
+                logger.warn(
+                    "Skipping TCX export for user={}: exercise id '{}' is missing or not numeric",
+                    user.versionedId, idSegment,
                 )
-            val exerciseId = idSegment.toLongOrNull()
-                ?: throw IOException(
-                    "Exercise data point log id '$idSegment' is not numeric for user=${user.versionedId}",
-                )
+                continue
+            }
             val xml = exportExerciseTcx(user, exerciseId) ?: continue
-            records += TcxAvroConverter.convert(TcxParser.parse(xml), exerciseId, user.observationKey)
+            // Skip only this session. Throwing would keep the offset, and every retry would send
+            // the exercises of this window to Kafka again without ever getting past this answer.
+            val trackpoints = try {
+                TcxParser.parse(xml)
+            } catch (ex: JsonProcessingException) {
+                logger.warn(
+                    "Skipping TCX of exercise {} for user={}: not readable as TCX: {}",
+                    exerciseId, user.versionedId, ex.originalMessage,
+                )
+                continue
+            }
+            records += TcxAvroConverter.convert(trackpoints, exerciseId, user.observationKey)
         }
         if (records.isNotEmpty()) producerPool.produce(googleConfig.exerciseTcxTopicName, records)
     }
@@ -376,8 +547,10 @@ class GoogleHealthApiService(
          * pageSize >= ceil(range_seconds / windowSize_seconds). With windowSize=60s a
          * 7-day chunk requires 10080 buckets.
          */
-        val rangeSeconds = window.second.epochSecond - window.first.epochSecond
-        val minBuckets = ((rangeSeconds + 59) / 60).toInt()  // ceil(range / 60s)
+        // Count in nanoseconds: 20h00m00.5s needs 1201 buckets, whole seconds would give 1200.
+        val rangeNanos = Duration.between(window.first, window.second).toNanos()
+        val bucketNanos = Duration.ofSeconds(60).toNanos()
+        val minBuckets = ((rangeNanos + bucketNanos - 1) / bucketNanos).toInt() // ceil(range / 60s)
         val effectivePageSize = maxOf(PAGE_SIZE, minBuckets)
         val bodyNode = objectMapper.createObjectNode().apply {
             putObject("range").apply {
@@ -400,7 +573,7 @@ class GoogleHealthApiService(
         user: User,
         buildRequest: (String) -> Request,
         onSuccess: (Response) -> T,
-        onSkip: () -> T,
+        onSkip: (Int) -> T,
     ): T {
         var token = userRepository.getOAuth2AccessToken(user)
         var tokenRefreshed = false
@@ -416,16 +589,20 @@ class GoogleHealthApiService(
                     resp.isSuccessful -> return onSuccess(resp)
                     resp.code == 401 && !tokenRefreshed -> {
                         logger.info("401 from Google Health — refreshing token for {}", user.id)
-                        token = userRepository.getOAuth2AccessToken(user)
+                        // A plain token request returns the same cached token until it expires,
+                        // so ask RSA to refresh it at Google.
+                        token = (userRepository as? GoogleHealthServiceUserRepository)
+                            ?.refreshOAuth2AccessToken(user)
+                            ?: userRepository.getOAuth2AccessToken(user)
                         tokenRefreshed = true
                     }
 
                     resp.code == 403 -> {
-                        logger.info("403 from Google Health — skipping request for user={}", user.id)
-                        return onSkip()
+                        logger.info("403 from Google Health for user={}", user.id)
+                        return onSkip(resp.code)
                     }
 
-                    resp.code == 404 -> return onSkip()
+                    resp.code == 404 -> return onSkip(resp.code)
                     resp.code == 400 -> {
                         // Surface filter-shape mismatches loudly — silent empty responses
                         // hide bugs like "Member 'X' is not supported for filtering".
@@ -435,7 +612,7 @@ class GoogleHealthApiService(
                             request.url,
                             resp.peekBody(MAX_ERROR_BODY_BYTES).string(),
                         )
-                        return onSkip()
+                        return onSkip(resp.code)
                     }
 
                     resp.code == 429 -> {
@@ -470,15 +647,22 @@ class GoogleHealthApiService(
                             resp.code,
                             user.id,
                         )
-                        return onSkip()
+                        return onSkip(resp.code)
                     }
                 }
             }
         }
     }
 
+    /**
+     * Any error that is not retried throws instead of returning an empty response. An empty
+     * response means "no data", so backfill and catch-up would store their offset past data that
+     * was never fetched.
+     */
     private fun executeWithRetry(user: User, buildRequest: (String) -> Request): JsonNode =
-        executeWithRetry(user, buildRequest, { parseBody(it.body?.string()) }, { emptyResponse() })
+        executeWithRetry(user, buildRequest, { parseBody(it.body?.string()) }) { code ->
+            throw IOException("Google Health request failed with HTTP $code for user=${user.id}")
+        }
 
     private fun buildFilterExpression(
         user: User,
@@ -543,35 +727,42 @@ class GoogleHealthApiService(
      * physical (UTC) instants into the civil local-clock bounds that exercise's `civil_start_time`
      * filter expects. A ZoneId (not the settings' fixed `utcOffset`) resolves the correct offset
      * for each instant, keeping historical backfill correct.
+     *
+     * A failed settings call throws, so backfill keeps its offset and retries. One chunk in UTC
+     * between chunks in the real zone would skip the data at their boundary. Only a 403 (the user
+     * did not grant that scope) or a zone that Google does not send uses UTC, which then stays the
+     * same for all of this user's chunks.
      */
     private fun userZoneId(user: User): ZoneId {
         userZones[user.id]?.let { if (!it.isExpired()) return it.zone }
-        val zone = try {
-            fetchUserZone(user)
-        } catch (ex: Exception) {
-            logger.warn(
-                "Could not read Google Health settings for user={}; civil filter falls back to UTC",
-                user.versionedId, ex,
-            )
-            null
+        val zone = fetchUserZone(user)
+        if (zone == null) {
+            logger.warn("No Google Health time zone for user={}, using UTC", user.versionedId)
+            return ZoneOffset.UTC
         }
-        return if (zone != null) {
-            userZones[user.id] = CachedZone(zone, Instant.now().plus(SETTINGS_CACHE_TTL))
-            zone
-        } else {
-            ZoneOffset.UTC
-        }
+        userZones[user.id] = CachedZone(zone, Instant.now().plus(SETTINGS_CACHE_TTL))
+        return zone
     }
 
     private fun fetchUserZone(user: User): ZoneId? {
         val url = apiBaseUrl.newBuilder().addPathSegments("users/me/settings").build()
-        val settings = executeWithRetry(user) { token ->
+        val buildRequest = { token: String ->
             Request.Builder().url(url)
                 .header("Authorization", "Bearer $token")
                 .header("Accept", "application/json")
                 .get()
                 .build()
         }
+        val settings = executeWithRetry<JsonNode?>(
+            user,
+            buildRequest,
+            { parseBody(it.body?.string()) },
+        ) { code ->
+            if (code != 403) {
+                throw IOException("Google Health settings: HTTP $code for user=${user.id}")
+            }
+            null
+        } ?: return null
         return parseUserZone(settings)
     }
 
@@ -701,7 +892,6 @@ class GoogleHealthApiService(
 
         private val ISO_FMT: DateTimeFormatter = DateTimeFormatter.ISO_INSTANT
         private val CIVIL_DT_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-            .withZone(java.time.ZoneOffset.UTC)
 
         private const val PAGE_SIZE = 1000
 
@@ -716,10 +906,18 @@ class GoogleHealthApiService(
         const val CUTOFF_ROUTE = "gh:_historical_cutoff"
 
         private val DEDUP_TTL: Duration = Duration.ofMinutes(5)
+        private const val DEDUP_KEY_PREFIX = "radar-push-googlehealth/dedup/"
+        private const val DELETE_OPERATION = "DELETE"
+        private const val CUTOFF_KEY_PREFIX = "radar-push-googlehealth/cutoff/"
+        private val CUTOFF_SET_PARAMS: SetParams =
+            SetParams().nx().px(Duration.ofDays(1).toMillis())
+        private val DEDUP_SET_PARAMS: SetParams = SetParams().nx().px(DEDUP_TTL.toMillis())
+
+        /** Far longer than a catch-up takes, short enough that a crashed instance delays little. */
+        private val CATCH_UP_LOCK_TTL: Duration = Duration.ofMinutes(15)
         private val SETTINGS_CACHE_TTL: Duration = Duration.ofHours(6)
         private val OVERLAP: Duration = Duration.ofSeconds(10)
         private val CATCHUP_CHUNK: Duration = Duration.ofDays(1)
-        private val CUTOFF_LAG: Duration = Duration.ofHours(1)
         private val RATE_LIMIT_INITIAL_BACKOFF: Duration = Duration.ofSeconds(30)
         private val RATE_LIMIT_MAX_BACKOFF: Duration = Duration.ofMinutes(10)
         private val SERVER_ERROR_INITIAL_BACKOFF: Duration = Duration.ofSeconds(2)
