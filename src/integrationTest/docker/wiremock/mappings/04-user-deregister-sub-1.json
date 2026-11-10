@@ -1,0 +1,13 @@
+{
+    "priority": 1,
+    "request": {
+        "method": "DELETE",
+        "urlPath": "/source-clients/Garmin/authorization/sub-1",
+        "queryParameters": {
+            "accessToken": { "equalTo": "dummy-access-token" }
+        }
+    },
+    "response": {
+        "status": 204
+    }
+}

@@ -1,5 +1,4 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import org.jetbrains.kotlin.cli.common.toBooleanLenient
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Duration
 
@@ -7,7 +6,7 @@ plugins {
     id("idea")
     id("application")
     kotlin("jvm")
-    id("com.avast.gradle.docker-compose") version "0.14.3"
+    id("com.avast.gradle.docker-compose") version "0.17.2"
     id("com.github.ben-manes.versions") version "0.39.0"
 }
 
@@ -15,11 +14,12 @@ description = "RADAR Push API Gateway to handle secured data flow to backend."
 
 allprojects {
     group = "org.radarbase"
-    version = "0.4.0"
+    version = "1.0.0"
 
     repositories {
         mavenCentral()
         maven(url = "https://packages.confluent.io/maven/")
+        mavenLocal()
     }
 }
 
@@ -42,24 +42,36 @@ dependencies {
     implementation("org.radarbase:radar-commons:$radarCommonsVersion")
     val radarJerseyVersion: String by project
     implementation("org.radarbase:radar-jersey:$radarJerseyVersion")
-
-    implementation(project(path = ":deprecated-javax", configuration = "shadow"))
-
     val guavaVersion: String by project
     implementation("com.google.guava:guava:$guavaVersion")
+    val ktorVersion: String by project
+    integrationTestImplementation("io.ktor:ktor-client-core:$ktorVersion")
+    integrationTestImplementation("io.ktor:ktor-client-cio:$ktorVersion")
+    integrationTestImplementation(platform("io.ktor:ktor-bom:$ktorVersion"))
+    integrationTestImplementation("io.ktor:ktor-client-content-negotiation")
+    integrationTestImplementation("io.ktor:ktor-serialization-kotlinx-json")
+
+    implementation(project(path = ":deprecated-javax", configuration = "shadow"))
 
     val lzVersion: String by project
     implementation("net.jpountz.lz4:lz4:$lzVersion")
 
     implementation("org.radarbase:oauth-client-util:${project.property("radarOauthClientVersion")}")
 
+    implementation("org.radarbase:google-health-library:0.7.6")
+
+    implementation("com.google.auth:google-auth-library-oauth2-http:${project.property("googleAuthVersion")}")
+
+
     implementation("org.slf4j:slf4j-api:${project.property("slf4jVersion")}")
 
     val jacksonVersion: String by project
+    implementation(enforcedPlatform("com.fasterxml.jackson:jackson-bom:$jacksonVersion"))
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jacksonVersion")
 
     val grizzlyVersion: String by project
     runtimeOnly("org.glassfish.grizzly:grizzly-framework-monitoring:$grizzlyVersion")
@@ -88,13 +100,13 @@ dependencies {
     integrationTestImplementation("com.squareup.okhttp3:okhttp:$okhttp3Version")
     integrationTestImplementation("org.radarbase:radar-schemas-commons:$radarSchemasVersion")
     integrationTestImplementation("org.radarbase:radar-commons-testing:$radarCommonsVersion")
+    val wiremockVersion: String by project
+    integrationTestImplementation("com.github.tomakehurst:wiremock:$wiremockVersion")
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        apiVersion = "1.8"
-        languageVersion = "1.8"
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -104,6 +116,10 @@ val integrationTest by tasks.registering(Test::class) {
     testClassesDirs = integrationTestSourceSet.output.classesDirs
     classpath = integrationTestSourceSet.runtimeClasspath
     shouldRunAfter("test")
+    val externalWiremockProp = (project.findProperty("externalWiremock") as String?) ?: System.getenv("EXTERNAL_WIREMOCK")
+    if (externalWiremockProp?.toBoolean() == true) {
+        environment("EXTERNAL_WIREMOCK", "true")
+    }
 }
 
 tasks.withType<Test> {
@@ -135,15 +151,16 @@ application {
 dockerCompose {
     useComposeFiles = listOf("src/integrationTest/docker/docker-compose.yml")
     val dockerComposeBuild: String? by project
-    val doBuild = dockerComposeBuild?.toBooleanLenient() ?: true
-    buildBeforeUp = doBuild
-    buildBeforePull = doBuild
-    buildAdditionalArgs = emptyList<String>()
+    val doBuild = dockerComposeBuild?.toBoolean() ?: true
+    buildBeforeUp.set(doBuild)
+    buildBeforePull.set(doBuild)
+    buildAdditionalArgs.set(emptyList<String>())
     val dockerComposeStopContainers: String? by project
-    stopContainers = dockerComposeStopContainers?.toBooleanLenient() ?: true
-    waitForTcpPortsTimeout = Duration.ofMinutes(3)
-    environment["SERVICES_HOST"] = "localhost"
+    stopContainers.set(dockerComposeStopContainers?.toBoolean() ?: true)
+    waitForTcpPortsTimeout.set(Duration.ofMinutes(3))
+    environment.put("SERVICES_HOST", "localhost")
     captureContainersOutputToFiles = project.file("build/container-logs")
+    useDockerComposeV2.set(true)
     isRequiredBy(integrationTest)
 }
 
