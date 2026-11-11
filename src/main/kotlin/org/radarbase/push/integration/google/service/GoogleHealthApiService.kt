@@ -272,9 +272,8 @@ class GoogleHealthApiService(
 
     /**
      * Advance a non-subscribed type's stored offset forward to [target], one day per iteration.
-     * Advances the Redis offset after each chunk returns a 200 (including empty responses,
-     * `:reconcile` returning zero records means the user legitimately had no data in that window,
-     * not that data is pending). Stops on [TransientGoogleHealthException] without advancing so
+     * Advances the Redis offset after each chunk returns a 200, also an empty one, as far as
+     * [offsetAfter] allows. Stops on [TransientGoogleHealthException] without advancing so
      * the next PING retries the same chunk.
      */
     private fun catchUpFetch(user: User, dataType: String, target: Instant) {
@@ -284,12 +283,15 @@ class GoogleHealthApiService(
         val storedOffset = offsets.read(user.versionedId)?.offsetsMap?.get(UserRoute(user.versionedId, route))
         // Live cursor never reaches into the historical range owned by backfill, if there's no
         // stored live offset yet (new user, or first PING on this type), start exactly at cutoff.
-        var cursor = storedOffset?.coerceAtLeast(cutoff) ?: cutoff
+        val from = storedOffset?.coerceAtLeast(cutoff) ?: cutoff
+        var cursor = from
+        var newest: Instant? = null
         if (!cursor.isBefore(target)) return
         while (cursor.isBefore(target)) {
             val chunkEnd = minOf(cursor.plus(CATCHUP_CHUNK), target)
             try {
-                fetchAndPublishBlocking(user, dataType, cursor to chunkEnd)
+                val fetched = fetchAndPublishBlocking(user, dataType, cursor to chunkEnd)
+                newest = listOfNotNull(newest, fetched).maxOrNull()
             } catch (ex: TransientGoogleHealthException) {
                 logger.warn(
                     "Catch-up transient failure user={} type={} chunk=[{},{}). Next PING will retry.",
@@ -297,7 +299,8 @@ class GoogleHealthApiService(
                 )
                 return
             }
-            offsets.add(path, UserRouteOffset(user.versionedId, route, chunkEnd))
+            val next = offsetAfter(dataType, from, newest, chunkEnd)
+            offsets.add(path, UserRouteOffset(user.versionedId, route, next))
             cursor = chunkEnd
         }
     }
@@ -370,26 +373,28 @@ class GoogleHealthApiService(
         dataType: String,
         window: Pair<Instant, Instant>?,
         civil: Pair<LocalDateTime, LocalDateTime>? = null,
-    ) {
+    ): Instant? {
         val perType = converters[dataType]
         if (perType.isNullOrEmpty()) {
             logger.debug("No converter registered for dataType={}", dataType)
-            return
+            return null
         }
         if (civil == null && window != null && hasNoCivilRange(user, dataType, window)) {
             logger.info(
                 "Skipping {} window=[{},{}) for user={}: local end is not after local start",
                 dataType, window.first, window.second, user.versionedId,
             )
-            return
+            return null
         }
         val sem = userSemaphores.computeIfAbsent(user.id) { Semaphore(MAX_CONCURRENT_PER_USER) }
         sem.acquire()
         try {
+            var newest: Instant? = null
             var pageToken: String? = null
             val seenPageTokens = HashSet<String>()
             do {
                 val response = fetchDataPoints(user, dataType, window, civil, pageToken)
+                newest = listOfNotNull(newest, newestPointTime(dataType, response)).maxOrNull()
                 perType.forEach { conv ->
                     val records = conv.convert(response, user)
                     if (records.isNotEmpty()) {
@@ -408,9 +413,38 @@ class GoogleHealthApiService(
                     throw IOException("Google Health repeated a page token for user=${user.id}")
                 }
             } while (pageToken != null)
+            return newest
         } finally {
             sem.release()
         }
+    }
+
+    /**
+     * The offset to store after fetching the window from [from] to [end].
+     *
+     * Most types continue at [end]. The [LATE_TYPES] have no webhook, and their data can reach
+     * Google after we asked for it: SpO2 is computed after sleep, an ECG or IRN comes with the
+     * next sync. They continue just after the newest point we received, so the next fetch asks
+     * again for anything that arrived late. They never stay more than [MAX_LATE] behind [end],
+     * so a user without such data does not read a longer and longer window.
+     */
+    fun offsetAfter(dataType: String, from: Instant, newest: Instant?, end: Instant): Instant {
+        if (dataType !in LATE_TYPES) return end
+        val justAfterNewest = newest?.plusMillis(1) ?: from
+        return maxOf(justAfterNewest, from, end.minus(MAX_LATE)).coerceAtMost(end)
+    }
+
+    /** The newest time in [response], read from the same field that the filter uses. */
+    private fun newestPointTime(dataType: String, response: JsonNode): Instant? {
+        val field = LATE_TYPES[dataType] ?: return null
+        val points = response["dataPoints"] ?: return null
+        return points.mapNotNull { point ->
+            // SpO2 has a sample time, ECG and IRN have an interval.
+            val data = point[field]
+            val time = data?.get("sampleTime")?.get("physicalTime")
+                ?: data?.get("interval")?.get("startTime")
+            time?.asText()?.let { runCatching { Instant.parse(it) }.getOrNull() }
+        }.maxOrNull()
     }
 
     /**
@@ -885,6 +919,14 @@ class GoogleHealthApiService(
          * catch-up.
          */
         val NON_CHUNKED_TYPES = setOf("electrocardiogram")
+
+        /** Types whose offset follows their newest point (see [offsetAfter]), with JSON field. */
+        private val LATE_TYPES = mapOf(
+            "oxygen-saturation" to "oxygenSaturation",
+            "irregular-rhythm-notification" to "irregularRhythmNotification",
+            "electrocardiogram" to "electrocardiogram",
+        )
+        private val MAX_LATE: Duration = Duration.ofHours(48)
 
         private val logger = LoggerFactory.getLogger(GoogleHealthApiService::class.java)
 

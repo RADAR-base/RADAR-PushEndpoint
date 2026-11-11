@@ -151,6 +151,11 @@ class GoogleHealthBackfillService(
             return
         }
         for (dataType in ghConfig.effectiveEnabledDataTypes) {
+            // Another pod took the lock, for example after this one paused longer than LOCK_TTL.
+            if (!locks.renew(user.versionedId)) {
+                logger.warn("Lost the backfill lock of user={}", user.versionedId)
+                return
+            }
             try {
                 backfillOneDataType(user, dataType)
             } catch (ex: UserNotAuthorizedException) {
@@ -181,8 +186,9 @@ class GoogleHealthBackfillService(
                 "Backfilling user={} dataType={} (non-chunked) window=[{},{})",
                 user.versionedId, dataType, cursor, now,
             )
-            apiService.fetchAndPublishBlocking(user, dataType, cursor to now)
-            offsets.add(Path.of(user.versionedId), UserRouteOffset(user.versionedId, route, now))
+            val newest = apiService.fetchAndPublishBlocking(user, dataType, cursor to now)
+            val next = apiService.offsetAfter(dataType, cursor, newest, now)
+            offsets.add(Path.of(user.versionedId), UserRouteOffset(user.versionedId, route, next))
             return
         }
 
@@ -222,10 +228,19 @@ class GoogleHealthBackfillService(
                 UserRouteOffset(user.versionedId, route, windowEnd),
             )
             cursor = windowEnd
+            if (!locks.renew(user.versionedId)) return
         }
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(GoogleHealthBackfillService::class.java)
+
+        /**
+         * How long a user's backfill lock lives. The backfill renews it after each chunk and
+         * each data type, which take minutes at most. A pod that stops in the middle of a
+         * backfill never releases its lock, so a short lock lets the next pod continue that user
+         * within about half an hour instead of a day.
+         */
+        val LOCK_TTL: Duration = Duration.ofMinutes(30)
     }
 }

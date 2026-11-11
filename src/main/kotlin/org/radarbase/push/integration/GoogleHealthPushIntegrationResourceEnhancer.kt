@@ -67,7 +67,9 @@ class GoogleHealthPushIntegrationResourceEnhancer(private val config: Config) :
         val redisConfig = config.pushIntegration.googlehealth.backfill.redis
         val redisHolder = RedisHolder(JedisPool(redisConfig.uri))
         val offsetStore = OffsetRedisPersistence(redisHolder)
-        val lockManager = RedisRemoteLockManager(redisHolder, redisConfig.lockPrefix)
+        val lockManager = RedisRemoteLockManager(
+            redisHolder, redisConfig.lockPrefix, GoogleHealthBackfillService.LOCK_TTL,
+        )
         bind(redisHolder).to(RedisHolder::class.java)
         bind(offsetStore).to(OffsetRedisPersistence::class.java)
         bind(lockManager).to(RedisRemoteLockManager::class.java)

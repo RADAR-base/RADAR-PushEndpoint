@@ -8,7 +8,7 @@ import java.util.*
 class RedisRemoteLockManager(
         private val redisHolder: RedisHolder,
         private val keyPrefix: String,
-        lockDuration: Duration = Duration.ofDays(1),
+        private val lockDuration: Duration = Duration.ofDays(1),
 ) : RemoteLockManager {
     private val uuid: String = UUID.randomUUID().toString()
     private val setParams = SetParams()
@@ -25,6 +25,17 @@ class RedisRemoteLockManager(
             redis.set(lockKey, uuid, setParams)?.let {
                 RemoteLock(lockKey)
             }
+        }
+    }
+
+    /**
+     * Gives the lock [name] its full duration again, if this instance holds it. Returns false
+     * if the lock expired or another instance holds it now.
+     */
+    fun renew(name: String): Boolean {
+        val lockKey = "$keyPrefix/$name.lock"
+        return redisHolder.execute { redis ->
+            redis.get(lockKey) == uuid && redis.pexpire(lockKey, lockDuration.toMillis()) == 1L
         }
     }
 
