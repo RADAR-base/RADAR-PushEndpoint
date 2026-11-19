@@ -97,7 +97,7 @@ services:
   push-endpoint:
     build:
      context: ../../..
-    image: radarbase/radar-push-endpoint:${RADAR_PUSH_ENDPOINT_TAG}
+    image: ghcr.io/radar-base/radar-pushendpoint/radar-push-endpoint:${RADAR_PUSH_ENDPOINT_TAG}
     depends_on:
       - kafka-1
       - schema-registry-1

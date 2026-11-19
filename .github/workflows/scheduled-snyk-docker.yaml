@@ -6,14 +6,24 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: radarbase/radar-push-endpoint
+  REGISTRY: ghcr.io
+  REPOSITORY: ${{ github.repository }}
+  IMAGE_NAME: radar-push-endpoint
 
 jobs:
   security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Lowercase image name
+        run: |
+          echo "DOCKER_IMAGE=${REGISTRY}/${REPOSITORY,,}/${IMAGE_NAME}" >>${GITHUB_ENV}
 
       - name: Run Snyk to check for vulnerabilities
         continue-on-error: true # To make sure that SARIF upload gets called
